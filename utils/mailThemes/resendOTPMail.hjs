@@ -1,0 +1,156 @@
+<html>
+
+<head>
+  <title>Reset Your Password - AddressGuru UAE</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background: linear-gradient(180deg, #fff5ef 0%, #ffffff 100%);
+      font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+      color: #333333;
+    }
+
+   .wrapper {
+      width: 100%;
+      background-color: #f6f7fb;
+      padding: 40px 0;
+    }
+
+    .container {
+      max-width: 880px;
+      background: #ffffff;
+      margin: auto;
+      border-radius: 14px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+      overflow: hidden;
+    }
+
+    .header {
+      background: linear-gradient(135deg, #f7941d, #ffb347);
+      padding: 20px 0;
+      text-align: center;
+    }
+
+    .header img {
+      width: 160px;
+      height: auto;
+    }
+
+    .main {
+      padding: 40px 35px;
+    }
+
+    h1 {
+      color: #222222;
+      font-size: 24px;
+      margin-bottom: 16px;
+      text-align: center;
+    }
+
+    p {
+      font-size: 16px;
+      line-height: 1.7;
+      color: #555555;
+      margin-bottom: 18px;
+    }
+
+    .otp-box {
+      background: linear-gradient(135deg, #f7941d, #ffb347);
+      color: #ffffff;
+      font-family: "Courier New", monospace;
+      padding: 16px;
+      border-radius: 8px;
+      text-align: center;
+      font-size: 28px;
+      font-weight: bold;
+      letter-spacing: 6px;
+      margin: 25px 0;
+      box-shadow: 0 4px 10px rgba(255, 110, 2, 0.3);
+    }
+
+    .button-container {
+      text-align: center;
+      margin-top: 25px;
+    }
+
+    .button {
+      display: inline-block;
+     background: linear-gradient(135deg, #f7941d, #ffb347);
+      color: #ffffff;
+      text-decoration: none;
+      font-weight: 600;
+      padding: 14px 28px;
+      border-radius: 6px;
+      transition: all 0.3s ease;
+      font-size: 16px;
+    }
+
+    .button:hover {
+     background: linear-gradient(135deg, #f7941d, #ffb347);
+      transform: translateY(-2px);
+      box-shadow: 0 4px 10px rgba(255, 110, 2, 0.3);
+    }
+
+    .divider {
+      height: 1px;
+      background-color: #f0f0f0;
+      margin: 40px 0 20px;
+    }
+
+    .footer {
+      text-align: center;
+      font-size: 13px;
+      color: #999999;
+      padding-bottom: 30px;
+    }
+
+    .footer a {
+      color: #ff6e02;
+      text-decoration: none;
+      font-weight: 500;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="wrapper">
+    <div class="container">
+      <div class="header">
+        <!-- Optional: Replace with your logo -->
+        <img src="https://www.addressguru.in/images/logopng.png" alt="AddressGuru UAE" />
+      </div>
+
+      <div class="main">
+        <h1>Password Reset Request</h1>
+
+        <p>Hello <strong>{{name}}</strong>,</p>
+
+        <p>
+          We received a request to reset your password for your AddressGuru UAE
+          account.
+        </p>
+
+        <p>
+          Use the one-time password (OTP) below to complete your password reset.
+          This code is valid for <strong>10 minutes</strong>.
+        </p>
+
+        <div class="otp-box">{{otp}}</div>
+
+        <p>If you didn’t request this, you can safely ignore this email — your account remains secure.</p>
+
+        <div class="divider"></div>
+
+        <div class="footer">
+          &copy; 2025 <strong>AddressGuru UAE</strong>. All rights reserved. <br />
+          Visit us at <a href="https://addressguru.sg">addressguru.sg</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+
+</html>

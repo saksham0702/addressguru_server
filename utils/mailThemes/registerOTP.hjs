@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Account Verification - AddressGuru</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet" />
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background-color: #f6f7fb;
+      font-family: 'Poppins', sans-serif;
+      color: #333;
+    }
+
+    .wrapper {
+      width: 100%;
+      padding: 40px 0;
+      background-color: #f6f7fb;
+    }
+
+    .container {
+      max-width: 600px;
+      background: #ffffff;
+      margin: auto;
+      border-radius: 14px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+      overflow: hidden;
+    }
+
+    .header {
+      background: linear-gradient(135deg, #f7941d, #ffb347);
+      text-align: center;
+      padding: 40px 20px;
+      color: #fff;
+    }
+
+    .header img {
+      width: 160px;
+      margin-bottom: 15px;
+    }
+
+    .header h1 {
+      font-size: 24px;
+      margin: 10px 0 0;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+    }
+
+    .content {
+      padding: 35px 30px;
+      font-size: 16px;
+      line-height: 1.7;
+    }
+
+    .content h2 {
+      font-size: 20px;
+      color: #f7941d;
+      margin-bottom: 15px;
+      font-weight: 600;
+    }
+
+    .otp-box {
+      text-align: center;
+      background: #fff9f2;
+      border: 1px solid #ffe0b3;
+      border-radius: 10px;
+      padding: 25px;
+      margin: 25px 0;
+      box-shadow: 0 2px 6px rgba(247,148,29,0.1);
+    }
+
+    .otp-code {
+      font-size: 32px;
+      font-weight: 700;
+      letter-spacing: 8px;
+      color: #f7941d;
+      margin: 0;
+    }
+
+    .note {
+      font-size: 14px;
+      color: #777;
+      margin-top: 15px;
+    }
+
+    .cta-button {
+      display: inline-block;
+      background: linear-gradient(135deg, #f7941d, #ffb347);
+      color: #fff !important;
+      text-decoration: none;
+      padding: 14px 35px;
+      border-radius: 50px;
+      font-weight: 600;
+      margin-top: 25px;
+      transition: all 0.3s ease;
+    }
+
+    .cta-button:hover {
+      background: linear-gradient(135deg, #ff9e35, #ffb347);
+      box-shadow: 0 4px 10px rgba(247,148,29,0.3);
+    }
+
+    .footer {
+      background-color: #fafafa;
+      padding: 25px 20px;
+      text-align: center;
+      font-size: 13px;
+      color: #777;
+      border-top: 1px solid #eee;
+    }
+
+    .footer a {
+      color: #f7941d;
+      text-decoration: none;
+      font-weight: 500;
+    }
+
+    .footer a:hover {
+      text-decoration: underline;
+    }
+
+    @media (max-width: 480px) {
+      .content {
+        padding: 25px 20px;
+      }
+      .header h1 {
+        font-size: 22px;
+      }
+      .otp-code {
+        font-size: 28px;
+        letter-spacing: 6px;
+      }
+      .cta-button {
+        width: 100%;
+        text-align: center;
+        box-sizing: border-box;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrapper">
+    <div class="container">
+      <!-- Header -->
+      <div class="header">
+        <img src="https://www.addressguru.in/images/logopng.png" alt="AddressGuru Logo">
+        <h1>Verify Your Account</h1>
+      </div>
+
+      <!-- Content -->
+      <div class="content">
+        <p>Hi <strong>{{name}}</strong>,</p>
+        <p>
+          Thank you for signing up with <strong>AddressGuru</strong>!  
+          To complete your account setup, please verify your email using the One-Time Password (OTP) below:
+        </p>
+
+        <div class="otp-box">
+          <p class="otp-code">{{otp}}</p>
+          <p class="note">This OTP will expire in 10 minutes. Please do not share it with anyone.</p>
+        </div>
+
+        <p style="text-align:center;">
+          <a href="{{verify_url}}" class="cta-button">Verify Account</a>
+        </p>
+
+        <p>If you didn’t create an account, you can safely ignore this email.</p>
+
+        <p>Best regards,</p>
+        <p><strong>The AddressGuru Team</strong></p>
+      </div>
+
+      <!-- Footer -->
+      <div class="footer">
+        &copy; {{year}} <strong>AddressGuru</strong>. All rights reserved.<br>
+        <a href="https://www.addressguru.ae">www.addressguru.ae</a> | <a href="mailto:support@addressguru.ae">support@addressguru.ae</a>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

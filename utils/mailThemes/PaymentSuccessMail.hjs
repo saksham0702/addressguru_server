@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Payment Successful - ElevateU</title>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600&family=Nunito&family=Roboto&display=swap" rel="stylesheet" />
+    <style>
+      body {
+        margin: 0;
+        padding: 0;
+        background-color: #ffffff;
+        font-family: 'Nunito', sans-serif;
+        color: #1a1a1a;
+      }
+      .container {
+        max-width: 600px;
+        margin: 40px auto;
+        background-color: #ffffff;
+        border-radius: 8px;
+        padding: 40px 30px;
+        border: 1px solid #e0e0e0;
+        box-shadow: 0 2px 12px rgba(0, 0, 0, 0.05);
+      }
+      .header {
+        text-align: center;
+        padding-bottom: 30px;
+      }
+      .header h1 {
+        font-size: 26px;
+        margin: 0;
+        color: #98CE00;
+        font-family: 'Montserrat', sans-serif;
+      }
+      .content {
+        font-size: 16px;
+        line-height: 1.6;
+        color: #333333;
+        font-family: 'Nunito', sans-serif;
+      }
+      .content strong {
+        color: #1a1a1a;
+      }
+      .button {
+        display: inline-block;
+        padding: 12px 24px;
+        margin-top: 20px;
+        background-color: #98CE00;
+        color: #000000;
+        text-decoration: none;
+        border-radius: 6px;
+        font-weight: bold;
+        font-family: 'Nunito', sans-serif;
+        transition: background-color 0.3s ease;
+      }
+      .button:hover {
+        background-color: #0DD8FC;
+        color: #ffffff;
+      }
+      a.support-link {
+        color: #0DD8FC;
+        text-decoration: underline;
+      }
+      .footer {
+        text-align: center;
+        margin-top: 40px;
+        font-size: 13px;
+        color: #888888;
+        font-family: 'Roboto', sans-serif;
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="container">
+      <div class="header">
+        <h1>Payment Successful</h1>
+      </div>
+
+      <div class="content">
+        <p>Hello {{email}},</p>
+
+        <p>Thank you for your payment. We have successfully received your payment of <strong>{{amount}}</strong> for your ElevateU subscription/service.</p>
+
+        <p><strong>Transaction ID:</strong> {{transaction_id}}<br />
+           <strong>Date:</strong> {{date}}</p>
+
+        <p>You can view your invoice or manage your account anytime using the button below:</p>
+
+        <div style="text-align:center;">
+          <a href="{{account_url}}" target="_blank" class="button">
+            View My Account
+          </a>
+        </div>
+
+        <p>If you have any questions or need assistance, feel free to <a href="{{support_url}}" class="support-link">contact our support team</a>.</p>
+      </div>
+
+      <div class="footer">
+        &copy; 2025 ElevateU. All rights reserved.
+      </div>
+    </div>
+  </body>
+</html>

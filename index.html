@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Your Listings Summary — AddressGuru</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    body { margin: 0; padding: 0; background: #f6f7fb; font-family: 'Poppins', sans-serif; color: #333; }
+    .wrapper { width: 100%; padding: 40px 0; background: #f6f7fb; }
+    .container { max-width: 700px; background: #fff; margin: auto; border-radius: 14px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); overflow: hidden; }
+    .header { background: linear-gradient(135deg, #f7941d, #ffb347); text-align: center; padding: 30px 20px; color: #fff; }
+    .header img { width: 150px; margin-bottom: 12px; }
+    .header h1 { font-size: 22px; margin: 0; font-weight: 600; }
+    .content { padding: 30px 25px; }
+    .content p { margin: 15px 0; font-size: 16px; line-height: 1.6; }
+    .table-container { overflow-x: auto; margin-top: 20px; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { padding: 12px 10px; border-bottom: 1px solid #e5e7eb; text-align: left; }
+    th { background: #f9fafb; color: #111827; font-weight: 600; }
+    td { color: #374151; }
+    .footer { background: #fafafa; padding: 25px 20px; text-align: center; font-size: 13px; color: #777; border-top: 1px solid #eee; }
+    .footer a { color: #f7941d; text-decoration: none; }
+    .footer a:hover { text-decoration: underline; }
+    @media (max-width: 480px) {
+      .content { padding: 20px 15px; }
+      th, td { padding: 10px 6px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrapper">
+    <div class="container">
+      <div class="header">
+        <a href="https://addressguru.ae" target="_blank">
+          <img src="https://www.addressguru.in/images/logopng.png" alt="AddressGuru Logo">
+        </a>
+        <h1>Your Listings Summary</h1>
+      </div>
+      <div class="content">
+        <p>Hi <strong>{{userName}}</strong>,</p>
+        <p>Here’s a summary of your listings:</p>
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>Title</th>
+                <th>Status</th>
+                <th>Views</th>
+                <th>Last Updated</th>
+              </tr>
+            </thead>
+            <tbody>
+              {{#each listings}}
+              <tr>
+                <td>{{title}}</td>
+                <td>{{status}}</td>
+                <td>{{views}}</td>
+                <td>{{lastUpdated}}</td>
+              </tr>
+              {{/each}}
+            </tbody>
+          </table>
+        </div>
+        <p>If you want to manage your listings, <a href="https://addressguru.ae/dashboard" target="_blank">go to your dashboard</a>.</p>
+      </div>
+      <div class="footer">
+        &copy; {{year}} AddressGuru. All rights reserved. <br>
+        <a href="https://addressguru.ae" target="_blank">addressguru.ae</a> | <a href="mailto:support@addressguru.ae">support@addressguru.ae</a>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
