@@ -4,7 +4,10 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "start": "nodemon ./bin/www"
+    "start": "nodemon ./bin/www",
+    "db:export": "bash scripts/db-export.sh",
+    "db:import": "bash scripts/db-import.sh",
+    "prepare": "husky"
   },
   "dependencies": {
     "axios": "^1.13.0",
@@ -32,5 +35,8 @@
     "ua-parser-js": "^2.0.6",
     "winston": "^3.18.3",
     "winston-mongodb": "^7.0.1"
+  },
+  "devDependencies": {
+    "husky": "^9.1.7"
   }
 }

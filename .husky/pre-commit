@@ -1,0 +1,6 @@
+#!/bin/sh
+
+# Pre-commit hook: Export MongoDB data and stage it
+echo "🔄 Running MongoDB export before commit..."
+bash scripts/db-export.sh
+git add db_export/
