@@ -15,6 +15,7 @@
     "debug": "^4.4.3",
     "dotenv": "^17.2.3",
     "express": "^5.1.0",
+    "express-rate-limit": "^8.2.1",
     "geoip-lite": "^1.4.10",
     "hogan.js": "^3.0.2",
     "http-errors": "^2.0.0",

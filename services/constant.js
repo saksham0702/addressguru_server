@@ -62,7 +62,7 @@ export const ROLES = {
 };
 
 export const ROLE_NAMES = Object.fromEntries(
-  Object.entries(ROLES).map(([k, v]) => [v, k])
+  Object.entries(ROLES).map(([k, v]) => [v, k]),
 );
 
 // API_PREFIX ROLES

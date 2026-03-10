@@ -23,7 +23,10 @@ import connectDB from "./config/connectDB.js";
 import { API_PREFIX, ROLE_PREFIX } from "./services/constant.js";
 import errorHandlerMiddleware from "./middleware/error-handler.middleware.js";
 import subCategoriesRouter from "./routes/subCategoriesRouter.js";
-import { seedFeatures } from "./seeds/feature.seed.js";
+// import { seedFeatures } from "./seeds/feature.seed.js";
+import businessListingRouter from "./routes/businessListingRouter.js";
+import additionalFieldRouter from "./routes/additionalField.Router.js";
+import featureRouter from "./routes/feature.Router.js";
 
 var app = express();
 
@@ -31,17 +34,25 @@ var app = express();
 app.set("trust proxy", true);
 app.set("views", join(__dirname, "views"));
 app.set("view engine", "jade");
-app.use(cors());
+app.use(
+  cors({
+    origin: true, // 👈 allows all origins dynamically
+    // origin: "http://localhost:3000",
+    credentials: true, // 👈 cookies allowed
+  }),
+);
+
 app.use(logs("dev"));
 app.use(express.json());
-app.use(express.urlencoded({ extended: false }));
+app.use(express.urlencoded({ extended: true }));
+
 app.use(cookieParser());
 app.use(express.static(join(__dirname, "public")));
 
 // Serve uploaded images publicly
 // app.use("/uploads", express.static(path.join(process.cwd(), "public")));
 
-app.get("/", async (req, res) => {
+app.get("/api", async (req, res) => {
   const html = `
     <!DOCTYPE html>
     <html lang="en">
@@ -86,19 +97,29 @@ app.get("/", async (req, res) => {
   return res.send(html);
 });
 
+app.use(`/${API_PREFIX}/additional-fields`, additionalFieldRouter);
 app.use(`/${API_PREFIX}/master`, masterAdminRouter);
-app.use(`/${API_PREFIX}`, citiesRouter);
-app.use(`/${API_PREFIX}/${ROLE_PREFIX.USER}`, usersRouter);
 app.use(`/${API_PREFIX}/social-login`, socialRouter);
 app.use(`/${API_PREFIX}/categories`, categoryRouter);
 app.use(`/${API_PREFIX}/sub-categories`, subCategoriesRouter);
+app.use(`/${API_PREFIX}/business-listing`, businessListingRouter);
+app.use(`/${API_PREFIX}/cities`, citiesRouter);
+// app.use(`/${API_PREFIX}/${ROLE_PREFIX.USER}`, usersRouter);
+app.use(`/${API_PREFIX}/user`, usersRouter);
+
+app.use(`/${API_PREFIX}/features`, featureRouter);
+
+app.get("/test-cookie", (req, res) => {
+  console.log("cookies:", req.cookies);
+  res.json(req.cookies);
+});
 
 // app.use("/", indexRouter);
 // app.use("/users", usersRouter);
 
 // Connect to Database
 connectDB();
-await seedFeatures();
+// await seedFeatures();
 
 // catch 404 and forward to error handler
 app.use(function (req, res, next) {
@@ -116,7 +137,7 @@ app.use(function (err, req, res, next) {
   logger.error(
     `${err.status || 500} - ${err.message} - ${req.originalUrl} - ${
       req.method
-    } - ${req.ip}`
+    } - ${req.ip}`,
   );
 
   // render the error page

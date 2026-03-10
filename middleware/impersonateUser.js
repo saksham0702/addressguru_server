@@ -5,30 +5,42 @@ import User from "../model/userSchema.js";
 
 const impersonateUser = async (req, res) => {
   try {
-    console.log("REQQQ USER :", req?.user);
-    console.log("REQQQ PARAMS :", req?.params);
-    console.log("REQQQ QUERY :", req?.query);
-    const masterAdmin = req.user;
+    const admin = req.user;
 
-    if (masterAdmin.user && masterAdmin?.user?.role !== "1") {
+    // ✅ Allow only MASTER ADMIN
+    if (admin.role !== "1") {
       return res.status(403).json({ message: "Access denied" });
     }
 
-    const user = await User.findById(req?.params?.userId);
-    if (!user) return res.status(404).json({ message: "User not found" });
+    const user = await User.findById(req.params.userId);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
 
+    // ✅ Create impersonation token
     const token = JWT.sign(
       {
-        impersonated: true,
-        masterAdminId: masterAdmin._id,
-        userId: user._id,
+        id: user._id,
         role: user.role,
+        impersonated: true,
+        masterAdminId: admin.id,
       },
       SECRET_KEY,
-      { expiresIn: "5m" } // expire in 5 minutes
+      { expiresIn: "5m" },
     );
 
-    res.json({ status: true, access_token: token });
+    // ✅ Store in httpOnly cookie
+    res.cookie("access_token", token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+      maxAge: 5 * 60 * 1000,
+    });
+
+    res.json({
+      status: true,
+      message: "Impersonation started",
+    });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

@@ -1,35 +1,31 @@
 import jwt from "jsonwebtoken";
 import { SECRET_KEY } from "../services/constant.js";
+import { errorData } from "../services/helper.js";
 
 const authenticate = async (req, res, next) => {
   try {
-    let token =
-      req?.headers?.authorization?.split(" ")[1] || req?.cookies?.authToken;
+    // ✅ Read token ONLY from cookie
+    const token = req.cookies?.access_token;
 
-    if (token) {
-      const decoded = jwt.verify(token, SECRET_KEY);
-
-      req.user = decoded;
-      return next();
+    if (!token) {
+      return errorData(res, 401, false, "Unauthorized: No token provided");
     }
 
-    return res.status(401).json({
-      status: false,
-      message: "Unauthorized User: No token provided.",
-    });
+    // ✅ Verify JWT
+    const decoded = jwt.verify(token, SECRET_KEY);
+
+    // ✅ Attach decoded payload
+    // Example: { id, role }
+    req.user = decoded;
+
+    next();
   } catch (error) {
     if (error.name === "TokenExpiredError") {
-      return res.status(401).json({
-        status: false,
-        message: "Token has expired",
-      });
+      return errorData(res, 401, false, "Session expired. Please login again.");
     }
+
     console.error("Authentication Error:", error);
-    return res.status(500).json({
-      status: false,
-      message: "Internal server error.",
-      error: error?.message,
-    });
+    return errorData(res, 401, false, "Invalid authentication token");
   }
 };
 

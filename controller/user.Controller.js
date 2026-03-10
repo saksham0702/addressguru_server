@@ -15,94 +15,169 @@ import {
   sendSuccessMail,
 } from "../utils/sendMail.js";
 import geoip from "geoip-lite";
-import * as parser from "ua-parser-js";
+import { UAParser } from "ua-parser-js";
 
 const OTP_VALIDITY_MINUTES = 10;
 
 export const login = async (req, res) => {
-  console.log("LOGIN RQQ BOODYY :", req?.body);
-  const { email, password } = req.body;
-
-  const ip =
-    req.headers["x-forwarded-for"]?.split(",")[0] ||
-    req.socket?.remoteAddress ||
-    null;
-
-  // 2️⃣ Geo lookup (only works for real IPs)
-  const geo = ip ? geoip.lookup(ip) : null;
-
-  // 3️⃣ Parse device details
-  const userAgent = req.headers["user-agent"];
-  const deviceInfo = parser.UAParser(userAgent);
-
-  // console.log("🧭 Login Details:");
-  // console.log("IP:", ip);
-  // console.log("Geo:", geo);
-  // console.log("Device:", deviceInfo);
+  console.log("LOGIN BODY:", req.body);
 
   try {
-    const user = await User.findOne({ email });
+    const { email, password } = req.body;
+
+    // 🌍 Get IP
+    const ip =
+      req.headers["x-forwarded-for"]?.split(",")[0] ||
+      req.socket?.remoteAddress ||
+      null;
+
+    // 🌍 Geo lookup
+    const geo = ip ? geoip.lookup(ip) : null;
+
+    // 📱 Device info (safe)
+    const userAgent = req.headers["user-agent"] || "";
+    const uaParser = new UAParser(userAgent);
+    const deviceInfo = uaParser.getResult();
+
+    // 🔎 Check user (FIXED)
+    const user = await User.findOne({
+      email,
+      deletedAt: null,
+    });
+
     if (!user) {
       return errorData(
         res,
         401,
         false,
-        "This email is not registered. Please sign up."
+        "This email is not registered. Please sign up.",
       );
     }
 
-    // console.log("USERR DATA ::", user);
+    // 🔐 Check password
+    if (!user.password) {
+      return errorData(
+        res,
+        401,
+        false,
+        "This account does not use password login.",
+      );
+    }
 
     const isMatch = await bcrypt.compare(password, user.password);
+
     if (!isMatch) {
       return errorData(
         res,
         401,
         false,
-        "Incorrect password. Please try again."
+        "Incorrect password. Please try again.",
       );
     }
 
-    const access_token = createJwtToken(user);
+    // 🪙 Create JWT
+    const token = createJwtToken(user);
 
-    await addUserLog(user, req);
+    // 🍪 Set cookie
+    res.cookie("access_token", token, {
+      httpOnly: true,
+      // secure: process.env.NODE_ENV === "production",
+      secure: false,
+      // sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+      sameSite: "lax",
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+      path: "/",
+    });
 
-    return successData(res, 200, true, "Login successful. Welcome back!", {
-      access_token,
-      userData: user,
+    // 📝 Save login log
+    await addUserLog(user._id, {
+      ip,
+      geo,
+      deviceInfo,
+      loginAt: new Date(),
+    });
+
+    return successData(res, 200, true, "Login successful", {
+      user,
+      token,
     });
   } catch (err) {
-    console.error("Login Error:", err);
-    return res.status(500).json({ success: false, message: "Server error" });
+    console.error("LOGIN ERROR:", err);
+
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error",
+    });
   }
 };
 
 export const logout = async (req, res) => {
   try {
-    console.log("REQQ USER ::", req.user?.user);
-    const userInfo = req.user?.user;
-    const userId = userInfo?.id;
-    const role = userInfo?.role;
-
-    if (!userId || !role) {
-      return errorData(res, 401, false, "Unauthorized");
-    }
-
-    // Find the user
-    const user = await User.findById(userId);
-    if (!user) {
-      return errorData(res, 404, false, "User not found");
-    }
-
-    // Optional: Invalidate access_token (depends on your implementation)
-    user.access_token = null;
-    user.status = false;
-    await user.save();
+    // 🔥 Clear JWT cookie
+    res.clearCookie("access_token", {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+    });
 
     return successData(res, 200, true, "Logout successful");
   } catch (err) {
     console.error("Logout Error:", err);
-    return res.status(500).json({ status: false, message: "Server error" });
+    return res.status(500).json({
+      status: false,
+      message: "Server error",
+    });
+  }
+};
+
+export const registerAdmin = async (req, res) => {
+  try {
+    // Check if admin already exists
+    const existingAdmin = await User.findOne({
+      email: "admin@admin.com",
+    });
+
+    if (existingAdmin) {
+      return res.status(400).json({
+        success: false,
+        message: "Admin already exists",
+        email: "admin@example.com",
+      });
+    }
+
+    // Default admin credentials
+    const defaultPassword = "Admin@123456";
+    const hashedPassword = await bcrypt.hash(defaultPassword, 10);
+
+    // Create admin user
+    const admin = await User.create({
+      email: "admin@admin.com",
+      password: hashedPassword,
+      name: "System Admin",
+      role: 1, // Make sure this matches your ROLES.ADMIN value
+      verified_email: true,
+      verified_phone: false,
+      login_type: "email",
+      status: true,
+    });
+
+    return res.status(201).json({
+      success: true,
+      message: "Admin created successfully",
+      credentials: {
+        email: "admin@example.com",
+        password: defaultPassword,
+        note: "Please change this password after first login",
+      },
+      adminId: admin._id,
+    });
+  } catch (error) {
+    console.error("Error creating admin:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Error creating admin",
+      error: error.message,
+    });
   }
 };
 
@@ -143,7 +218,7 @@ export const register = async (req, res) => {
         res,
         409,
         false,
-        "This email is already registered. Try logging in."
+        "This email is already registered. Try logging in.",
       );
     }
 
@@ -155,7 +230,7 @@ export const register = async (req, res) => {
           res,
           409,
           false,
-          "This phone number is already registered."
+          "This phone number is already registered.",
         );
       }
     }
@@ -218,7 +293,7 @@ export const register = async (req, res) => {
       200,
       true,
       "OTP has been successfully sent to your registered email address.",
-      { email }
+      { email },
     );
 
     // return successData(
@@ -264,7 +339,7 @@ export const verifyOTP = async (req, res, next) => {
     const now = new Date();
     const otpCreatedAt = user.otpCreatedAt;
     const expiryTime = new Date(
-      otpCreatedAt.getTime() + OTP_VALIDITY_MINUTES * 60000
+      otpCreatedAt.getTime() + OTP_VALIDITY_MINUTES * 60000,
     );
 
     if (now > expiryTime) {
@@ -324,7 +399,7 @@ export const forgotPassword = async (req, res) => {
         res,
         404,
         false,
-        "No account found with this email address."
+        "No account found with this email address.",
       );
     }
 
@@ -347,7 +422,7 @@ export const forgotPassword = async (req, res) => {
       "OTP has been successfully sent to your registered email address.",
       {
         email,
-      }
+      },
     );
   } catch (err) {
     console.error("Forgot password error:", err);
@@ -375,7 +450,7 @@ export const resendOTP = async (req, res) => {
         res,
         404,
         false,
-        "Sorry! We couldn't find your account."
+        "Sorry! We couldn't find your account.",
       );
     }
 
@@ -395,7 +470,7 @@ export const resendOTP = async (req, res) => {
       "New OTP has been successfully sent to your registered email address.",
       {
         email,
-      }
+      },
     );
   } catch (err) {
     return res
@@ -430,7 +505,7 @@ export const setNewPassword = async (req, res) => {
         res,
         400,
         false,
-        "New password must be different from the previous password."
+        "New password must be different from the previous password.",
       );
     }
 
@@ -483,24 +558,30 @@ export const changePassword = async (req, res) => {
 
 export const getUserDetails = async (req, res) => {
   try {
-    const userInfo = req.user?.user;
-    const userId = userInfo?.id;
+    const userId = req.user?.id;
+
+    if (!userId) {
+      return errorData(res, 401, false, "Unauthorized");
+    }
 
     const user = await User.findById(userId).select(
-      "-password -otp -otpCreatedAt"
+      "-password -otp -otpCreatedAt",
     );
-    if (!user) return successData(res, 404, false, "User not found.");
+
+    if (!user) {
+      return errorData(res, 404, false, "User not found.");
+    }
 
     return successData(
       res,
       200,
       true,
       "User details fetched successfully.",
-      user
+      user,
     );
   } catch (err) {
     console.error("Get user details error:", err);
-    return errorData(res, 500, false, "Server Error", null, err?.message);
+    return errorData(res, 500, false, "Server Error");
   }
 };
 
@@ -532,7 +613,7 @@ export const updateProfile = async (req, res) => {
     const updatedUser = await User.findByIdAndUpdate(
       userId,
       { $set: updateData },
-      { new: true, runValidators: true }
+      { new: true, runValidators: true },
     ).select("-password -otp -otpCreatedAt");
 
     return successData(
@@ -541,7 +622,7 @@ export const updateProfile = async (req, res) => {
       true,
       "Profile updated successfully.",
       updatedUser,
-      imageUrl
+      imageUrl,
     );
   } catch (err) {
     console.error("Update profile error:", err);
@@ -643,7 +724,7 @@ export const deleteUser = async (req, res) => {
     const user = await User.findByIdAndUpdate(
       req.params.id,
       { deletedAt: new Date(), status: false },
-      { new: true }
+      { new: true },
     );
 
     if (!user) return errorData(res, 404, false, "User not found");
@@ -660,7 +741,7 @@ export const restoreUser = async (req, res) => {
     const user = await User.findByIdAndUpdate(
       req.params.id,
       { deletedAt: null, status: true },
-      { new: true }
+      { new: true },
     );
 
     if (!user)

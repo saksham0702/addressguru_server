@@ -4,6 +4,7 @@ import { successData, errorData } from "../services/helper.js";
 
 // ✅ Create Category
 export const createCategory = async (req, res) => {
+  
   try {
     const { name, description, color, type, textColor, iconSvg, iconPng, seo } =
       req.body;
@@ -41,7 +42,6 @@ export const createCategory = async (req, res) => {
     return errorData(res, 500, false, "Internal server error");
   }
 };
-
 // ✅ Get All Categories
 export const getCategories = async (req, res) => {
   try {

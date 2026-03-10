@@ -12,7 +12,7 @@ const subCategorySchema = new mongoose.Schema(
       type: String,
       enum: ["business", "marketplace", "job", "property"],
     },
-
+    
     category: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Category",

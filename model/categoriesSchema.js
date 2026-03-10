@@ -12,6 +12,10 @@ const categorySchema = new mongoose.Schema(
       type: String,
       enum: ["business", "marketplace", "job", "property"],
     },
+    hasSubCategories :{
+      type: Boolean,
+      default:false
+    },
 
     color: String,
     textColor: String,
