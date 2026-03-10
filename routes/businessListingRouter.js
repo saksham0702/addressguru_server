@@ -5,12 +5,14 @@ import {
   getFeaturesAndAdditionalFieldsByCategory,
   saveListingStep,
 } from "../controller/businessListing.Controller.js";
+import { setUploadFolder } from "../middleware/setUploadFolder.js";
 import upload from "../middleware/multerConfig.js";
 
 const router = express.Router();
 
 router.post(
   "/save-listing/:step",
+  setUploadFolder("business-listings"),
   upload.fields([
     { name: "logo", maxCount: 1 },
     { name: "images", maxCount: 10 },

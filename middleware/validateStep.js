@@ -1,16 +1,19 @@
-// middleware/validateStep.js
 export const validateStep = (schemaMap) => {
   return (req, res, next) => {
-    const step = req.params.step ?? req.body?.step;
+    const step = Number(req.params.step ?? req.body?.step);
 
-    if (!step || !schemaMap[step]) {
+    if (!schemaMap[step]) {
+      return next();
+    }
+
+    if (!step || isNaN(step)) {
       return res.status(400).json({ success: false, message: "Invalid step" });
     }
 
-    // inject step into body
-    req.body = { ...req.body, step: Number(step) };
+    // Inject normalized step into body
+    req.body = { ...req.body, step };
 
-    // ── Step 1: parse JSON string fields sent via form-data ──────────────────
+    // ── Parse JSON string fields sent via form-data ──────────────────────────
     const jsonFields = [
       "hours",
       "additional_fields",
@@ -19,18 +22,17 @@ export const validateStep = (schemaMap) => {
       "courses",
       "payments",
     ];
-
     for (const field of jsonFields) {
       if (typeof req.body[field] === "string") {
         try {
           req.body[field] = JSON.parse(req.body[field]);
         } catch {
-          // leave as-is, Joi will reject if truly invalid
+          // Leave as-is; Joi will reject if truly invalid
         }
       }
     }
 
-    // ── Step 2: normalize single string to array for array fields ────────────
+    // ── Normalize single string → array for array fields ─────────────────────
     const arrayFields = ["facilities", "services", "courses", "payments"];
     for (const field of arrayFields) {
       if (typeof req.body[field] === "string") {
@@ -38,7 +40,12 @@ export const validateStep = (schemaMap) => {
       }
     }
 
-    // ── Step 3: validate ─────────────────────────────────────────────────────
+    // ── If no schema defined for this step (e.g. file-only steps), skip validation
+    if (!schemaMap[step]) {
+      return next();
+    }
+
+    // ── Validate ──────────────────────────────────────────────────────────────
     const { error, value } = schemaMap[step].validate(req.body, {
       abortEarly: false,
       stripUnknown: true,

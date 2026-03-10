@@ -5,7 +5,7 @@ import { successData, errorData } from "../services/helper.js";
 // CREATE
 // ============================================
 export const createField = async (req, res) => {
-
+console.log("req.body",req.body);
   try {
     const {
       category_id,
