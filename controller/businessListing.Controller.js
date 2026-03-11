@@ -54,6 +54,7 @@ export const saveListingStep = async (req, res) => {
     console.log("content-type:", req.headers["content-type"]);
     console.log("body:", req.body);
     console.log("files:", req.files);
+
     /* =========================
        STEP 1 – CREATE LISTING
     ========================== */
@@ -100,6 +101,13 @@ export const saveListingStep = async (req, res) => {
       );
       if (errors.length)
         return errorData(res, 400, false, "Validation failed", { errors });
+      const existingListing = await BusinessListing.findOne({
+        businessName: business_name,
+        isDeleted: false,
+      });
+      if (existingListing) {
+        return errorData(res, 400, false, "Listing already exists");
+      }
 
       const baseSlug = slugify(business_name, { lower: true, strict: true });
       const slug = `${baseSlug}-${Date.now()}`;

@@ -11,7 +11,7 @@ import upload from "../middleware/multerConfig.js";
 const router = express.Router();
 
 router.post(
-  "/save-listing/:step",
+  "/save-listing/:step",  
   setUploadFolder("business-listings"),
   upload.fields([
     { name: "logo", maxCount: 1 },

@@ -71,20 +71,27 @@ export const businessStepSchemas = {
       .optional()
       .allow("", null),
 
-    additional_fields: Joi.alternatives()
-      .try(
-        Joi.array().items(
-          Joi.object({
-            field_id: commonRules.mongoId.required(),
-            value: Joi.alternatives()
-              .try(Joi.string(), Joi.number(), Joi.array().items(Joi.string()))
-              .allow(null)
-              .optional(),
-          }),
-        ),
-        Joi.string(), // parsed in middleware before Joi runs
-      )
-      .default([]),
+    // additional_fields: Joi.alternatives()
+    //   .try(
+    //     Joi.array()
+    //       .items(
+    //         Joi.object({
+    //           field_id: commonRules.mongoId.required(),
+    //           value: Joi.alternatives()
+    //             .try(
+    //               Joi.string(),
+    //               Joi.number(),
+    //               Joi.array().items(Joi.string()),
+    //             )
+    //             .allow(null)
+    //             .optional(),
+    //         }),
+    //       ),
+    //     Joi.string(), // parsed in middleware before Joi runs
+    //   )
+    //   .optional()
+    //   .allow(null)
+    //   .default([]),
   }),
 
   /* =========================

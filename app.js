@@ -34,11 +34,27 @@ var app = express();
 app.set("trust proxy", true);
 app.set("views", join(__dirname, "views"));
 app.set("view engine", "jade");
+const allowedOrigins = [
+  "http://localhost:3000",
+  "http://127.0.0.1:3000",
+  "http://192.168.31.63:3000",
+  "http://192.168.31.63:3002",
+  "http://192.168.31.106:8081",
+  "*"
+  // Add any other frontend origins here
+];
+
 app.use(
   cors({
-    origin: true, // 👈 allows all origins dynamically
-    // origin: "http://localhost:3000",
-    credentials: true, // 👈 cookies allowed
+    origin: function (origin, callback) {
+      // Allow requests with no origin (mobile apps, Postman, curl, etc.)
+      if (!origin) return callback(null, true);
+      if (allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+      return callback(new Error("Not allowed by CORS"));
+    },
+    credentials: true,
   }),
 );
 

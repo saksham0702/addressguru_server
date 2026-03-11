@@ -48,7 +48,7 @@ const businessListingSchema = new mongoose.Schema(
     /* =========================
        STEP 1 – BUSINESS INFO
     ========================== */
-    businessName: { type: String, required: true, trim: true },
+    businessName: { type: String, required: true, unique: true, trim: true },
     businessAddress: { type: String, required: true },
     description: { type: String, required: true },
     establishedYear: { type: Number },

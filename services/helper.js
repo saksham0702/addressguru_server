@@ -89,12 +89,12 @@ export const addUserLog = async (user, req) => {
 
   try {
     const ipAddress =
-      req.headers["x-forwarded-for"]?.split(",")[0] ||
-      req.connection.remoteAddress ||
+      req?.headers?.["x-forwarded-for"]?.split(",")[0] ||
+      req?.connection?.remoteAddress ||
       requestIp.getClientIp(req) ||
       "Unknown";
 
-    const uaParser = new UAParser(req.headers["user-agent"]);
+    const uaParser = new UAParser(req?.headers?.["user-agent"]);
     const ua = uaParser.getResult();
 
     await userLogSchema.create({
@@ -104,8 +104,8 @@ export const addUserLog = async (user, req) => {
       device_os: ua.os.name || "Unknown OS",
       device_browser: ua.browser.name || "Unknown Browser",
       device_browserVersion: ua.browser.version || "Unknown",
-      device_userAgent: req.headers["user-agent"],
-      network_proxy: req.headers["via"] ? true : false,
+      device_userAgent: req?.headers?.["user-agent"],
+      network_proxy: req?.headers?.["via"] ? true : false,
       session_loginAt: new Date(),
       session_lastActiveAt: new Date(),
       type: "login",
