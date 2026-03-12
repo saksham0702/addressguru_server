@@ -14,17 +14,29 @@ export const createFeature = async (req, res) => {
     const slug = slugify(name, { lower: true, strict: true });
     const normalized = normalizeFeatureName(name);
 
-    // Fetch all features and compare normalized names in memory
-    // (or store a `normalized` field in DB for large datasets)
     const allFeatures = await Feature.find(
-      { isDeleted: false },
-      { name: 1, slug: 1 },
+      {},
+      { name: 1, slug: 1, isDeleted: 1 },
     );
-    const isDuplicate = allFeatures.some(
+
+    const existingMatch = allFeatures.find(
       (f) => normalizeFeatureName(f.name) === normalized || f.slug === slug,
     );
 
-    if (isDuplicate) {
+    if (existingMatch) {
+      if (existingMatch.isDeleted) {
+        // Restore the deleted feature instead of creating a duplicate
+        const restored = await Feature.findByIdAndUpdate(
+          existingMatch._id,
+          { isDeleted: false, type, iconSvg },
+          { new: true },
+        );
+        return res
+          .status(200)
+          .json({ message: "Feature restored", data: restored });
+      }
+
+      // Truly active duplicate
       return res
         .status(409)
         .json({ message: "Feature with this name already exists" });
@@ -80,16 +92,22 @@ export const updateFeature = async (req, res) => {
       const slug = slugify(name, { lower: true, strict: true });
       const normalized = normalizeFeatureName(name);
 
+      // Include deleted features in conflict check, exclude current doc
       const allFeatures = await Feature.find(
-        { isDeleted: false, _id: { $ne: feature._id } },
-        { name: 1, slug: 1 },
+        { _id: { $ne: feature._id } }, // ← removed isDeleted: false
+        { name: 1, slug: 1, isDeleted: 1 }, // ← fetch isDeleted too
       );
-      const conflict = allFeatures.some(
+
+      const conflict = allFeatures.find(
         (f) => normalizeFeatureName(f.name) === normalized || f.slug === slug,
       );
 
-      if (conflict)
-        return res.status(409).json({ message: "Name already taken" });
+      if (conflict) {
+        // Only block if the conflicting feature is actually active
+        if (!conflict.isDeleted) {
+          return res.status(409).json({ message: "Name already taken" });
+        }
+      }
 
       feature.name = name;
       feature.slug = slug;
@@ -289,12 +307,10 @@ export const assignFeaturesToSubCategory = async (req, res) => {
       "category subcategory facilities services courses payment_modes",
     );
 
-    res
-      .status(200)
-      .json({
-        message: "Features assigned to subcategory",
-        data: categoryFeature,
-      });
+    res.status(200).json({
+      message: "Features assigned to subcategory",
+      data: categoryFeature,
+    });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -327,12 +343,10 @@ export const removeFeatureFromSubCategory = async (req, res) => {
         .json({ message: "No feature mapping found for this subcategory" });
     }
 
-    res
-      .status(200)
-      .json({
-        message: "Feature removed from subcategory",
-        data: categoryFeature,
-      });
+    res.status(200).json({
+      message: "Feature removed from subcategory",
+      data: categoryFeature,
+    });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
