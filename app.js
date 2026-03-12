@@ -25,6 +25,7 @@ import errorHandlerMiddleware from "./middleware/error-handler.middleware.js";
 import subCategoriesRouter from "./routes/subCategoriesRouter.js";
 // import { seedFeatures } from "./seeds/feature.seed.js";
 import businessListingRouter from "./routes/businessListingRouter.js";
+import jobsListingRouter from "./routes/jobsListingRouter.js";
 import additionalFieldRouter from "./routes/additionalField.Router.js";
 import featureRouter from "./routes/feature.Router.js";
 
@@ -125,7 +126,7 @@ app.use(`/features`, featureRouter);
 
 app.get("/test-cookie", (req, res) => {
   console.log("cookies:", req.cookies);
-  res.json(req.cookies);
+  res.json({ message: "SERVER", cookies: req.cookies });
 });
 
 // app.use("/", indexRouter);
@@ -149,8 +150,7 @@ app.use(function (err, req, res, next) {
   res.locals.error = req.app.get("env") === "development" ? err : {};
   // Log error with Winston
   logger.error(
-    `${err.status || 500} - ${err.message} - ${req.originalUrl} - ${
-      req.method
+    `${err.status || 500} - ${err.message} - ${req.originalUrl} - ${req.method
     } - ${req.ip}`,
   );
 

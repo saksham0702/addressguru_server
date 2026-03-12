@@ -13,7 +13,8 @@ const authenticate = async (req, res, next) => {
     const decoded = jwt.verify(token, SECRET_KEY);
     // ✅ Attach decoded payload
     // Example: { id, role }
-    req.user = decoded;
+    req.user = decoded?.user;
+
     next();
   } catch (error) {
     if (error.name === "TokenExpiredError") {
