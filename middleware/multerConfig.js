@@ -15,7 +15,7 @@ const getUploadPath = (category) => {
     category,
     `${year}`,
     `${month}`,
-    `${day}`
+    `${day}`,
   );
 
   // ensure directory exists
@@ -26,16 +26,19 @@ const getUploadPath = (category) => {
 
 // 🧩 Dynamic storage configuration
 const storage = multer.diskStorage({
+  // multer.js
   destination: function (req, file, cb) {
-    console.log("REQQ BODYYYYYY ::", req?.body);
-    const { folder } = req.body; // expect folder type in request (e.g., "BusinessImage")
+    console.log("file", req.files, file);
+    // Priority: req._uploadFolder (set by middleware) > req.body.folder
+    const folder = req._uploadFolder || req.body.folder;
     if (!folder) return cb(new Error("Folder (category) is required"), null);
-
     const uploadPath = getUploadPath(folder);
     cb(null, uploadPath);
   },
 
   filename: function (req, file, cb) {
+    console.log("file", req.files, file);
+
     const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
     const ext = path.extname(file.originalname);
     const fileName = `${file.fieldname}-${uniqueSuffix}${ext}`;

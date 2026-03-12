@@ -35,11 +35,25 @@ var app = express();
 app.set("trust proxy", true);
 app.set("views", join(__dirname, "views"));
 app.set("view engine", "jade");
+const allowedOrigins = [
+  "http://localhost:3000",
+  "http://localhost:3002",
+  "http://localhost:3001",
+  "*"
+  // Add any other frontend origins here
+];
+
 app.use(
   cors({
-    origin: true, // 👈 allows all origins dynamically
-    // origin: "http://localhost:3000",
-    credentials: true, // 👈 cookies allowed
+    origin: function (origin, callback) {
+      // Allow requests with no origin (mobile apps, Postman, curl, etc.)
+      if (!origin) return callback(null, true);
+      if (allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+      return callback(new Error("Not allowed by CORS"));
+    },
+    credentials: true,
   }),
 );
 
@@ -98,18 +112,17 @@ app.get("/api", async (req, res) => {
   return res.send(html);
 });
 
-app.use(`/${API_PREFIX}/additional-fields`, additionalFieldRouter);
-app.use(`/${API_PREFIX}/master`, masterAdminRouter);
-app.use(`/${API_PREFIX}/social-login`, socialRouter);
-app.use(`/${API_PREFIX}/categories`, categoryRouter);
-app.use(`/${API_PREFIX}/sub-categories`, subCategoriesRouter);
-app.use(`/${API_PREFIX}/business-listing`, businessListingRouter);
-app.use(`/${API_PREFIX}/jobs-listing`, jobsListingRouter);
-app.use(`/${API_PREFIX}/cities`, citiesRouter);
+app.use(`/additional-fields`, additionalFieldRouter);
+app.use(`/master`, masterAdminRouter);
+app.use(`/social-login`, socialRouter);
+app.use(`/categories`, categoryRouter);
+app.use(`/sub-categories`, subCategoriesRouter);
+app.use(`/business-listing`, businessListingRouter);
+app.use(`/cities`, citiesRouter);
 // app.use(`/${API_PREFIX}/${ROLE_PREFIX.USER}`, usersRouter);
-app.use(`/${API_PREFIX}/user`, usersRouter);
+app.use(`/user`, usersRouter);
 
-app.use(`/${API_PREFIX}/features`, featureRouter);
+app.use(`/features`, featureRouter);
 
 app.get("/test-cookie", (req, res) => {
   console.log("cookies:", req.cookies);

@@ -25,19 +25,34 @@ export const businessStepSchemas = {
 
     sub_category_id: commonRules.mongoId.optional().allow("", null),
 
-    business_name: commonRules.requiredString("Business name"),
-    business_address: commonRules.requiredString("Business address"),
+    business_name: Joi.string()
+      .min(3)
+      .max(20)
+      .allow("", null)
+      .required()
+      .messages({
+        "string.empty": "Business name is required",
+        "string.min": "Business name must be at least 3 characters long",
+        "string.max": "Business name must not exceed 20 characters",
+        "string.base": "Business name must be a string",
+      }),
+    business_address: Joi.string().min(5).max(120).allow("", null).messages({
+      "string.empty": "Business address is required",
+      "string.min": "Business address must be at least 5 characters long",
+      "string.max": "Business address must not exceed 120 characters",
+      "string.base": "Business address must be a string",
+    }),
 
-ad_description: Joi.string()
-  .min(200)
-  .max(700)
-  .optional()
-  .allow("", null)
-  .messages({
-    "string.min": "Ad description must be at least 200 characters long",
-    "string.max": "Ad description must not exceed 700 characters",
-    "string.base": "Ad description must be a string"
-  }),
+    ad_description: Joi.string()
+      .min(200)
+      .max(700)
+      .optional()
+      .allow("", null)
+      .messages({
+        "string.min": "Ad description must be at least 200 characters long",
+        "string.max": "Ad description must not exceed 700 characters",
+        "string.base": "Ad description must be a string",
+      }),
     establishment_year: Joi.number()
       .integer()
       .min(1800)
@@ -56,20 +71,27 @@ ad_description: Joi.string()
       .optional()
       .allow("", null),
 
-    additional_fields: Joi.alternatives()
-      .try(
-        Joi.array().items(
-          Joi.object({
-            field_id: commonRules.mongoId.required(),
-            value: Joi.alternatives()
-              .try(Joi.string(), Joi.number(), Joi.array().items(Joi.string()))
-              .allow(null)
-              .optional(),
-          }),
-        ),
-        Joi.string(), // parsed in middleware before Joi runs
-      )
-      .default([]),
+    // additional_fields: Joi.alternatives()
+    //   .try(
+    //     Joi.array()
+    //       .items(
+    //         Joi.object({
+    //           field_id: commonRules.mongoId.required(),
+    //           value: Joi.alternatives()
+    //             .try(
+    //               Joi.string(),
+    //               Joi.number(),
+    //               Joi.array().items(Joi.string()),
+    //             )
+    //             .allow(null)
+    //             .optional(),
+    //         }),
+    //       ),
+    //     Joi.string(), // parsed in middleware before Joi runs
+    //   )
+    //   .optional()
+    //   .allow(null)
+    //   .default([]),
   }),
 
   /* =========================
@@ -130,6 +152,12 @@ ad_description: Joi.string()
   }),
 
   // Step 5 — multer handles files, no Joi schema needed
+  5: Joi.object({
+    step: Joi.number().valid(5).required(),
+    listing_id: commonRules.mongoId.required().messages({
+      "any.required": "Listing ID is required",
+    }),
+  }),
 
   /* =========================
      STEP 6 – PLAN & PUBLISH

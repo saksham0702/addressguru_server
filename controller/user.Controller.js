@@ -26,18 +26,18 @@ export const login = async (req, res) => {
     const { email, password } = req.body;
 
     // 🌍 Get IP
-    const ip =
-      req.headers["x-forwarded-for"]?.split(",")[0] ||
-      req.socket?.remoteAddress ||
-      null;
+    // const ip =
+    //   req?.headers?.["x-forwarded-for"]?.split(",")[0] ||
+    //   req?.socket?.remoteAddress ||
+    //   null;
 
     // 🌍 Geo lookup
-    const geo = ip ? geoip.lookup(ip) : null;
+    // const geo = ip ? geoip.lookup(ip) : null;
 
     // 📱 Device info (safe)
-    const userAgent = req.headers["user-agent"] || "";
-    const uaParser = new UAParser(userAgent);
-    const deviceInfo = uaParser.getResult();
+    // const userAgent = req.headers["user-agent"] || "";
+    // const uaParser = new UAParser(userAgent);
+    // const deviceInfo = uaParser.getResult();
 
     // 🔎 Check user (FIXED)
     const user = await User.findOne({
@@ -76,30 +76,29 @@ export const login = async (req, res) => {
     }
 
     // 🪙 Create JWT
-    const token = createJwtToken(user);
+    const authToken = createJwtToken(user);
 
     // 🍪 Set cookie
-    res.cookie("access_token", token, {
+    const isProduction = process.env.NODE_ENV === "production";
+    res.cookie("authToken", authToken, {
       httpOnly: true,
-      // secure: process.env.NODE_ENV === "production",
-      secure: false,
-      // sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
-      sameSite: "lax",
+      // secure: isProduction,
+      // sameSite: isProduction ? "none" : "lax",
       maxAge: 7 * 24 * 60 * 60 * 1000,
-      path: "/",
+      // path: "/",
     });
 
     // 📝 Save login log
-    await addUserLog(user._id, {
-      ip,
-      geo,
-      deviceInfo,
-      loginAt: new Date(),
-    });
+    // await addUserLog(user._id, {
+    //   // ip,
+    //   // geo,
+    //   // deviceInfo,
+    //   loginAt: new Date(),
+    // });
 
     return successData(res, 200, true, "Login successful", {
       user,
-      token,
+      authToken,
     });
   } catch (err) {
     console.error("LOGIN ERROR:", err);
@@ -114,10 +113,12 @@ export const login = async (req, res) => {
 export const logout = async (req, res) => {
   try {
     // 🔥 Clear JWT cookie
-    res.clearCookie("access_token", {
+    const isProduction = process.env.NODE_ENV === "production";
+    res.clearCookie("authToken", {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+      secure: isProduction,
+      sameSite: isProduction ? "none" : "lax",
+      path: "/",
     });
 
     return successData(res, 200, true, "Logout successful");
