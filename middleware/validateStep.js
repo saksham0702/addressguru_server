@@ -14,10 +14,22 @@ export const validateStep = (schemaMap) => {
     const jsonFields = [
       "hours",
       "additional_fields",
+      // business fields
       "facilities",
       "services",
       "courses",
       "payments",
+      // job fields
+      "requirements",
+      "responsibilities",
+      "benefits",
+      "salary",
+      "location",
+      "experienceYears",
+      "ageRange",
+      "contact",
+      "company",
+      "seo_keywords",
     ];
 
     for (const field of jsonFields) {
@@ -31,7 +43,16 @@ export const validateStep = (schemaMap) => {
     }
 
     // ── Step 2: normalize single string to array for array fields ────────────
-    const arrayFields = ["facilities", "services", "courses", "payments"];
+    const arrayFields = [
+      "facilities",
+      "services",
+      "courses",
+      "payments",
+      "requirements",
+      "responsibilities",
+      "benefits",
+      "seo_keywords",
+    ];
     for (const field of arrayFields) {
       if (typeof req.body[field] === "string") {
         req.body[field] = [req.body[field]];

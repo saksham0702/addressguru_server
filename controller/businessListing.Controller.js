@@ -128,7 +128,7 @@ export const saveListingStep = async (req, res) => {
         stepCompleted: 1,
         isVerified: false,
         isPublished: false,
-        createdBy: req.user?._id || null,
+        createdBy: req.user?.id || null,
       });
 
       return successData(res, 200, true, "Listing created successfully", {

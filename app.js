@@ -25,6 +25,7 @@ import errorHandlerMiddleware from "./middleware/error-handler.middleware.js";
 import subCategoriesRouter from "./routes/subCategoriesRouter.js";
 // import { seedFeatures } from "./seeds/feature.seed.js";
 import businessListingRouter from "./routes/businessListingRouter.js";
+import jobsListingRouter from "./routes/jobsListingRouter.js";
 import additionalFieldRouter from "./routes/additionalField.Router.js";
 import featureRouter from "./routes/feature.Router.js";
 
@@ -103,6 +104,7 @@ app.use(`/${API_PREFIX}/social-login`, socialRouter);
 app.use(`/${API_PREFIX}/categories`, categoryRouter);
 app.use(`/${API_PREFIX}/sub-categories`, subCategoriesRouter);
 app.use(`/${API_PREFIX}/business-listing`, businessListingRouter);
+app.use(`/${API_PREFIX}/jobs-listing`, jobsListingRouter);
 app.use(`/${API_PREFIX}/cities`, citiesRouter);
 // app.use(`/${API_PREFIX}/${ROLE_PREFIX.USER}`, usersRouter);
 app.use(`/${API_PREFIX}/user`, usersRouter);
@@ -111,7 +113,7 @@ app.use(`/${API_PREFIX}/features`, featureRouter);
 
 app.get("/test-cookie", (req, res) => {
   console.log("cookies:", req.cookies);
-  res.json(req.cookies);
+  res.json({ message: "SERVER", cookies: req.cookies });
 });
 
 // app.use("/", indexRouter);
@@ -135,8 +137,7 @@ app.use(function (err, req, res, next) {
   res.locals.error = req.app.get("env") === "development" ? err : {};
   // Log error with Winston
   logger.error(
-    `${err.status || 500} - ${err.message} - ${req.originalUrl} - ${
-      req.method
+    `${err.status || 500} - ${err.message} - ${req.originalUrl} - ${req.method
     } - ${req.ip}`,
   );
 

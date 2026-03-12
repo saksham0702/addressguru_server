@@ -16,7 +16,7 @@ const authenticate = async (req, res, next) => {
 
     // ✅ Attach decoded payload
     // Example: { id, role }
-    req.user = decoded;
+    req.user = decoded?.user;
 
     next();
   } catch (error) {

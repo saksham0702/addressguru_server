@@ -67,7 +67,7 @@ const jobSchema = new mongoose.Schema(
     // ─── Salary (for filter: from/to) ────────────────────────
     salary: {
       from: { type: Number, default: null },   // min salary
-      to:   { type: Number, default: null },   // max salary
+      to: { type: Number, default: null },   // max salary
       currency: { type: String, default: "PKR" },
       period: {
         type: String,
@@ -81,8 +81,8 @@ const jobSchema = new mongoose.Schema(
     // ─── Location (for filter) ───────────────────────────────
     location: {
       country: { type: String, default: "Pakistan" },
-      city:    { type: String },
-      area:    { type: String },              // neighborhood / zone
+      city: { type: String },
+      area: { type: String },              // neighborhood / zone
       address: { type: String },
       isRemote: { type: Boolean, default: false },
     },
@@ -96,7 +96,7 @@ const jobSchema = new mongoose.Schema(
 
     experienceYears: {
       from: { type: Number, default: 0 },     // min years
-      to:   { type: Number, default: null },  // max years (null = open)
+      to: { type: Number, default: null },  // max years (null = open)
     },
 
     // ─── Gender & Age Preference (for filter) ────────────────
@@ -108,23 +108,23 @@ const jobSchema = new mongoose.Schema(
 
     ageRange: {
       from: { type: Number, default: null },
-      to:   { type: Number, default: null },
+      to: { type: Number, default: null },
     },
 
     // ─── Contact Info ─────────────────────────────────────────
     contact: {
-      name:    { type: String },
-      email:   { type: String },
-      phone:   { type: String },
-      whatsapp:{ type: String },
+      name: { type: String },
+      email: { type: String },
+      phone: { type: String },
+      whatsapp: { type: String },
       website: { type: String },          // apply via external link
       applyEmail: { type: String },       // dedicated apply email (can differ from contact)
     },
 
     // ─── Company Info ─────────────────────────────────────────
     company: {
-      name:    { type: String },
-      logo:    { type: String },          // image URL
+      name: { type: String },
+      logo: { type: String },          // image URL
       website: { type: String },
       size: {
         type: String,
@@ -152,21 +152,21 @@ const jobSchema = new mongoose.Schema(
       default: "pending",
     },
 
-    isFeatured:  { type: Boolean, default: false },
-    isUrgent:    { type: Boolean, default: false },
-    isVerified:  { type: Boolean, default: false },
-    isActive:    { type: Boolean, default: true },
-    isDeleted:   { type: Boolean, default: false },
+    isFeatured: { type: Boolean, default: false },
+    isUrgent: { type: Boolean, default: false },
+    isVerified: { type: Boolean, default: false },
+    isActive: { type: Boolean, default: true },
+    isDeleted: { type: Boolean, default: false },
 
     // ─── SEO ──────────────────────────────────────────────────
     seo: {
-      title:       { type: String },
+      title: { type: String },
       description: { type: String },
-      keywords:    [{ type: String }],
+      keywords: [{ type: String }],
     },
 
     // ─── Stats ────────────────────────────────────────────────
-    views:        { type: Number, default: 0 },
+    views: { type: Number, default: 0 },
     applications: { type: Number, default: 0 },
   },
   { timestamps: true },
