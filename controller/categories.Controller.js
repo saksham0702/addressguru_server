@@ -65,6 +65,20 @@ export const getCategories = async (req, res) => {
   }
 };
 
+export const getCategoryByType = async (req, res) => {
+  try {
+    const { type } = req.params;
+    const category = await Category.find({
+      type,
+      isDeleted: false,
+    });
+    if (!category) return errorData(res, 404, false, "Category not found.");
+    return successData(res, 200, true, "Get category successfully", category);
+  } catch (error) {
+    console.error(error);
+    return errorData(res, 500, false, "Internal server error");
+  }
+};
 // ✅ Get Category by ID
 export const getCategoryById = async (req, res) => {
   try {

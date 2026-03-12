@@ -1,0 +1,204 @@
+{
+  "info": {
+    "name": "AddressGuru UAE - Full API Collection",
+    "description": "Comprehensive Postman collection containing all API endpoints for the AddressGuru UAE backend including Auth, Categories, Cities, Features, Business Listings, and Jobs Listings.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "1. Authentication & Users",
+      "item": [
+        {
+          "name": "Register User",
+          "request": {
+            "method": "POST",
+            "url": { "raw": "{{base_url}}/api/user/register", "host": ["{{base_url}}"], "path": ["api", "user", "register"] },
+            "body": { "mode": "json", "json": "{\"name\":\"Test User\",\"email\":\"test@example.com\",\"password\":\"password123\",\"mobile\":\"+971501234567\"}" }
+          }
+        },
+        {
+          "name": "Login User",
+          "request": {
+            "method": "POST",
+            "url": { "raw": "{{base_url}}/api/user/login", "host": ["{{base_url}}"], "path": ["api", "user", "login"] },
+            "body": { "mode": "json", "json": "{\"email\":\"test@example.com\",\"password\":\"password123\"}" }
+          }
+        },
+        {
+          "name": "Verify OTP",
+          "request": {
+            "method": "POST",
+            "url": { "raw": "{{base_url}}/api/user/verify-otp", "host": ["{{base_url}}"], "path": ["api", "user", "verify-otp"] }
+          }
+        },
+        {
+          "name": "Get Current User (Me)",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{base_url}}/api/user/me", "host": ["{{base_url}}"], "path": ["api", "user", "me"] },
+            "header": [{ "key": "Authorization", "value": "Bearer {{auth_token}}" }]
+          }
+        },
+        {
+          "name": "Update Profile",
+          "request": {
+            "method": "POST",
+            "url": { "raw": "{{base_url}}/api/user/update-profile", "host": ["{{base_url}}"], "path": ["api", "user", "update-profile"] },
+            "header": [{ "key": "Authorization", "value": "Bearer {{auth_token}}" }],
+            "body": { "mode": "formdata", "formdata": [] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Categories",
+      "item": [
+        {
+          "name": "Get All Categories",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{base_url}}/api/categories/get-categories", "host": ["{{base_url}}"], "path": ["api", "categories", "get-categories"] }
+          }
+        },
+        {
+          "name": "Create Category",
+          "request": {
+            "method": "POST",
+            "url": { "raw": "{{base_url}}/api/categories/create-category", "host": ["{{base_url}}"], "path": ["api", "categories", "create-category"] },
+            "body": { "mode": "json", "json": "{\"name\":\"IT & Software\"}" }
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Sub Categories",
+      "item": [
+        {
+          "name": "Get All Subcategories",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{base_url}}/api/sub-categories/get-subcategories", "host": ["{{base_url}}"], "path": ["api", "sub-categories", "get-subcategories"] }
+          }
+        },
+        {
+          "name": "Get Subcategories by Category ID",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{base_url}}/api/sub-categories/category/:categoryId", "host": ["{{base_url}}"], "path": ["api", "sub-categories", "category", ":categoryId"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. Cities",
+      "item": [
+        {
+          "name": "Get All Cities",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{base_url}}/api/cities/get-cities", "host": ["{{base_url}}"], "path": ["api", "cities", "get-cities"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "5. Features & Additional Fields",
+      "item": [
+        {
+          "name": "Get All Features",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{base_url}}/api/features/get-all-features", "host": ["{{base_url}}"], "path": ["api", "features", "get-all-features"] }
+          }
+        },
+        {
+          "name": "Get Additional Fields",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{base_url}}/api/additional-fields/get-fields", "host": ["{{base_url}}"], "path": ["api", "additional-fields", "get-fields"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "6. Business Listings",
+      "item": [
+        {
+          "name": "Save Listing Step 1 (Info)",
+          "request": {
+            "method": "POST",
+            "url": { "raw": "{{base_url}}/api/business-listing/save-listing/1", "host": ["{{base_url}}"], "path": ["api", "business-listing", "save-listing", "1"] },
+            "body": { "mode": "formdata", "formdata": [ { "key": "category_id", "value": "", "type": "text" }, { "key": "business_name", "value": "Test Business", "type": "text" }, { "key": "business_address", "value": "Dubai", "type": "text" } ] }
+          }
+        },
+        {
+          "name": "Get All Business Listings",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{base_url}}/api/business-listing/get-all-listings?page=1&limit=10", "host": ["{{base_url}}"], "path": ["api", "business-listing", "get-all-listings"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "7. Jobs Listings",
+      "item": [
+        {
+          "name": "Save Job Step 1 (Core Details)",
+          "request": {
+            "method": "POST",
+            "url": { "raw": "{{base_url}}/api/jobs-listing/save-job/1", "host": ["{{base_url}}"], "path": ["api", "jobs-listing", "save-job", "1"] },
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "category_id", "value": "", "type": "text" },
+                { "key": "title", "value": "Full Stack Developer", "type": "text" },
+                { "key": "description", "value": "Looking for a JS expert", "type": "text" },
+                { "key": "sector", "value": "it", "type": "text" },
+                { "key": "jobType", "value": "full-time", "type": "text" },
+                { "key": "experienceLevel", "value": "senior", "type": "text" },
+                { "key": "salary", "value": "{\"from\": 10000, \"to\": 15000}", "type": "text" },
+                { "key": "location", "value": "{\"city\": \"Dubai\", \"isRemote\": false}", "type": "text" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Save Job Step 2 (Contact & Media)",
+          "request": {
+            "method": "POST",
+            "url": { "raw": "{{base_url}}/api/jobs-listing/save-job/2", "host": ["{{base_url}}"], "path": ["api", "jobs-listing", "save-job", "2"] },
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "job_id", "value": "REPLACE_WITH_JOB_ID", "type": "text" },
+                { "key": "folder", "value": "Jobs", "type": "text" },
+                { "key": "contact", "value": "{\"name\": \"HR Tech\"}", "type": "text" },
+                { "key": "company", "value": "{\"name\": \"Tech Solutions\"}", "type": "text" },
+                { "key": "logo", "type": "file", "src": [] }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get All Jobs",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{base_url}}/api/jobs-listing/get-all-jobs?page=1&limit=10&sector=it&jobType=full-time", "host": ["{{base_url}}"], "path": ["api", "jobs-listing", "get-all-jobs"] }
+          }
+        },
+        {
+          "name": "Get Job By ID",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{base_url}}/api/jobs-listing/get-job/REPLACE_WITH_ID", "host": ["{{base_url}}"], "path": ["api", "jobs-listing", "get-job", "REPLACE_WITH_ID"] }
+          }
+        }
+      ]
+    }
+  ],
+  "variable": [
+    { "key": "base_url", "value": "http://localhost:3000", "type": "string" },
+    { "key": "auth_token", "value": "YOUR_JWT_TOKEN", "type": "string" }
+  ]
+}

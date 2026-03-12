@@ -1,0 +1,405 @@
+{
+  "info": {
+    "_postman_id": "038bf3e7-f132-47da-99da-d7a641d402ca",
+    "name": "Jobs Listing API - AddressGuru UAE",
+    "description": "API endpoints for the Jobs Listing Module (2-Step Wizard and Retrieval)",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "1. Save Job (Step 1 - Core Details)",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "formdata",
+          "formdata": [
+            {
+              "key": "category_id",
+              "value": "66447833a6ea9cd484edeb95",
+              "description": "REPLACE with a valid Category ObjectId",
+              "type": "text"
+            },
+            {
+              "key": "title",
+              "value": "Senior Full Stack Developer",
+              "type": "text"
+            },
+            {
+              "key": "description",
+              "value": "We are looking for a highly skilled developer to join our growing team in Dubai.",
+              "type": "text"
+            },
+            {
+              "key": "sector",
+              "value": "it",
+              "type": "text"
+            },
+            {
+              "key": "jobType",
+              "value": "full-time",
+              "type": "text"
+            },
+            {
+              "key": "experienceLevel",
+              "value": "senior",
+              "type": "text"
+            },
+            {
+              "key": "requirements",
+              "value": "[\"Node.js\", \"React\", \"MongoDB\", \"AWS\"]",
+              "description": "JSON String Array",
+              "type": "text"
+            },
+            {
+              "key": "salary",
+              "value": "{\"from\": 15000, \"to\": 25000, \"currency\": \"AED\", \"period\": \"monthly\"}",
+              "description": "JSON String",
+              "type": "text"
+            },
+            {
+              "key": "location",
+              "value": "{\"city\": \"Dubai\", \"isRemote\": false}",
+              "description": "JSON String",
+              "type": "text"
+            }
+          ]
+        },
+        "url": {
+          "raw": "{{base_url}}/api/jobs-listing/save-job/1",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "jobs-listing",
+            "save-job",
+            "1"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "2. Save Job (Step 2 - Contact, Media, SEO)",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "formdata",
+          "formdata": [
+            {
+              "key": "job_id",
+              "value": "REPLACE_WITH_ID_FROM_STEP_1",
+              "description": "Paste the Job ID returned from Step 1 here",
+              "type": "text"
+            },
+            {
+              "key": "slug",
+              "value": "REPLACE_WITH_SLUG_FROM_STEP_1",
+              "description": "Paste the Job Slug returned from Step 1 here",
+              "type": "text"
+            },
+            {
+              "key": "folder",
+              "value": "Jobs",
+              "description": "Required by Multer to know where to save!",
+              "type": "text"
+            },
+            {
+              "key": "contact",
+              "value": "{\"name\": \"HR Manager\", \"email\": \"careers@techcorp.ae\", \"phone\": \"+971501234567\"}",
+              "type": "text"
+            },
+            {
+              "key": "company",
+              "value": "{\"name\": \"TechCorp Solutions\", \"size\": \"51-200\", \"website\": \"https://techcorp.ae\"}",
+              "type": "text"
+            },
+            {
+              "key": "logo",
+              "type": "file",
+              "src": []
+            },
+            {
+              "key": "images",
+              "type": "file",
+              "src": []
+            }
+          ]
+        },
+        "url": {
+          "raw": "{{base_url}}/api/jobs-listing/save-job/2",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "jobs-listing",
+            "save-job",
+            "2"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "1a. Update Job (Step 1 - Core Details)",
+      "request": {
+        "method": "PUT",
+        "header": [],
+        "body": {
+          "mode": "formdata",
+          "formdata": [
+            {
+              "key": "job_id",
+              "value": "REPLACE_WITH_JOB_ID_OR_SLUG",
+              "description": "Use existing job_id or slug",
+              "type": "text"
+            },
+              {
+              "key": "slug",
+              "value": "REPLACE_WITH_SLUG_FROM_STEP_1",
+              "description": "Paste the Job Slug returned from Step 1 here",
+              "type": "text"
+            },
+            {
+              "key": "category_id",
+              "value": "66447833a6ea9cd484edeb95",
+              "description": "REPLACE with a valid Category ObjectId",
+              "type": "text"
+            },
+            {
+              "key": "title",
+              "value": "Senior Full Stack Developer",
+              "type": "text"
+            },
+            {
+              "key": "description",
+              "value": "Updated job description text.",
+              "type": "text"
+            },
+            {
+              "key": "sector",
+              "value": "it",
+              "type": "text"
+            },
+            {
+              "key": "jobType",
+              "value": "full-time",
+              "type": "text"
+            },
+            {
+              "key": "experienceLevel",
+              "value": "senior",
+              "type": "text"
+            },
+            {
+              "key": "requirements",
+              "value": "[\"Node.js\", \"React\", \"MongoDB\", \"AWS\"]",
+              "description": "JSON String Array",
+              "type": "text"
+            },
+            {
+              "key": "salary",
+              "value": "{\"from\": 15000, \"to\": 25000, \"currency\": \"AED\", \"period\": \"monthly\"}",
+              "description": "JSON String",
+              "type": "text"
+            },
+            {
+              "key": "location",
+              "value": "{\"city\": \"Dubai\", \"isRemote\": false}",
+              "description": "JSON String",
+              "type": "text"
+            }
+          ]
+        },
+        "url": {
+          "raw": "{{base_url}}/api/jobs-listing/save-job/1",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "jobs-listing",
+            "save-job",
+            "1"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "2a. Update Job (Step 2 - Contact, Media, SEO)",
+      "request": {
+        "method": "PUT",
+        "header": [],
+        "body": {
+          "mode": "formdata",
+          "formdata": [
+            {
+              "key": "job_id",
+              "value": "REPLACE_WITH_ID_FROM_STEP_1",
+              "description": "Paste the Job ID returned from Step 1 here",
+              "type": "text"
+            },
+              {
+              "key": "slug",
+              "value": "REPLACE_WITH_SLUG_FROM_STEP_1",
+              "description": "Paste the Job Slug returned from Step 1 here",
+              "type": "text"
+            },
+            {
+              "key": "folder",
+              "value": "Jobs",
+              "description": "Required by Multer to know where to save!",
+              "type": "text"
+            },
+            {
+              "key": "contact",
+              "value": "{\"name\": \"HR Manager\", \"email\": \"careers@techcorp.ae\", \"phone\": \"+971501234567\"}",
+              "type": "text"
+            },
+            {
+              "key": "company",
+              "value": "{\"name\": \"TechCorp Solutions\", \"size\": \"51-200\", \"website\": \"https://techcorp.ae\"}",
+              "type": "text"
+            },
+            {
+              "key": "logo",
+              "type": "file",
+              "src": []
+            },
+            {
+              "key": "images",
+              "type": "file",
+              "src": []
+            }
+          ]
+        },
+        "url": {
+          "raw": "{{base_url}}/api/jobs-listing/save-job/2",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "jobs-listing",
+            "save-job",
+            "2"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "3. Get All Jobs (With Filters)",
+
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/api/jobs-listing/get-all-jobs?page=1&limit=10&sector=it&jobType=full-time&isRemote=false",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "jobs-listing",
+            "get-all-jobs"
+          ],
+          "query": [
+            {
+              "key": "page",
+              "value": "1"
+            },
+            {
+              "key": "limit",
+              "value": "10"
+            },
+            {
+              "key": "sector",
+              "value": "it"
+            },
+            {
+              "key": "jobType",
+              "value": "full-time"
+            },
+            {
+              "key": "isRemote",
+              "value": "false"
+            }
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "4. Get Single Job",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/api/jobs-listing/get-job/REPLACE_WITH_JOB_ID",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "jobs-listing",
+            "get-job",
+            "REPLACE_WITH_JOB_ID"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "5. Delete Job",
+      "request": {
+        "method": "DELETE",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/api/jobs-listing/delete-job/REPLACE_WITH_JOB_ID",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "jobs-listing",
+            "delete-job",
+            "REPLACE_WITH_JOB_ID"
+          ]
+        }
+      },
+      "response": []
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          ""
+        ]
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          ""
+        ]
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:3000",
+      "type": "string"
+    }
+  ]
+}

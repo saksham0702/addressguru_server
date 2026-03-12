@@ -25,6 +25,7 @@ import errorHandlerMiddleware from "./middleware/error-handler.middleware.js";
 import subCategoriesRouter from "./routes/subCategoriesRouter.js";
 // import { seedFeatures } from "./seeds/feature.seed.js";
 import businessListingRouter from "./routes/businessListingRouter.js";
+import jobsListingRouter from "./routes/jobsListingRouter.js";
 import additionalFieldRouter from "./routes/additionalField.Router.js";
 import featureRouter from "./routes/feature.Router.js";
 
@@ -36,10 +37,8 @@ app.set("views", join(__dirname, "views"));
 app.set("view engine", "jade");
 const allowedOrigins = [
   "http://localhost:3000",
-  "http://127.0.0.1:3000",
-  "http://192.168.31.63:3000",
-  "http://192.168.31.63:3002",
-  "http://192.168.31.106:8081",
+  "http://localhost:3002",
+  "http://localhost:3001",
   "*"
   // Add any other frontend origins here
 ];
@@ -113,21 +112,21 @@ app.get("/api", async (req, res) => {
   return res.send(html);
 });
 
-app.use(`/${API_PREFIX}/additional-fields`, additionalFieldRouter);
-app.use(`/${API_PREFIX}/master`, masterAdminRouter);
-app.use(`/${API_PREFIX}/social-login`, socialRouter);
-app.use(`/${API_PREFIX}/categories`, categoryRouter);
-app.use(`/${API_PREFIX}/sub-categories`, subCategoriesRouter);
-app.use(`/${API_PREFIX}/business-listing`, businessListingRouter);
-app.use(`/${API_PREFIX}/cities`, citiesRouter);
+app.use(`/additional-fields`, additionalFieldRouter);
+app.use(`/master`, masterAdminRouter);
+app.use(`/social-login`, socialRouter);
+app.use(`/categories`, categoryRouter);
+app.use(`/sub-categories`, subCategoriesRouter);
+app.use(`/business-listing`, businessListingRouter);
+app.use(`/cities`, citiesRouter);
 // app.use(`/${API_PREFIX}/${ROLE_PREFIX.USER}`, usersRouter);
-app.use(`/${API_PREFIX}/user`, usersRouter);
+app.use(`/user`, usersRouter);
 
-app.use(`/${API_PREFIX}/features`, featureRouter);
+app.use(`/features`, featureRouter);
 
 app.get("/test-cookie", (req, res) => {
   console.log("cookies:", req.cookies);
-  res.json(req.cookies);
+  res.json({ message: "SERVER", cookies: req.cookies });
 });
 
 // app.use("/", indexRouter);
@@ -151,8 +150,7 @@ app.use(function (err, req, res, next) {
   res.locals.error = req.app.get("env") === "development" ? err : {};
   // Log error with Winston
   logger.error(
-    `${err.status || 500} - ${err.message} - ${req.originalUrl} - ${
-      req.method
+    `${err.status || 500} - ${err.message} - ${req.originalUrl} - ${req.method
     } - ${req.ip}`,
   );
 

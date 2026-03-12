@@ -21,7 +21,7 @@ console.log("req.body",req.body);
       max_length,
       min_value,
       max_value,
-      validation_type,  
+      validation_type,
       error_message,
       placeholder,
       help_text,
@@ -46,7 +46,7 @@ console.log("req.body",req.body);
     const field = new AdditionalField({
       category_id,
       subcategory_id: subcategory_id || null,
-    //   field_name,
+      //   field_name,
       field_label,
       field_type,
       checkbox_items,
@@ -64,7 +64,7 @@ console.log("req.body",req.body);
       default_value,
       display_order,
       show_in_filter,
-      created_by: req.user?._id || null,
+      created_by: req.user?.id || null,
     });
 
     await field.save();
