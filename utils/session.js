@@ -4,9 +4,9 @@ import { SECRET_KEY } from "../services/constant.js";
 export function createSessionToken(user) {
   return jwt.sign(
     {
-      sub: user._id,
-      email: user.email,
-      name: user.name,
+      sub: user?._id,
+      email: user?.email,
+      name: user?.name,
     },
     SECRET_KEY,
     { expiresIn: "7d" }

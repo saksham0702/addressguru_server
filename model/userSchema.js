@@ -72,6 +72,16 @@ const userSchema = new mongoose.Schema(
       type: String,
     },
 
+    socialLogins: [
+      {
+        provider: {
+          type: String,
+          enum: ["google", "apple"],
+        },
+        providerId: String,
+      },
+    ],
+
     refreshTokenEncrypted: {
       type: String,
     },

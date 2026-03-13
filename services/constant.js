@@ -15,12 +15,16 @@ export const NODE_ENV = process.env.NODE_ENV;
 export const APP_BASE_URL = process.env.APP_BASE_URL;
 export const BACKEND_BASE_URL = process.env.BACKEND_BASE_URL;
 
+export const APP_BUNDLE_ID = process.env.APP_BUNDLE_ID;
+
 // Google Sign-In
 export const GOOGLE_AUTH_URL = process.env.GOOGLE_AUTH_URL;
 export const GOOGLE_TOKEN_URL = process.env.GOOGLE_TOKEN_URL;
 export const GOOGLE_USERINFO_URL = process.env.GOOGLE_USERINFO_URL;
 
 // Google Credentails
+export const GOOGLE_IOS_CLIENT_ID = process.env.GOOGLE_IOS_CLIENT_ID;
+export const GOOGLE_ANDROID_CLIENT_ID = process.env.GOOGLE_ANDROID_CLIENT_ID;
 export const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
 export const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
 
