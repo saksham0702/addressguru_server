@@ -17,32 +17,28 @@ const additionalFieldValueSchema = new mongoose.Schema(
 
 const marketplaceListingSchema = new mongoose.Schema(
   {
-    /* =========================
-       BASIC REFERENCES
-    ========================== */
     category: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Category",
       required: true,
     },
     subCategory: { type: mongoose.Schema.Types.ObjectId, ref: "SubCategory" },
-    city: { type: mongoose.Schema.Types.ObjectId, ref: "City", required: true },
 
-    /* =========================
-       STEP 1 – PRODUCT INFO
-    ========================== */
+    // step -1
     title: { type: String, required: true, trim: true },
     description: { type: String, required: true },
 
+    slug: { type: String, unique: true, index: true },
+
     condition: {
       type: String,
-      enum: ["new", "used-like-new", "used-good", "used-fair"],
+      // enum: ["new", "used-like-new", "used-good", "used-fair"],
       required: true,
     },
 
     price: {
       amount: { type: Number, default: null },
-      currency: { type: String, default: "PKR" },
+      currency: { type: String, default: "AED" },
       isNegotiable: { type: Boolean, default: false },
       isFixed: { type: Boolean, default: false },
       isFree: { type: Boolean, default: false },
@@ -54,25 +50,18 @@ const marketplaceListingSchema = new mongoose.Schema(
       default: [],
     },
 
-    // CategoryFeature-linked arrays
-    features: [{ type: mongoose.Schema.Types.ObjectId }],
-    paymentModes: [{ type: mongoose.Schema.Types.ObjectId }],
-
-    /* =========================
-       STEP 2 – CONTACT DETAILS
-    ========================== */
+    // step -2
     contactPersonName: String,
     email: { type: String, lowercase: true },
-    countryCode: Number,
+    countryCode: String,
     mobileNumber: Number,
     altCountryCode: Number,
     alternateMobileNumber: Number,
     locality: String,
     address: String,
+    city: { type: mongoose.Schema.Types.ObjectId, ref: "City" },
 
-    /* =========================
-       STEP 3 – SOCIAL & LINKS
-    ========================== */
+    // step -3
     websiteLink: String,
     videoLink: String,
     socialLinks: {
@@ -83,34 +72,22 @@ const marketplaceListingSchema = new mongoose.Schema(
       youtube: String,
     },
 
-    /* =========================
-       STEP 4 – SEO
-    ========================== */
+    // step -4
     seo: { title: String, description: String },
-    slug: { type: String, unique: true, index: true },
-
-    /* =========================
-       STEP 5 – MEDIA
-    ========================== */
+    // step -5
     images: [String],
 
-    /* =========================
-       STEP 6 – PLAN
-    ========================== */
+    // step -6
     plan: { type: mongoose.Schema.Types.ObjectId, ref: "Plan" },
 
-    /* =========================
-       STATUS & FLOW
-    ========================== */
+    // status & flow
     stepCompleted: { type: Number, default: 1 },
     isVerified: { type: Boolean, default: false },
     isPublished: { type: Boolean, default: false },
     isSold: { type: Boolean, default: false }, // mark as sold without deleting
     createdBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
 
-    /* =========================
-       SOFT DELETE
-    ========================== */
+    // soft delete
     isDeleted: { type: Boolean, default: false },
   },
   { timestamps: true },

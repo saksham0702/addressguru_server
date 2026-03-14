@@ -53,22 +53,34 @@ export const defaultCities = [
   { name: "Al Ain", slug: "al-ain" },
 ];
 
-// ROLES
 export const ROLES = {
   ADMIN: 1,
-  BDE: 2,
-  LISTPARTNER: 3,
-  USER: 4,
+  EDITOR: 2,
+  AGENT: 3,
+  BDE: 4,
+  USER: 5,
 };
 
-export const ROLE_NAMES = Object.fromEntries(
-  Object.entries(ROLES).map(([k, v]) => [v, k]),
-);
+export const ROLE_NAMES = {
+  1: "Admin",
+  2: "Editor",
+  3: "Agent",
+  4: "BDE",
+  5: "User",
+};
+
+export const VALID_ROLES = Object.values(ROLES); // [1,2,3,4,5]
+
+// ROLES
+
+// export const ROLE_NAMES = Object.fromEntries(
+//   Object.entries(ROLES).map(([k, v]) => [v, k]),
+// );
 
 // API_PREFIX ROLES
-export const ROLE_PREFIX = {
-  ADMIN: "admin",
-  BDE: "bde",
-  LISTPARTNER: "listpartner",
-  USER: "user",
-};
+// export const ROLE_PREFIX = {
+//   ADMIN: "admin",
+//   BDE: "bde",
+//   LISTPARTNER: "listpartner",
+//   USER: "user",
+// };
