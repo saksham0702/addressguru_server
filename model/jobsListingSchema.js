@@ -24,6 +24,8 @@ const jobSchema = new mongoose.Schema(
     responsibilities: [{ type: String }],  // ["Manage team", "Report to CEO"]
     benefits: [{ type: String }],          // ["Health insurance", "Remote work"]
 
+    skills: [{ type: String }],
+
     // ─── Sector & Type ───────────────────────────────────────
     sector: {
       type: String,
@@ -180,6 +182,7 @@ jobSchema.index({ jobType: 1 });
 jobSchema.index({ workMode: 1 });
 jobSchema.index({ experienceLevel: 1 });
 jobSchema.index({ education: 1 });
+jobSchema.index({ skills: 1 });
 jobSchema.index({ gender: 1 });
 jobSchema.index({ status: 1, isDeleted: 1, isActive: 1 });
 jobSchema.index({ category: 1, subCategory: 1 });

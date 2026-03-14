@@ -190,6 +190,7 @@ export const saveJobStep = async (req, res) => {
         requirements = [],
         responsibilities = [],
         benefits = [],
+        skills = [],
         sector,
         jobType,
         workMode,
@@ -221,6 +222,9 @@ export const saveJobStep = async (req, res) => {
           benefits: Array.isArray(benefits)
             ? benefits
             : [benefits].filter(Boolean),
+          skills: Array.isArray(skills)
+            ? skills
+            : [skills].filter(Boolean),
           sector,
           jobType,
           workMode,
@@ -266,6 +270,11 @@ export const saveJobStep = async (req, res) => {
 
         if (benefits)
           job.benefits = Array.isArray(benefits) ? benefits : [benefits];
+
+        if (skills)
+          job.skills = Array.isArray(skills)
+            ? skills
+            : [skills];
 
         if (sector) job.sector = sector;
         if (jobType) job.jobType = jobType;
