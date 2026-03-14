@@ -20,7 +20,7 @@ import citiesRouter from "./routes/citiesRouter.js";
 import socialRouter from "./routes/socialRouter.js";
 import categoryRouter from "./routes/categoriesRouter.js";
 import connectDB from "./config/connectDB.js";
-import { API_PREFIX, ROLE_PREFIX } from "./services/constant.js";
+// import { API_PREFIX, ROLE_PREFIX } from "./services/constant.js";
 import errorHandlerMiddleware from "./middleware/error-handler.middleware.js";
 import subCategoriesRouter from "./routes/subCategoriesRouter.js";
 // import { seedFeatures } from "./seeds/feature.seed.js";
@@ -28,6 +28,8 @@ import businessListingRouter from "./routes/businessListingRouter.js";
 import jobsListingRouter from "./routes/jobsListingRouter.js";
 import additionalFieldRouter from "./routes/additionalField.Router.js";
 import featureRouter from "./routes/feature.Router.js";
+import adminUserRouter from "./routes/adminUser.Router.js";
+import marketplaceListingRouter from "./routes/marketplaceRouter.js";
 
 var app = express();
 
@@ -39,6 +41,7 @@ const allowedOrigins = [
   "http://localhost:3000",
   "http://localhost:3002",
   "http://localhost:3001",
+  "https://addressguru.ae",
   "*"
   // Add any other frontend origins here
 ];
@@ -118,10 +121,12 @@ app.use(`/social-login`, socialRouter);
 app.use(`/categories`, categoryRouter);
 app.use(`/sub-categories`, subCategoriesRouter);
 app.use(`/business-listing`, businessListingRouter);
+app.use(`/marketplace`, marketplaceListingRouter);
 app.use(`/cities`, citiesRouter);
 // app.use(`/${API_PREFIX}/${ROLE_PREFIX.USER}`, usersRouter);
 app.use(`/user`, usersRouter);
-
+app.use(`/jobs-listing`, jobsListingRouter);
+app.use(`/admin/users`, adminUserRouter);
 app.use(`/features`, featureRouter);
 
 app.get("/test-cookie", (req, res) => {

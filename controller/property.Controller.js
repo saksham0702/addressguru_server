@@ -16,7 +16,7 @@ const validateAdditionalFields = async (additionalFields = []) => {
   });
 
   const fieldMap = Object.fromEntries(
-    fieldDocs.map((f) => [f._id.toString(), f])
+    fieldDocs.map((f) => [f._id.toString(), f]),
   );
 
   const errors = [];
@@ -29,13 +29,16 @@ const validateAdditionalFields = async (additionalFields = []) => {
       continue;
     }
     const fieldErrors = doc.validateValue(submitted.value);
-    if (fieldErrors.length) { errors.push(...fieldErrors); continue; }
+    if (fieldErrors.length) {
+      errors.push(...fieldErrors);
+      continue;
+    }
 
     validated.push({
-      field_id:    doc._id,
+      field_id: doc._id,
       field_label: doc.field_label,
-      field_type:  doc.field_type,
-      value:       submitted.value ?? null,
+      field_type: doc.field_type,
+      value: submitted.value ?? null,
     });
   }
 
@@ -43,77 +46,101 @@ const validateAdditionalFields = async (additionalFields = []) => {
 };
 
 // ─── Helper: parse array fields from multipart ───────────────────────────────
-const toArray = (val) =>
-  Array.isArray(val) ? val : [val].filter(Boolean);
+const toArray = (val) => (Array.isArray(val) ? val : [val].filter(Boolean));
 
 // ─── POST /property-listings ──────────────────────────────────────────────────
 export const createPropertyListing = async (req, res) => {
   try {
     const {
-      category_id, sub_category_id, city_id,
-      title, description, purpose, property_type,
-      price_amount, price_currency = "PKR",
-      price_negotiable = false, price_period = "one-time",
-      area_size, area_unit = "marla",
-      bedrooms, bathrooms, floor_number, total_floors,
-      construction_status = "ready", furnishing = "unfurnished",
-      amenities = [], utilities = [], nearby_places = [],
-      payments = [], additional_fields = [],
+      category_id,
+      sub_category_id,
+      title,
+      description,
+      purpose,
+      property_type,
+      price_amount,
+      price_currency = "AED",
+      price_negotiable = false,
+      price_period = "one-time",
+      area_size,
+      area_unit = "square-meter",
+      bedrooms,
+      bathrooms,
+      floor_number,
+      total_floors,
+      construction_status = "ready",
+      furnishing = "unfurnished",
+      amenities = [],
+      utilities = [],
+      nearby_places = [],
+      payments = [],
+      additional_fields = [],
     } = req.body;
 
     // parse additional_fields if string (multipart safety)
     let parsedAdditionalFields = additional_fields;
     if (typeof additional_fields === "string") {
-      try { parsedAdditionalFields = JSON.parse(additional_fields); }
-      catch { parsedAdditionalFields = []; }
+      try {
+        parsedAdditionalFields = JSON.parse(additional_fields);
+      } catch {
+        parsedAdditionalFields = [];
+      }
     }
 
-    const { errors, validated } = await validateAdditionalFields(parsedAdditionalFields);
+    const { errors, validated } = await validateAdditionalFields(
+      parsedAdditionalFields,
+    );
     if (errors.length)
       return errorData(res, 400, false, "Validation failed", { errors });
 
     const slug = `${slugify(title, { lower: true, strict: true })}-${Date.now()}`;
 
     const listing = await PropertyListing.create({
-      category:           category_id,
-      subCategory:        sub_category_id  || null,
-      city:               city_id,
+      category: category_id,
+      subCategory: sub_category_id || null,
+      city: city_id,
       title,
       description,
       purpose,
-      propertyType:       property_type,
+      propertyType: property_type,
       price: {
-        amount:       price_amount       || null,
-        currency:     price_currency,
+        amount: price_amount || null,
+        currency: price_currency,
         isNegotiable: price_negotiable,
-        period:       price_period,
+        period: price_period,
       },
       area: {
         size: area_size || null,
         unit: area_unit,
       },
-      bedrooms:           bedrooms          || null,
-      bathrooms:          bathrooms         || null,
-      floorNumber:        floor_number      || null,
-      totalFloors:        total_floors      || null,
+      bedrooms: bedrooms || null,
+      bathrooms: bathrooms || null,
+      floorNumber: floor_number || null,
+      totalFloors: total_floors || null,
       constructionStatus: construction_status,
-      furnishing:         furnishing,
-      amenities:          toArray(amenities),
-      utilities:          toArray(utilities),
-      nearbyPlaces:       toArray(nearby_places),
-      paymentModes:       toArray(payments),
-      additionalFields:   validated,
+      furnishing: furnishing,
+      amenities: toArray(amenities),
+      utilities: toArray(utilities),
+      nearbyPlaces: toArray(nearby_places),
+      paymentModes: toArray(payments),
+      additionalFields: validated,
       slug,
-      stepCompleted:  1,
-      isVerified:     false,
-      isPublished:    false,
-      createdBy:      req.user?._id || null,
+      stepCompleted: 1,
+      isVerified: false,
+      isPublished: false,
+      createdBy: req.user?._id || null,
     });
 
-    return successData(res, 201, true, "Property listing created successfully", {
-      id:   listing._id,
-      slug: listing.slug,
-    });
+    return successData(
+      res,
+      201,
+      true,
+      "Property listing created successfully",
+      {
+        id: listing._id,
+        slug: listing.slug,
+      },
+    );
   } catch (error) {
     console.error("Create property listing error:", error);
     return errorData(res, 500, false, "Internal server error");
@@ -125,86 +152,108 @@ export const updatePropertyListingStep = async (req, res) => {
   try {
     const { id, step } = req.params;
 
-    const listing = await PropertyListing.findOne({ _id: id, isDeleted: false });
+    const listing = await PropertyListing.findOne({
+      _id: id,
+      isDeleted: false,
+    });
     if (!listing) return errorData(res, 404, false, "Listing not found");
 
     switch (Number(step)) {
-
       /* ── STEP 1 – PROPERTY INFO ── */
       case 1: {
         const {
-          category_id, sub_category_id, city_id,
-          title, description, purpose, property_type,
-          price_amount, price_currency = "PKR",
-          price_negotiable = false, price_period = "one-time",
-          area_size, area_unit = "marla",
-          bedrooms, bathrooms, floor_number, total_floors,
-          construction_status = "ready", furnishing = "unfurnished",
-          amenities = [], utilities = [], nearby_places = [],
-          payments = [], additional_fields = [],
+          category_id,
+          sub_category_id,
+          city_id,
+          title,
+          description,
+          purpose,
+          property_type,
+          price_amount,
+          price_currency = "PKR",
+          price_negotiable = false,
+          price_period = "one-time",
+          area_size,
+          area_unit = "marla",
+          bedrooms,
+          bathrooms,
+          floor_number,
+          total_floors,
+          construction_status = "ready",
+          furnishing = "unfurnished",
+          amenities = [],
+          utilities = [],
+          nearby_places = [],
+          payments = [],
+          additional_fields = [],
         } = req.body;
 
         let parsedAdditionalFields = additional_fields;
         if (typeof additional_fields === "string") {
-          try { parsedAdditionalFields = JSON.parse(additional_fields); }
-          catch { parsedAdditionalFields = []; }
+          try {
+            parsedAdditionalFields = JSON.parse(additional_fields);
+          } catch {
+            parsedAdditionalFields = [];
+          }
         }
 
-        const { errors, validated } = await validateAdditionalFields(parsedAdditionalFields);
+        const { errors, validated } = await validateAdditionalFields(
+          parsedAdditionalFields,
+        );
         if (errors.length)
           return errorData(res, 400, false, "Validation failed", { errors });
 
         // Regenerate slug only if title changed
         if (title && title !== listing.title) {
           listing.title = title;
-          listing.slug  = `${slugify(title, { lower: true, strict: true })}-${Date.now()}`;
+          listing.slug = `${slugify(title, { lower: true, strict: true })}-${Date.now()}`;
         }
 
-        listing.category           = category_id;
-        listing.subCategory        = sub_category_id     || null;
-        listing.city               = city_id;
-        listing.description        = description         || null;
-        listing.purpose            = purpose;
-        listing.propertyType       = property_type;
-        listing.price              = {
-          amount:       price_amount       || null,
-          currency:     price_currency,
+        listing.category = category_id;
+        listing.subCategory = sub_category_id || null;
+        listing.city = city_id;
+        listing.description = description || null;
+        listing.purpose = purpose;
+        listing.propertyType = property_type;
+        listing.price = {
+          amount: price_amount || null,
+          currency: price_currency,
           isNegotiable: price_negotiable,
-          period:       price_period,
+          period: price_period,
         };
-        listing.area               = { size: area_size || null, unit: area_unit };
-        listing.bedrooms           = bedrooms            || null;
-        listing.bathrooms          = bathrooms           || null;
-        listing.floorNumber        = floor_number        || null;
-        listing.totalFloors        = total_floors        || null;
+        listing.area = { size: area_size || null, unit: area_unit };
+        listing.bedrooms = bedrooms || null;
+        listing.bathrooms = bathrooms || null;
+        listing.floorNumber = floor_number || null;
+        listing.totalFloors = total_floors || null;
         listing.constructionStatus = construction_status;
-        listing.furnishing         = furnishing;
-        listing.amenities          = toArray(amenities);
-        listing.utilities          = toArray(utilities);
-        listing.nearbyPlaces       = toArray(nearby_places);
-        listing.paymentModes       = toArray(payments);
-        listing.additionalFields   = validated;
+        listing.furnishing = furnishing;
+        listing.amenities = toArray(amenities);
+        listing.utilities = toArray(utilities);
+        listing.nearbyPlaces = toArray(nearby_places);
+        listing.paymentModes = toArray(payments);
+        listing.additionalFields = validated;
         break;
       }
 
       /* ── STEP 2 – LOCATION ── */
       case 2: {
         listing.location = {
-          address:  req.body.address   || null,
-          locality: req.body.locality  || null,
-          mapLat:   req.body.map_lat   || null,
-          mapLng:   req.body.map_lng   || null,
+          address: req.body.address || null,
+          locality: req.body.locality || null,
+          mapLat: req.body.map_lat || null,
+          mapLng: req.body.map_lng || null,
         };
         break;
       }
 
       /* ── STEP 3 – CONTACT ── */
       case 3: {
-        listing.contactPersonName     = req.body.name                 || null;
-        listing.email                 = req.body.email                || null;
-        listing.countryCode           = req.body.country_code         || null;
-        listing.mobileNumber          = req.body.mobile_number        || null;
-        listing.altCountryCode        = req.body.alt_country_code     || null;
+        listing.contactPersonName = req.body.name || null;
+        listing.email = req.body.email || null;
+        listing.countryCode = req.body.country_code || null;
+        listing.mobileNumber = req.body.mobile_number || null;
+        listing.altCountryCode = req.body.alt_country_code || null;
         listing.alternateMobileNumber = req.body.second_mobile_number || null;
         break;
       }
@@ -212,11 +261,11 @@ export const updatePropertyListingStep = async (req, res) => {
       /* ── STEP 4 – SOCIAL & LINKS ── */
       case 4: {
         listing.websiteLink = req.body.website_link || null;
-        listing.videoLink   = req.body.video_link   || null;
+        listing.videoLink = req.body.video_link || null;
         listing.socialLinks = {
-          facebook:  req.body.facebook  || null,
+          facebook: req.body.facebook || null,
           instagram: req.body.instagram || null,
-          youtube:   req.body.youtube   || null,
+          youtube: req.body.youtube || null,
         };
         break;
       }
@@ -224,7 +273,7 @@ export const updatePropertyListingStep = async (req, res) => {
       /* ── STEP 5 – SEO ── */
       case 5: {
         listing.seo = {
-          title:       req.body.seo_title       || null,
+          title: req.body.seo_title || null,
           description: req.body.seo_description || null,
         };
         break;
@@ -244,7 +293,7 @@ export const updatePropertyListingStep = async (req, res) => {
 
       /* ── STEP 7 – PLAN & PUBLISH ── */
       case 7: {
-        listing.plan        = req.body.plan_id;
+        listing.plan = req.body.plan_id;
         listing.isPublished = true;
         break;
       }
@@ -257,7 +306,7 @@ export const updatePropertyListingStep = async (req, res) => {
     await listing.save();
 
     return successData(res, 200, true, `Step ${step} saved successfully`, {
-      id:            listing._id,
+      id: listing._id,
       stepCompleted: listing.stepCompleted,
     });
   } catch (error) {
@@ -269,30 +318,32 @@ export const updatePropertyListingStep = async (req, res) => {
 /* ── GET ALL (paginated) ── */
 export const getAllPropertyListings = async (req, res) => {
   try {
-    const page  = parseInt(req.query.page)  || 1;
+    const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
-    const skip  = (page - 1) * limit;
+    const skip = (page - 1) * limit;
 
     // Basic filters from query
     const filter = { isDeleted: false, isPublished: true, isVerified: true };
-    if (req.query.purpose)       filter.purpose       = req.query.purpose;
-    if (req.query.property_type) filter.propertyType  = req.query.property_type;
-    if (req.query.city_id)       filter.city          = req.query.city_id;
-    if (req.query.furnishing)    filter.furnishing     = req.query.furnishing;
-    if (req.query.bedrooms)      filter.bedrooms       = Number(req.query.bedrooms);
+    if (req.query.purpose) filter.purpose = req.query.purpose;
+    if (req.query.property_type) filter.propertyType = req.query.property_type;
+    if (req.query.city_id) filter.city = req.query.city_id;
+    if (req.query.furnishing) filter.furnishing = req.query.furnishing;
+    if (req.query.bedrooms) filter.bedrooms = Number(req.query.bedrooms);
 
     // Price range
     if (req.query.min_price || req.query.max_price) {
       filter["price.amount"] = {};
-      if (req.query.min_price) filter["price.amount"].$gte = Number(req.query.min_price);
-      if (req.query.max_price) filter["price.amount"].$lte = Number(req.query.max_price);
+      if (req.query.min_price)
+        filter["price.amount"].$gte = Number(req.query.min_price);
+      if (req.query.max_price)
+        filter["price.amount"].$lte = Number(req.query.max_price);
     }
 
     const [listings, total] = await Promise.all([
       PropertyListing.find(filter)
-        .populate("category",    "name")
+        .populate("category", "name")
         .populate("subCategory", "name")
-        .populate("city",        "name")
+        .populate("city", "name")
         .skip(skip)
         .limit(limit)
         .lean(),
@@ -320,12 +371,12 @@ export const getPropertyListingBySlug = async (req, res) => {
 
     const listing = await PropertyListing.findOne({
       slug,
-      isDeleted:   false,
+      isDeleted: false,
       isPublished: true,
     })
-      .populate("category",    "name")
+      .populate("category", "name")
       .populate("subCategory", "name")
-      .populate("city",        "name")
+      .populate("city", "name")
       .populate("additionalFields.field_id", "field_label field_type")
       .lean();
 
@@ -347,11 +398,13 @@ export const deletePropertyListing = async (req, res) => {
     const listing = await PropertyListing.findByIdAndUpdate(
       id,
       { isDeleted: true },
-      { new: true }
+      { new: true },
     );
     if (!listing) return errorData(res, 404, false, "Listing not found");
 
-    return successData(res, 200, true, "Listing deleted successfully", { id: listing._id });
+    return successData(res, 200, true, "Listing deleted successfully", {
+      id: listing._id,
+    });
   } catch (error) {
     console.error("Property listing delete error:", error);
     return errorData(res, 500, false, "Internal server error");

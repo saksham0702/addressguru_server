@@ -1,62 +1,73 @@
 import mongoose from "mongoose";
-import { ROLES } from "../services/constant.js";
+import { VALID_ROLES, ROLES } from "../services/constant.js";
 
 const userSchema = new mongoose.Schema(
   {
+    // ── Identity ─────────────────────────────────────────────────────────────
+    name: {
+      type: String,
+      trim: true,
+    },
+
     email: {
       type: String,
       unique: true,
-      required: true,
+      required: [true, "Email is required"],
       trim: true,
       lowercase: true,
       match: [/^\S+@\S+\.\S+$/, "Invalid email format"],
-      note: "User email address",
     },
 
     phone: {
       type: String,
       unique: true,
       sparse: true, // allows multiple docs without phone
-      note: "Optional phone number",
     },
 
     whatsapp_same: {
       type: Boolean,
       default: false,
-      note: "Indicates if user's phone number is same as WhatsApp number",
     },
 
     password: {
       type: String,
-      // required: true,
-      note: "Hashed password",
-    },
-
-    name: {
-      type: String,
-      trim: true,
+      // not required — social login users won't have one
     },
 
     avatar: {
       type: String,
-      note: "Profile image URL",
     },
 
-    role: {
-      type: String,
-      enum: Object.values(ROLES),
-      default: ROLES.USER,
-      note: "user(Vendor), BDE(Editor), admin, listPartner(Agent)",
+    // ── Role & Permissions ────────────────────────────────────────────────────
+    /**
+     * Numeric role hierarchy:
+     *   1 = Admin  (highest authority)
+     *   2 = Editor
+     *   3 = Agent
+     *   4 = BDE
+     *   5 = User   (lowest authority)
+     */
+    roles: {
+      type: [Number],
+      enum: VALID_ROLES,
+      default: [ROLES.USER],
     },
 
+    /**
+     * Fine-grained permission string or JSON blob.
+     * Only relevant for non-admin staff accounts created by admin.
+     * e.g. "listings:read,listings:write"
+     */
     permission: {
-      type: String,
+      type: [String],
+      default: null,
     },
 
     city: {
       type: String,
     },
 
+    // ── Auth / Login ──────────────────────────────────────────────────────────
     login_type: {
       type: String,
       enum: ["google", "apple", "email"],
@@ -65,7 +76,8 @@ const userSchema = new mongoose.Schema(
 
     provider: {
       type: String,
-      enum: ["google", "apple"],
+      enum: ["google", "apple", null],
+      default: null,
     },
 
     providerId: {
@@ -96,37 +108,32 @@ const userSchema = new mongoose.Schema(
       default: false,
     },
 
-    otp: { type: String },
-    otpCreatedAt: { type: Date },
+    otp: { type: String, default: null },
+    otpCreatedAt: { type: Date, default: null },
 
-    profile_bio: {
-      type: String,
-    },
-    profile_website: {
-      type: String,
-    },
-    profile_location_emirate: {
-      type: String,
-    },
-    profile_location_area: {
-      type: String,
-    },
+    // ── Profile ───────────────────────────────────────────────────────────────
+    profile_bio: { type: String },
+    profile_website: { type: String },
+    profile_location_emirate: { type: String },
+    profile_location_area: { type: String },
     profile_location_coordinates: {
       type: [Number], // [longitude, latitude]
       index: "2dsphere",
-      note: "Geolocation for map search",
+    },
+    isDeleted: {
+      type: Boolean,
+      default: false,
     },
 
+    // ── Membership ────────────────────────────────────────────────────────────
     membership_type: {
       type: String,
       enum: ["free", "premium", "featured"],
       default: "free",
     },
-    membership_expiresAt: {
-      type: Date,
-    },
+    membership_expiresAt: { type: Date },
 
-    // --- Statistics ---
+    // ── Statistics ────────────────────────────────────────────────────────────
     statistics_totalListings: { type: Number, default: 0 },
     statistics_ProductListings: { type: Number, default: 0 },
     statistics_marketPlaceListings: { type: Number, default: 0 },
@@ -141,27 +148,34 @@ const userSchema = new mongoose.Schema(
     statistics_activeListings: { type: Number, default: 0 },
     statistics_soldItems: { type: Number, default: 0 },
 
-    // --- Preferences ---
+    // ── Preferences ───────────────────────────────────────────────────────────
     preferences_notifications_email: { type: Boolean, default: true },
     preferences_notifications_sms: { type: Boolean, default: false },
     preferences_notifications_push: { type: Boolean, default: true },
     preferences_language: { type: String, default: "en" },
 
-    // --- Login Info ---
+    // ── Login Meta ────────────────────────────────────────────────────────────
     login_ipaddress: { type: String },
     login_browser: { type: String },
 
-    // --- Status ---
+    // ── Flags ─────────────────────────────────────────────────────────────────
     status: { type: Boolean, default: true },
     lastActive: { type: Date, default: Date.now },
 
-    // --- Timestamps ---
+    // Soft-delete
     deletedAt: { type: Date, default: null },
+
+    // Who created this account (for admin-created staff accounts)
+    createdBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      default: null,
+    },
   },
   {
-    timestamps: true, // adds createdAt & updatedAt automatically
+    timestamps: true,
     collection: "users",
-  }
+  },
 );
 
 export default mongoose.model("User", userSchema);
