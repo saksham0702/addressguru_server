@@ -125,6 +125,7 @@ app.use(`/marketplace`, marketplaceListingRouter);
 app.use(`/cities`, citiesRouter);
 // app.use(`/${API_PREFIX}/${ROLE_PREFIX.USER}`, usersRouter);
 app.use(`/user`, usersRouter);
+app.use(`/jobs-listing`, jobsListingRouter);
 app.use(`/admin/users`, adminUserRouter);
 app.use(`/features`, featureRouter);
 
