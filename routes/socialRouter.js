@@ -7,6 +7,7 @@ import User from "../model/userSchema.js";
 import crypto from "crypto";
 import {
   APP_BASE_URL,
+  APP_BUNDLE_ID,
   APPLE_AUTH_URL,
   APPLE_CLIENT_ID,
   APPLE_KEY_ID,
@@ -17,10 +18,12 @@ import {
   GOOGLE_AUTH_URL,
   GOOGLE_CLIENT_ID,
   GOOGLE_CLIENT_SECRET,
+  GOOGLE_IOS_CLIENT_ID,
   GOOGLE_TOKEN_URL,
   GOOGLE_USERINFO_URL,
 } from "../services/constant.js";
-import fs from "fs";
+import { OAuth2Client } from "google-auth-library";
+import appleSignin from "apple-signin-auth";
 
 const router = express.Router();
 
@@ -47,6 +50,74 @@ function createClientSecret() {
 // Load private key content (p8)
 // const privateKey = fs.readFileSync(APPLE_PRIVATE_KEY_PATH, "utf8");
 const privateKey = "";
+
+async function findOrCreateUser({
+  provider,
+  providerId,
+  email,
+  firstName = "",
+  lastName = "",
+  displayName = "",
+  avatarUrl,
+}) {
+  // 1️⃣ Match by provider (already linked)
+  let user = await User.findOne({
+    "socialLogins.provider": provider,
+    "socialLogins.providerId": providerId,
+  });
+
+  if (user) {
+    user.lastLogin = new Date();
+    await user.save();
+    return user;
+  }
+
+  // 2️⃣ Match by email (MAIN RULE)
+  if (email) {
+    user = await User.findOne({ email });
+
+    if (user) {
+      const alreadyLinked = user.socialLogins.some(
+        (s) => s.provider === provider,
+      );
+
+      if (!alreadyLinked) {
+        user.socialLogins.push({ provider, providerId });
+      }
+
+      user.lastLogin = new Date();
+      await user.save();
+      return user;
+    }
+  }
+
+  // 3️⃣ Create new user
+  user = await User.create({
+    firstName,
+    lastName,
+    displayName,
+    email,
+    login_type: provider,
+    username: email?.split("@")[0] || `${provider}_${providerId.slice(0, 6)}`,
+    usernameSetup: false,
+    avatar: avatarUrl ? avatarUrl : undefined,
+    socialLogins: [{ provider, providerId }],
+    password: null,
+    isVerified: true,
+    createdAt: new Date(),
+    lastLogin: new Date(),
+  });
+
+  return user;
+}
+
+router.get("/", (req, res) => {
+  res.send(`
+    <h1 style="text-align:center;">
+      Welcome to AddressGuru UAE Backend Social Login Router
+    </h1>
+  `);
+});
 
 router.get("/google", (req, res) => {
   const state = genState();
@@ -99,11 +170,12 @@ router.get("/google/callback", async (req, res) => {
     });
     if (!user) {
       user = await User.create({
-        provider: "google",
-        providerId: userInfo.sub,
+        // provider: "google",
+        // providerId: userInfo.sub,
         email: userInfo.email,
         name: userInfo.name,
         picture: userInfo.picture,
+        socialLogins: [{ provider: "google", providerId: userInfo.sub }],
         createdAt: new Date(),
       });
     } else {
@@ -213,5 +285,96 @@ router.post(
     }
   }
 );
+
+
+router.post("/auth/exchange", async (req, res) => {
+  const {
+    provider,
+    idToken,
+    accessToken,
+    identityToken,
+    code,
+    redirect_uri,
+    email,
+    fullName,
+    lastName,
+    platform,
+  } = req?.body;
+
+  console.log("REQQ BODYYY ::", req?.body);
+
+  try {
+    let userData = null;
+
+    /* ===================== GOOGLE ===================== */
+    if (provider === "google") {
+      const clientId =
+        platform === "ios"
+          ? GOOGLE_IOS_CLIENT_ID
+          : GOOGLE_CLIENT_ID
+
+      const client = new OAuth2Client(clientId);
+
+      const ticket = await client.verifyIdToken({
+        idToken,
+        audience: clientId,
+      });
+
+      const g = ticket.getPayload();
+
+      userData = {
+        provider: "google",
+        providerId: g?.sub,
+        email: g?.email,
+        firstName: g?.given_name,
+        lastName: g?.family_name,
+        displayName: g?.name,
+        avatarUrl: g?.picture,
+      };
+    }
+
+    /* ===================== APPLE ===================== */
+    if (provider === "apple") {
+      const decoded = await appleSignin.verifyIdToken(identityToken, {
+        audience: APP_BUNDLE_ID,
+      });
+
+      userData = {
+        provider: "apple",
+        providerId: decoded?.sub,
+        email: email || decoded?.email || null, // may be null
+        firstName: fullName || "",
+        lastName: lastName || "",
+        displayName: fullName || "",
+      };
+    }
+
+    if (!userData) {
+      return res.status(400).json({ error: "unsupported provider" });
+    }
+
+    console.log("USER DATTA ::", userData);
+
+
+    /* ===================== FINAL LINK / CREATE ===================== */
+    const user = await findOrCreateUser(userData);
+    const accessToken = createSessionToken(userData);
+
+
+    // user.refreshTokens.push({ token: refreshToken });
+    // await user.save();
+
+    return res.status(200).json({
+      success: true,
+      data: { user: userData, accessToken },
+    });
+  } catch (err) {
+    console.error(err.response?.data || err.message);
+    return res.status(500).json({ error: "auth_exchange_failed" });
+  }
+});
+
+
+
 
 export default router;

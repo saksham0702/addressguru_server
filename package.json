@@ -10,6 +10,7 @@
     "prepare": "husky"
   },
   "dependencies": {
+    "apple-signin-auth": "^2.0.0",
     "axios": "^1.13.0",
     "bcrypt": "^6.0.0",
     "cookie-parser": "~1.4.4",
@@ -20,6 +21,7 @@
     "express": "^5.1.0",
     "express-rate-limit": "^8.2.1",
     "geoip-lite": "^1.4.10",
+    "google-auth-library": "^10.6.1",
     "hogan.js": "^3.0.2",
     "http-errors": "^2.0.0",
     "jade": "~1.11.0",
