@@ -19,10 +19,10 @@ const jobSchema = new mongoose.Schema(
     },
 
     // ─── Job Details ─────────────────────────────────────────
-    description: { type: String },         // full job description / landing page content
-    requirements: [{ type: String }],      // ["2 years experience", "Bachelor's degree"]
-    responsibilities: [{ type: String }],  // ["Manage team", "Report to CEO"]
-    benefits: [{ type: String }],          // ["Health insurance", "Remote work"]
+    description: { type: String }, // full job description / landing page content
+    requirements: [{ type: String }], // ["2 years experience", "Bachelor's degree"]
+    responsibilities: [{ type: String }], // ["Manage team", "Report to CEO"]
+    benefits: [{ type: String }], // ["Health insurance", "Remote work"]
 
     skills: [{ type: String }],
 
@@ -50,7 +50,14 @@ const jobSchema = new mongoose.Schema(
 
     jobType: {
       type: String,
-      enum: ["full-time", "part-time", "contract", "freelance", "internship", "temporary"],
+      enum: [
+        "full-time",
+        "part-time",
+        "contract",
+        "freelance",
+        "internship",
+        "temporary",
+      ],
       required: true,
     },
 
@@ -68,8 +75,8 @@ const jobSchema = new mongoose.Schema(
 
     // ─── Salary (for filter: from/to) ────────────────────────
     salary: {
-      from: { type: Number, default: null },   // min salary
-      to: { type: Number, default: null },   // max salary
+      from: { type: Number, default: null }, // min salary
+      to: { type: Number, default: null }, // max salary
       currency: { type: String, default: "PKR" },
       period: {
         type: String,
@@ -77,14 +84,19 @@ const jobSchema = new mongoose.Schema(
         default: "monthly",
       },
       isNegotiable: { type: Boolean, default: false },
-      isHidden: { type: Boolean, default: false },  // show "Confidential" on frontend
+      isHidden: { type: Boolean, default: false }, // show "Confidential" on frontend
     },
 
     // ─── Location (for filter) ───────────────────────────────
     location: {
-      country: { type: String, default: "Pakistan" },
-      city: { type: String },
-      area: { type: String },              // neighborhood / zone
+      country: { type: String, default: "" },
+      // city: {
+      //   type: mongoose.Schema.Types.ObjectId,
+      //   ref: "City",
+      //   // required: true,
+      // },
+      city: { type: String }, // neighborhood / zone
+      area: { type: String }, // neighborhood / zone
       address: { type: String },
       isRemote: { type: Boolean, default: false },
     },
@@ -92,13 +104,21 @@ const jobSchema = new mongoose.Schema(
     // ─── Education & Experience (for filter) ─────────────────
     education: {
       type: String,
-      enum: ["none", "matric", "intermediate", "bachelor", "master", "phd", "any"],
+      enum: [
+        "none",
+        "matric",
+        "intermediate",
+        "bachelor",
+        "master",
+        "phd",
+        "any",
+      ],
       default: "any",
     },
 
     experienceYears: {
-      from: { type: Number, default: 0 },     // min years
-      to: { type: Number, default: null },  // max years (null = open)
+      from: { type: Number, default: 0 }, // min years
+      to: { type: Number, default: null }, // max years (null = open)
     },
 
     // ─── Gender & Age Preference (for filter) ────────────────
@@ -119,14 +139,14 @@ const jobSchema = new mongoose.Schema(
       email: { type: String },
       phone: { type: String },
       whatsapp: { type: String },
-      website: { type: String },          // apply via external link
-      applyEmail: { type: String },       // dedicated apply email (can differ from contact)
+      website: { type: String }, // apply via external link
+      applyEmail: { type: String }, // dedicated apply email (can differ from contact)
     },
 
     // ─── Company Info ─────────────────────────────────────────
     company: {
       name: { type: String },
-      logo: { type: String },          // image URL
+      logo: { type: String }, // image URL
       website: { type: String },
       size: {
         type: String,
@@ -135,13 +155,23 @@ const jobSchema = new mongoose.Schema(
     },
 
     // ─── Media ───────────────────────────────────────────────
-    images: [{ type: String }],           // job post banner images
+    images: [{ type: String }], // job post banner images
 
     // ─── Posting Meta ─────────────────────────────────────────
-    postedBy: {
+    createdBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
-      required: true,
+      // required: true,
+    },
+
+    provider: {
+      type: String,
+      enum: ["google", "user"],
+    },
+
+    approvedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
     },
 
     totalPositions: { type: Number, default: 1 },

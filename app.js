@@ -28,6 +28,7 @@ import businessListingRouter from "./routes/businessListingRouter.js";
 import jobsListingRouter from "./routes/jobsListingRouter.js";
 import additionalFieldRouter from "./routes/additionalField.Router.js";
 import featureRouter from "./routes/feature.Router.js";
+import googleListingRoutes from "./routes/googleListingRouter.js";
 
 var app = express();
 
@@ -118,11 +119,13 @@ app.use(`/social-login`, socialRouter);
 app.use(`/categories`, categoryRouter);
 app.use(`/sub-categories`, subCategoriesRouter);
 app.use(`/business-listing`, businessListingRouter);
+app.use(`/jobs-listing`, jobsListingRouter);
 app.use(`/cities`, citiesRouter);
 // app.use(`/${API_PREFIX}/${ROLE_PREFIX.USER}`, usersRouter);
 app.use(`/user`, usersRouter);
-
 app.use(`/features`, featureRouter);
+
+app.use(`/google-listing`, googleListingRoutes);
 
 app.get("/test-cookie", (req, res) => {
   console.log("cookies:", req.cookies);

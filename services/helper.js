@@ -126,3 +126,21 @@ export const normalizeRole = (role) => {
   // fallback
   return String(role);
 };
+
+
+export const parseSearchQuery = (query) => {
+  const regex = /(.*?)\s+(?:in|near|at)\s+(.*)/i;
+  const match = query.match(regex);
+
+  if (match) {
+    return {
+      keyword: match[1].trim(),
+      location: match[2].trim(),
+    };
+  }
+
+  return {
+    keyword: query.trim(),
+    location: "",
+  };
+};

@@ -60,7 +60,7 @@ import { successData, errorData } from "../services/helper.js";
 //         gender: gender || "any",
 //         ageRange: ageRange || undefined,
 //         slug,
-//         postedBy: req.user?.id || null, // Assuming you have req.user from auth middleware
+//         createdBy: req.user?.id || null, // Assuming you have req.user from auth middleware
 //         status: "pending",
 //       });
 
@@ -161,7 +161,7 @@ export const saveJobStep = async (req, res) => {
 
       if (!job) return errorData(res, 404, false, "Job not found");
 
-      if (job.postedBy?.toString() !== user?.id && user?.role !== "admin") {
+      if (job.createdBy?.toString() !== user?.id && user?.role !== "admin") {
         return errorData(res, 403, false, "Unauthorized");
       }
     }
@@ -237,7 +237,7 @@ export const saveJobStep = async (req, res) => {
           gender,
           ageRange,
           slug: baseSlug,
-          postedBy: user?.id,
+          createdBy: user?.id,
           status: "pending",
         });
 

@@ -6,6 +6,7 @@ const authenticate = async (req, res, next) => {
   try {
     // ✅ Read token ONLY from cookie
     const token = req.cookies?.authToken;
+    console.log("REQQ COOKIES :".req.cookies)
     if (!token) {
       return errorData(res, 401, false, "Unauthorized: No token provided");
     }

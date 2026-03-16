@@ -76,3 +76,10 @@ export const ROLE_PREFIX = {
   LISTPARTNER: "listpartner",
   USER: "user",
 };
+
+
+// FOURSQUARE MAP API
+export const FOURSQUARE_API_KEY = process.env.FOURSQUARE_API_KEY;
+
+// GOOGLE
+export const GOOGLE_API_KEY = process.env.GOOGLE_API_KEY;
