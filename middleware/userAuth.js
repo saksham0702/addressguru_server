@@ -6,7 +6,7 @@ const authenticate = async (req, res, next) => {
   try {
     // ✅ Read token ONLY from cookie
     const token = req.cookies?.authToken;
-    console.log("REQQ COOKIES :".req.cookies)
+    console.log("REQQ COOKIES :".req.cookies);
     if (!token) {
       return errorData(res, 401, false, "Unauthorized: No token provided");
     }
@@ -26,4 +26,19 @@ const authenticate = async (req, res, next) => {
   }
 };
 
-export default authenticate;
+const optionalAuth = (req, res, next) => {
+  try {
+    const token = req.cookies?.authToken;
+    if (token) {
+      const decoded = jwt.verify(token, SECRET_KEY);
+      req.user = decoded?.user; // same shape your middleware uses
+    } else {
+      req.user = null;
+    }
+  } catch {
+    req.user = null; // expired / invalid token → treat as guest
+  }
+  next();
+};
+
+export { authenticate, optionalAuth };

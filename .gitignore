@@ -27,3 +27,5 @@ Thumbs.db
 # Build outputs
 dist/
 build/
+
+uploads/

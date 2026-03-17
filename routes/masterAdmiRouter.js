@@ -7,7 +7,7 @@ import {
   updateUser,
 } from "../controller/user.Controller.js";
 import impersonateUser from "../middleware/impersonateUser.js";
-import authenticate from "../middleware/userAuth.js";
+import {authenticate} from "../middleware/userAuth.js";
 const router = express.Router();
 
 router.get("/", function (req, res, next) {

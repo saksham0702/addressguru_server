@@ -8,7 +8,7 @@ import {
   deleteJob,
 } from "../controller/jobsListing.Controller.js";
 import upload from "../middleware/multerConfig.js";
-import authenticate from "../middleware/userAuth.js";
+import {authenticate} from "../middleware/userAuth.js";
 
 const router = express.Router();
 
