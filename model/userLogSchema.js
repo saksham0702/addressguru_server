@@ -5,14 +5,16 @@ const userLogSchema = new mongoose.Schema(
     userId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
-      required: true,
+      default: null,
+      // required: true,
       note: "User reference",
       index: true,
     },
 
     ipAddress: {
       type: String,
-      required: true,
+      default: "Unknown",
+      // required: true,
       note: "User IP address",
     },
     location_coordinates: {

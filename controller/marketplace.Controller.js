@@ -1,6 +1,8 @@
 // ─── marketplaceListingController.js ─────────────────────────────────────────
 import MarketplaceListing from "../model/marketplaceListingSchema.js";
 import AdditionalField from "../model/additionalFieldSchema.js";
+import Category from "../model/categoriesSchema.js";
+import SubCategory from "../model/subCategoriesSchema.js";
 import slugify from "slugify";
 import { successData, errorData } from "../services/helper.js";
 
@@ -53,19 +55,32 @@ export const createMarketplaceListing = async (req, res) => {
     const {
       category_id,
       sub_category_id,
-      city_id,
       title,
       description,
       condition,
       price_amount,
-      price_currency = "PKR",
+      price_currency = "AED",
       price_negotiable = false,
       price_fixed = false,
       price_free = false,
-      features = [],
-      payments = [],
       additional_fields = [],
     } = req.body;
+
+    const category = await Category.findOne({
+      _id: category_id,
+      isDeleted: false,
+    });
+    if (!category) return errorData(res, 404, false, "Category not found");
+
+    if (sub_category_id) {
+      const subCategory = await SubCategory.findOne({
+        _id: sub_category_id,
+        category: category_id,
+        isDeleted: false,
+      });
+      if (!subCategory)
+        return errorData(res, 404, false, "Sub-category not found");
+    }
 
     let parsedAdditionalFields = additional_fields;
     if (typeof additional_fields === "string") {
@@ -87,7 +102,6 @@ export const createMarketplaceListing = async (req, res) => {
     const listing = await MarketplaceListing.create({
       category: category_id,
       subCategory: sub_category_id || null,
-      city: city_id,
       title,
       description,
       condition,
@@ -98,8 +112,6 @@ export const createMarketplaceListing = async (req, res) => {
         isFixed: price_fixed,
         isFree: price_free,
       },
-      features: toArray(features),
-      paymentModes: toArray(payments),
       additionalFields: validated,
       slug,
       stepCompleted: 1,
@@ -122,10 +134,10 @@ export const createMarketplaceListing = async (req, res) => {
 // ─── PUT /marketplace-listings/:id/step/:step ─────────────────────────────────
 export const updateMarketplaceListingStep = async (req, res) => {
   try {
-    const { id, step } = req.params;
+    const { slug , step } = req.params;
 
     const listing = await MarketplaceListing.findOne({
-      _id: id,
+      slug: slug,
       isDeleted: false,
     });
     if (!listing) return errorData(res, 404, false, "Listing not found");
@@ -136,17 +148,14 @@ export const updateMarketplaceListingStep = async (req, res) => {
         const {
           category_id,
           sub_category_id,
-          city_id,
           title,
           description,
           condition,
           price_amount,
-          price_currency = "PKR",
-          price_negotiable = false,
-          price_fixed = false,
-          price_free = false,
-          features = [],
-          payments = [],
+          price_currency = "AED",
+          price_negotiable,
+          price_fixed,
+          price_free,
           additional_fields = [],
         } = req.body;
 
@@ -172,18 +181,15 @@ export const updateMarketplaceListingStep = async (req, res) => {
 
         listing.category = category_id;
         listing.subCategory = sub_category_id || null;
-        listing.city = city_id;
         listing.description = description || null;
         listing.condition = condition;
         listing.price = {
           amount: price_amount || null,
           currency: price_currency,
-          isNegotiable: price_negotiable,
-          isFixed: price_fixed,
-          isFree: price_free,
+          isNegotiable: price_negotiable || false,
+          isFixed: price_fixed || false,
+          isFree: price_free || false,
         };
-        listing.features = toArray(features);
-        listing.paymentModes = toArray(payments);
         listing.additionalFields = validated;
         break;
       }
@@ -198,6 +204,7 @@ export const updateMarketplaceListingStep = async (req, res) => {
         listing.alternateMobileNumber = req.body.second_mobile_number || null;
         listing.locality = req.body.locality || null;
         listing.address = req.body.address || null;
+        listing.city = req.body.city_id || null;
         break;
       }
 
@@ -311,13 +318,15 @@ export const getAllMarketplaceListings = async (req, res) => {
 /* ── GET SINGLE BY SLUG ── */
 export const getMarketplaceListingBySlug = async (req, res) => {
   try {
+
     const { slug } = req.params;
+    console.log(slug)
     if (!slug) return errorData(res, 400, false, "Slug is required");
 
     const listing = await MarketplaceListing.findOne({
       slug,
       isDeleted: false,
-      isPublished: true,
+      // isPublished: true,
     })
       .populate("category", "name")
       .populate("subCategory", "name")

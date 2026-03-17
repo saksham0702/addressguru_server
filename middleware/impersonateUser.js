@@ -6,11 +6,10 @@ import User from "../model/userSchema.js";
 const impersonateUser = async (req, res) => {
   try {
     const admin = req.user;
-
+    console.log("admin", admin);
     // ✅ Allow only MASTER ADMIN
-    if (admin.role !== "1") {
+    if (!admin.roles?.includes(1))
       return res.status(403).json({ message: "Access denied" });
-    }
 
     const user = await User.findById(req.params.userId);
     if (!user) {
@@ -21,7 +20,7 @@ const impersonateUser = async (req, res) => {
     const token = JWT.sign(
       {
         id: user._id,
-        role: user.role,
+        roles: user.roles,
         impersonated: true,
         masterAdminId: admin.id,
       },
@@ -30,7 +29,7 @@ const impersonateUser = async (req, res) => {
     );
 
     // ✅ Store in httpOnly cookie
-    res.cookie("access_token", token, {
+    res.cookie("auth_token", token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",

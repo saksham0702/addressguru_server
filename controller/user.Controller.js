@@ -155,7 +155,7 @@ export const registerAdmin = async (req, res) => {
       email: "admin@admin.com",
       password: hashedPassword,
       name: "System Admin",
-      role: 1, // Make sure this matches your ROLES.ADMIN value
+      roles: [1], // Make sure this matches your ROLES.ADMIN value
       verified_email: true,
       verified_phone: false,
       login_type: "email",
@@ -641,7 +641,7 @@ export const getAllUsers = async (req, res) => {
     const { page = 1, limit = 10, role, status, search } = req.query;
     const query = { deletedAt: null };
 
-    if (role) query.role = role;
+    if (role) query.role = { $in: [Number(role)] };
     if (status) query.status = status === "true";
     if (search)
       query.$or = [
