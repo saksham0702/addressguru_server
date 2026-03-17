@@ -1,0 +1,659 @@
+{
+  "info": {
+    "name": "Classified Backend API",
+    "description": "Complete API collection for Classified project — BusinessListing, Job, Property, Marketplace with Enquiry, Claim, Report, Review features.",
+    "_postman_id": "classified-backend-v2-collection",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl",  "value": "http://localhost:5000/api", "type": "string" },
+    { "key": "token",    "value": "YOUR_JWT_TOKEN_HERE",        "type": "string" },
+    { "key": "adminToken","value": "YOUR_ADMIN_JWT_TOKEN_HERE", "type": "string" },
+
+    { "key": "businessSlug",    "value": "achievers-dream-chemistry",  "type": "string" },
+    { "key": "jobSlug",         "value": "senior-react-developer-lahore","type": "string" },
+    { "key": "propertySlug",    "value": "3bhk-flat-dha-karachi",      "type": "string" },
+    { "key": "marketplaceSlug", "value": "iphone-14-pro-max-256gb",    "type": "string" },
+
+    { "key": "enquiryId",  "value": "", "type": "string" },
+    { "key": "claimId",    "value": "", "type": "string" },
+    { "key": "reportId",   "value": "", "type": "string" },
+    { "key": "reviewId",   "value": "", "type": "string" }
+  ],
+  "item": [
+
+    {
+      "name": "📋 Enquiry",
+      "item": [
+
+        {
+          "name": "Send Enquiry — Business",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/business/{{businessSlug}}/enquiry", "host": ["{{baseUrl}}"], "path": ["business","{{businessSlug}}","enquiry"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fullName\": \"Ahmed Khan\",\n  \"email\": \"ahmed@example.com\",\n  \"countryCode\": 92,\n  \"mobileNumber\": 3001234567,\n  \"message\": \"I would like to get more information about your chemistry tuition services.\"\n}"
+            }
+          },
+          "response": []
+        },
+
+        {
+          "name": "Send Enquiry — Job",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/job/{{jobSlug}}/enquiry", "host": ["{{baseUrl}}"], "path": ["job","{{jobSlug}}","enquiry"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fullName\": \"Sara Ali\",\n  \"email\": \"sara@example.com\",\n  \"countryCode\": 92,\n  \"mobileNumber\": 3009876543,\n  \"message\": \"I am interested in this job position. Please share more details.\"\n}"
+            }
+          },
+          "response": []
+        },
+
+        {
+          "name": "Send Enquiry — Property",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/property/{{propertySlug}}/enquiry", "host": ["{{baseUrl}}"], "path": ["property","{{propertySlug}}","enquiry"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fullName\": \"Zain Malik\",\n  \"email\": \"zain@example.com\",\n  \"countryCode\": 92,\n  \"mobileNumber\": 3111234567,\n  \"message\": \"Is this property still available? I want to schedule a visit.\"\n}"
+            }
+          },
+          "response": []
+        },
+
+        {
+          "name": "Send Enquiry — Marketplace",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/marketplace/{{marketplaceSlug}}/enquiry", "host": ["{{baseUrl}}"], "path": ["marketplace","{{marketplaceSlug}}","enquiry"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fullName\": \"Hina Shah\",\n  \"email\": \"hina@example.com\",\n  \"countryCode\": 92,\n  \"mobileNumber\": 3331234567,\n  \"message\": \"Is the price negotiable? Can I see the item?\"\n}"
+            }
+          },
+          "response": []
+        },
+
+        {
+          "name": "Get Enquiries for Listing (Owner/Admin)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/business/{{businessSlug}}/enquiries?page=1&limit=20&status=new",
+              "host": ["{{baseUrl}}"],
+              "path": ["business","{{businessSlug}}","enquiries"],
+              "query": [
+                { "key": "page",   "value": "1" },
+                { "key": "limit",  "value": "20" },
+                { "key": "status", "value": "new", "description": "new | read | replied" }
+              ]
+            }
+          },
+          "response": []
+        },
+
+        {
+          "name": "Update Enquiry Status",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type",  "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/enquiries/{{enquiryId}}", "host": ["{{baseUrl}}"], "path": ["enquiries","{{enquiryId}}"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"read\"\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          },
+          "response": []
+        }
+
+      ]
+    },
+
+    {
+      "name": "🏢 Claim Business",
+      "item": [
+
+        {
+          "name": "Submit Claim — Business",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type",  "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/business/{{businessSlug}}/claim", "host": ["{{baseUrl}}"], "path": ["business","{{businessSlug}}","claim"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fullName\": \"Dr. Ali Hassan\",\n  \"email\": \"ali@achieversdream.com\",\n  \"countryCode\": 92,\n  \"mobileNumber\": 3001112233,\n  \"reasonForClaim\": \"I am the founder and director of Achievers Dream Chemistry Tuition. I have the registration certificate and business documents to prove ownership.\"\n}"
+            }
+          },
+          "response": []
+        },
+
+        {
+          "name": "Submit Claim — Property",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type",  "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/property/{{propertySlug}}/claim", "host": ["{{baseUrl}}"], "path": ["property","{{propertySlug}}","claim"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fullName\": \"Usman Ahmed\",\n  \"email\": \"usman@example.com\",\n  \"countryCode\": 92,\n  \"mobileNumber\": 3214445566,\n  \"reasonForClaim\": \"I am the registered owner of this property. I have the property deed and NOC documents.\"\n}"
+            }
+          },
+          "response": []
+        },
+
+        {
+          "name": "Submit Claim — Marketplace",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type",  "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/marketplace/{{marketplaceSlug}}/claim", "host": ["{{baseUrl}}"], "path": ["marketplace","{{marketplaceSlug}}","claim"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fullName\": \"Bilal Raza\",\n  \"email\": \"bilal@example.com\",\n  \"countryCode\": 92,\n  \"mobileNumber\": 3456789012,\n  \"reasonForClaim\": \"This is my product listing and I posted it originally from a different account.\"\n}"
+            }
+          },
+          "response": []
+        },
+
+        {
+          "name": "Submit Claim — Job",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type",  "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/job/{{jobSlug}}/claim", "host": ["{{baseUrl}}"], "path": ["job","{{jobSlug}}","claim"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fullName\": \"HR Manager\",\n  \"email\": \"hr@techcompany.com\",\n  \"countryCode\": 92,\n  \"mobileNumber\": 3119998877,\n  \"reasonForClaim\": \"I am the HR manager at this company. This job posting belongs to our organization.\"\n}"
+            }
+          },
+          "response": []
+        },
+
+        {
+          "name": "Get Claim Status — Business",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/business/{{businessSlug}}/claim", "host": ["{{baseUrl}}"], "path": ["business","{{businessSlug}}","claim"] }
+          },
+          "response": []
+        },
+
+        {
+          "name": "Get Claim Status — Property",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/property/{{propertySlug}}/claim", "host": ["{{baseUrl}}"], "path": ["property","{{propertySlug}}","claim"] }
+          },
+          "response": []
+        },
+
+        {
+          "name": "[Admin] List All Claims",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/admin/claims?page=1&limit=20&status=pending&listingModel=BusinessListing",
+              "host": ["{{baseUrl}}"],
+              "path": ["admin","claims"],
+              "query": [
+                { "key": "page",         "value": "1" },
+                { "key": "limit",        "value": "20" },
+                { "key": "status",       "value": "pending",         "description": "pending | approved | rejected" },
+                { "key": "listingModel", "value": "BusinessListing", "description": "BusinessListing | Job | Property | Marketplace" }
+              ]
+            }
+          },
+          "response": []
+        },
+
+        {
+          "name": "[Admin] Approve Claim",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type",  "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/admin/claims/{{claimId}}", "host": ["{{baseUrl}}"], "path": ["admin","claims","{{claimId}}"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"approved\",\n  \"adminNote\": \"Ownership documents verified. Claim approved.\"\n}"
+            }
+          },
+          "response": []
+        },
+
+        {
+          "name": "[Admin] Reject Claim",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type",  "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/admin/claims/{{claimId}}", "host": ["{{baseUrl}}"], "path": ["admin","claims","{{claimId}}"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"rejected\",\n  \"adminNote\": \"Insufficient proof of ownership provided.\"\n}"
+            }
+          },
+          "response": []
+        }
+
+      ]
+    },
+
+    {
+      "name": "🚩 Report Ad",
+      "item": [
+
+        {
+          "name": "Get Report Reasons",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/report-reasons", "host": ["{{baseUrl}}"], "path": ["report-reasons"] }
+          },
+          "response": []
+        },
+
+        {
+          "name": "Report Ad — Business",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/business/{{businessSlug}}/report", "host": ["{{baseUrl}}"], "path": ["business","{{businessSlug}}","report"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Illegal/Fraudulent\",\n  \"description\": \"This business is operating without a valid license and collecting fees illegally.\"\n}"
+            }
+          },
+          "response": []
+        },
+
+        {
+          "name": "Report Ad — Job",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/job/{{jobSlug}}/report", "host": ["{{baseUrl}}"], "path": ["job","{{jobSlug}}","report"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Spam Ad\",\n  \"description\": \"This job posting is a duplicate. Same ad has been posted multiple times.\"\n}"
+            }
+          },
+          "response": []
+        },
+
+        {
+          "name": "Report Ad — Property",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/property/{{propertySlug}}/report", "host": ["{{baseUrl}}"], "path": ["property","{{propertySlug}}","report"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Duplicate Ad\",\n  \"description\": \"This property listing is already posted under a different slug.\"\n}"
+            }
+          },
+          "response": []
+        },
+
+        {
+          "name": "Report Ad — Marketplace",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/marketplace/{{marketplaceSlug}}/report", "host": ["{{baseUrl}}"], "path": ["marketplace","{{marketplaceSlug}}","report"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Other\",\n  \"description\": \"The product images are stolen from another website.\"\n}"
+            }
+          },
+          "response": []
+        },
+
+        {
+          "name": "Report Ad — All Reasons (reference)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/business/{{businessSlug}}/report", "host": ["{{baseUrl}}"], "path": ["business","{{businessSlug}}","report"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Adult Content\",\n  \"description\": \"Optional description — max 500 characters.\"\n}\n\n/* Valid reasons:\n  \"Illegal/Fraudulent\"\n  \"Spam Ad\"\n  \"Duplicate Ad\"\n  \"Ad is in the wrong category\"\n  \"Against Posting Rules\"\n  \"Adult Content\"\n  \"Other\"\n*/"
+            }
+          },
+          "response": []
+        },
+
+        {
+          "name": "[Admin] List All Reports",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/admin/reports?page=1&limit=20&status=pending&listingModel=Job",
+              "host": ["{{baseUrl}}"],
+              "path": ["admin","reports"],
+              "query": [
+                { "key": "page",         "value": "1" },
+                { "key": "limit",        "value": "20" },
+                { "key": "status",       "value": "pending",   "description": "pending | reviewed | dismissed | action_taken" },
+                { "key": "listingModel", "value": "Job",        "description": "BusinessListing | Job | Property | Marketplace" }
+              ]
+            }
+          },
+          "response": []
+        },
+
+        {
+          "name": "[Admin] Review Report — Dismiss",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type",  "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/admin/reports/{{reportId}}", "host": ["{{baseUrl}}"], "path": ["admin","reports","{{reportId}}"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"dismissed\",\n  \"adminNote\": \"Report reviewed. No violation found.\"\n}"
+            }
+          },
+          "response": []
+        },
+
+        {
+          "name": "[Admin] Review Report — Action Taken",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type",  "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/admin/reports/{{reportId}}", "host": ["{{baseUrl}}"], "path": ["admin","reports","{{reportId}}"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"action_taken\",\n  \"adminNote\": \"Listing has been suspended due to verified violation.\"\n}"
+            }
+          },
+          "response": []
+        }
+
+      ]
+    },
+
+    {
+      "name": "⭐ Reviews & Rating",
+      "item": [
+
+        {
+          "name": "Submit Review — Business",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/business/{{businessSlug}}/review", "host": ["{{baseUrl}}"], "path": ["business","{{businessSlug}}","review"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fullName\": \"Fatima Noor\",\n  \"email\": \"fatima@example.com\",\n  \"rating\": 5,\n  \"reviewText\": \"Excellent chemistry tuition! The teachers are highly qualified and the study material is top notch. My son improved from C to A grade.\"\n}"
+            }
+          },
+          "response": []
+        },
+
+        {
+          "name": "Submit Review — Job",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/job/{{jobSlug}}/review", "host": ["{{baseUrl}}"], "path": ["job","{{jobSlug}}","review"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fullName\": \"Kamran Iqbal\",\n  \"email\": \"kamran@example.com\",\n  \"rating\": 4,\n  \"reviewText\": \"Good company culture and great growth opportunities. The interview process was smooth.\"\n}"
+            }
+          },
+          "response": []
+        },
+
+        {
+          "name": "Submit Review — Property",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/property/{{propertySlug}}/review", "host": ["{{baseUrl}}"], "path": ["property","{{propertySlug}}","review"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fullName\": \"Nadia Tariq\",\n  \"email\": \"nadia@example.com\",\n  \"rating\": 3,\n  \"reviewText\": \"Good location and spacious rooms. However the building maintenance needs improvement.\"\n}"
+            }
+          },
+          "response": []
+        },
+
+        {
+          "name": "Submit Review — Marketplace",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/marketplace/{{marketplaceSlug}}/review", "host": ["{{baseUrl}}"], "path": ["marketplace","{{marketplaceSlug}}","review"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fullName\": \"Omar Farooq\",\n  \"email\": \"omar@example.com\",\n  \"rating\": 5,\n  \"reviewText\": \"Item was exactly as described. Fast delivery and well packed. Highly recommend this seller!\"\n}"
+            }
+          },
+          "response": []
+        },
+
+        {
+          "name": "Get Reviews — Business (newest)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/business/{{businessSlug}}/reviews?page=1&limit=10&sort=newest",
+              "host": ["{{baseUrl}}"],
+              "path": ["business","{{businessSlug}}","reviews"],
+              "query": [
+                { "key": "page",  "value": "1" },
+                { "key": "limit", "value": "10" },
+                { "key": "sort",  "value": "newest", "description": "newest | oldest | highest | lowest" }
+              ]
+            }
+          },
+          "response": []
+        },
+
+        {
+          "name": "Get Reviews — Business (highest rated)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/business/{{businessSlug}}/reviews?sort=highest",
+              "host": ["{{baseUrl}}"],
+              "path": ["business","{{businessSlug}}","reviews"],
+              "query": [
+                { "key": "sort", "value": "highest" }
+              ]
+            }
+          },
+          "response": []
+        },
+
+        {
+          "name": "Get Reviews — Job",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/job/{{jobSlug}}/reviews?page=1&limit=10&sort=newest",
+              "host": ["{{baseUrl}}"],
+              "path": ["job","{{jobSlug}}","reviews"],
+              "query": [
+                { "key": "page",  "value": "1" },
+                { "key": "limit", "value": "10" },
+                { "key": "sort",  "value": "newest" }
+              ]
+            }
+          },
+          "response": []
+        },
+
+        {
+          "name": "Get Reviews — Property",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/property/{{propertySlug}}/reviews?page=1&limit=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["property","{{propertySlug}}","reviews"],
+              "query": [
+                { "key": "page",  "value": "1" },
+                { "key": "limit", "value": "10" }
+              ]
+            }
+          },
+          "response": []
+        },
+
+        {
+          "name": "Get Reviews — Marketplace",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/marketplace/{{marketplaceSlug}}/reviews?page=1&limit=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["marketplace","{{marketplaceSlug}}","reviews"],
+              "query": [
+                { "key": "page",  "value": "1" },
+                { "key": "limit", "value": "10" }
+              ]
+            }
+          },
+          "response": []
+        },
+
+        {
+          "name": "[Admin] Approve Review",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type",  "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/admin/reviews/{{reviewId}}", "host": ["{{baseUrl}}"], "path": ["admin","reviews","{{reviewId}}"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"approved\"\n}"
+            }
+          },
+          "response": []
+        },
+
+        {
+          "name": "[Admin] Reject Review",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type",  "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/admin/reviews/{{reviewId}}", "host": ["{{baseUrl}}"], "path": ["admin","reviews","{{reviewId}}"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"rejected\"\n}"
+            }
+          },
+          "response": []
+        },
+
+        {
+          "name": "Delete Review — Business",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{baseUrl}}/business/{{businessSlug}}/reviews/{{reviewId}}", "host": ["{{baseUrl}}"], "path": ["business","{{businessSlug}}","reviews","{{reviewId}}"] }
+          },
+          "response": []
+        },
+
+        {
+          "name": "Delete Review — Job",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{baseUrl}}/job/{{jobSlug}}/reviews/{{reviewId}}", "host": ["{{baseUrl}}"], "path": ["job","{{jobSlug}}","reviews","{{reviewId}}"] }
+          },
+          "response": []
+        }
+
+      ]
+    },
+
+    {
+      "name": "🔧 Quick Test (by ObjectId)",
+      "item": [
+
+        {
+          "name": "Send Enquiry by ObjectId",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/business/64f1a2b3c4d5e6f7a8b9c0d1/enquiry", "host": ["{{baseUrl}}"], "path": ["business","64f1a2b3c4d5e6f7a8b9c0d1","enquiry"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fullName\": \"Test User\",\n  \"email\": \"test@example.com\",\n  \"countryCode\": 92,\n  \"mobileNumber\": 3001234567,\n  \"message\": \"Testing enquiry via ObjectId.\"\n}"
+            }
+          },
+          "response": []
+        },
+
+        {
+          "name": "Get Reviews by ObjectId",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/job/64f1a2b3c4d5e6f7a8b9c0d2/reviews",
+              "host": ["{{baseUrl}}"],
+              "path": ["job","64f1a2b3c4d5e6f7a8b9c0d2","reviews"]
+            }
+          },
+          "response": []
+        }
+
+      ]
+    }
+
+  ]
+}

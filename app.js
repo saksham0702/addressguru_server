@@ -29,6 +29,7 @@ import jobsListingRouter from "./routes/jobsListingRouter.js";
 import additionalFieldRouter from "./routes/additionalField.Router.js";
 import featureRouter from "./routes/feature.Router.js";
 import googleListingRoutes from "./routes/googleListingRouter.js";
+import listingFeaturesRoutes from "./routes/listingFeatures.Router.js";
 
 var app = express();
 
@@ -126,6 +127,8 @@ app.use(`/user`, usersRouter);
 app.use(`/features`, featureRouter);
 
 app.use(`/google-listing`, googleListingRoutes);
+
+app.use(`/`, listingFeaturesRoutes);
 
 app.get("/test-cookie", (req, res) => {
   console.log("cookies:", req.cookies);
