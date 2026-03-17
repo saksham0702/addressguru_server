@@ -14,10 +14,10 @@ const router = express.Router();
 router.post(
   "/create-listing",  
   setUploadFolder("business-listings"),
-  upload.fields([
-    { name: "logo", maxCount: 1 },
-    { name: "images", maxCount: 10 },
-  ]),
+  // upload.fields([
+  //   { name: "logo", maxCount: 1 },
+  //   { name: "images", maxCount: 10 },
+  // ]),
   validateStep(businessStepSchemas),
   createListing,
 );

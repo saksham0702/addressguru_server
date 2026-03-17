@@ -49,8 +49,10 @@ const marketplaceListingSchema = new mongoose.Schema(
       type: [additionalFieldValueSchema],
       default: [],
     },
+     // step -2
+    images: [String],
 
-    // step -2
+    // step -3
     contactPersonName: String,
     email: { type: String, lowercase: true },
     countryCode: String,
@@ -59,25 +61,15 @@ const marketplaceListingSchema = new mongoose.Schema(
     alternateMobileNumber: Number,
     locality: String,
     address: String,
-    city: { type: mongoose.Schema.Types.ObjectId, ref: "City" },
+    // city: { type: mongoose.Schema.Types.ObjectId, ref: "City" },
+    city: String,
 
-    // step -3
-    websiteLink: String,
-    videoLink: String,
-    socialLinks: {
-      facebook: String,
-      instagram: String,
-      twitter: String,
-      linkedin: String,
-      youtube: String,
-    },
 
     // step -4
     seo: { title: String, description: String },
-    // step -5
-    images: [String],
+   
 
-    // step -6
+    // step -5
     plan: { type: mongoose.Schema.Types.ObjectId, ref: "Plan" },
 
     // status & flow

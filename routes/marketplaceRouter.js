@@ -1,6 +1,5 @@
 // ─── routes/marketplaceListing.routes.js ─────────────────────────────────────
 import express from "express";
-import { validateStep } from "../middleware/validateStep.js";
 // import { marketplaceStepSchemas } from "../validations/marketplace.validator.js";
 import {
   createMarketplaceListing,
@@ -12,20 +11,21 @@ import {
 } from "../controller/marketplace.Controller.js";
 import { setUploadFolder } from "../middleware/setUploadFolder.js";
 import upload from "../middleware/multerConfig.js";
-
+import { validateMarketplaceStep } from "../middleware/validateMarketplace.js";
 const router = express.Router();
 
 router.post(
-  "/create-listing",
-  setUploadFolder("marketplace-listings"),
-//  validateStep(marketplaceStepSchemas),
+  "/create-listing/step/:step",
+  // setUploadFolder("marketplace-listings"),
+  validateMarketplaceStep,
   createMarketplaceListing,
 );
 
 router.put(
   "/update-listing/:slug/step/:step",
-  setUploadFolder("marketplace-listings"),
-  upload.fields([{ name: "images", maxCount: 15 }]),
+  validateMarketplaceStep,
+  // setUploadFolder("marketplace-listings"),
+  // upload.fields([{ name: "images", maxCount: 15 }]),
   // validateStep(marketplaceStepSchemas),
   updateMarketplaceListingStep,
 );

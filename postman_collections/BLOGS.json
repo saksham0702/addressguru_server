@@ -1,0 +1,332 @@
+{
+  "info": {
+    "name": "Blog API",
+    "_postman_id": "blog-api-collection-001",
+    "description": "Postman collection for Blog API — public and admin routes including blogs and categories.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:5000/api/blogs",
+      "type": "string"
+    },
+    {
+      "key": "blogId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "blogSlug",
+      "value": "my-first-blog",
+      "type": "string"
+    },
+    {
+      "key": "categoryId",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Public",
+      "item": [
+        {
+          "name": "Get All Blogs",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/get-blogs?page=1&limit=10&search=",
+              "host": ["{{baseUrl}}"],
+              "path": ["get-blogs"],
+              "query": [
+                { "key": "page", "value": "1", "description": "Page number (default: 1)" },
+                { "key": "limit", "value": "10", "description": "Results per page (default: 10)" },
+                { "key": "search", "value": "", "description": "Search by title, excerpt, or tags" }
+              ]
+            },
+            "description": "Fetch paginated published blogs with optional search."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Recent Blogs",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/get-recent-blogs?limit=6",
+              "host": ["{{baseUrl}}"],
+              "path": ["get-recent-blogs"],
+              "query": [
+                { "key": "limit", "value": "6", "description": "Number of recent blogs to return (default: 6)" }
+              ]
+            },
+            "description": "Fetch the most recently published blogs."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Most Viewed Blogs",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/get-most-viewed-blogs?limit=5",
+              "host": ["{{baseUrl}}"],
+              "path": ["get-most-viewed-blogs"],
+              "query": [
+                { "key": "limit", "value": "5", "description": "Number of top-viewed blogs to return (default: 5)" }
+              ]
+            },
+            "description": "Fetch blogs sorted by highest view count."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Featured Blogs",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/get-featured-blogs",
+              "host": ["{{baseUrl}}"],
+              "path": ["get-featured-blogs"]
+            },
+            "description": "Fetch up to 6 featured published blogs."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Blogs by Category",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/get-blogs-by-category/{{categoryId}}?page=1&limit=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["get-blogs-by-category", "{{categoryId}}"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "limit", "value": "10" }
+              ]
+            },
+            "description": "Fetch paginated published blogs filtered by category ID."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Blog by Slug",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/get-blog-by-slug/{{blogSlug}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["get-blog-by-slug", "{{blogSlug}}"]
+            },
+            "description": "Fetch a single published blog by its slug. Also increments the view count."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Blog Categories",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/get-blog-categories",
+              "host": ["{{baseUrl}}"],
+              "path": ["get-blog-categories"]
+            },
+            "description": "Fetch all active blog categories along with their published blog counts."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Admin — Blogs",
+      "item": [
+        {
+          "name": "Admin: Get All Blogs",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/get-all-blogs?page=1&limit=10&status=&search=",
+              "host": ["{{baseUrl}}"],
+              "path": ["admin", "get-all-blogs"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "limit", "value": "10" },
+                { "key": "status", "value": "", "description": "Filter by status: draft | published" },
+                { "key": "search", "value": "", "description": "Search by title" }
+              ]
+            },
+            "description": "Admin: Fetch all blogs (all statuses) with pagination, status filter, and title search."
+          },
+          "response": []
+        },
+        {
+          "name": "Admin: Create Blog",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "title", "value": "My First Blog Post", "type": "text", "description": "Required" },
+                { "key": "content", "value": "<p>This is the blog content in HTML.</p>", "type": "text", "description": "Required" },
+                { "key": "excerpt", "value": "A short summary of the blog post.", "type": "text" },
+                { "key": "category_id", "value": "{{categoryId}}", "type": "text" },
+                { "key": "tags", "value": "[\"nodejs\",\"express\"]", "type": "text", "description": "JSON array string" },
+                { "key": "status", "value": "draft", "type": "text", "description": "draft | published" },
+                { "key": "featured", "value": "false", "type": "text", "description": "true | false" },
+                { "key": "relatedPosts", "value": "[]", "type": "text", "description": "JSON array of blog ObjectIds" },
+                { "key": "authorName", "value": "John Doe", "type": "text", "description": "Required" },
+                { "key": "authorBio", "value": "Full-stack developer and writer.", "type": "text" },
+                { "key": "authorJobTitle", "value": "Senior Developer", "type": "text" },
+                { "key": "authorUserId", "value": "", "type": "text" },
+                { "key": "authorTwitter", "value": "https://twitter.com/johndoe", "type": "text" },
+                { "key": "authorLinkedin", "value": "https://linkedin.com/in/johndoe", "type": "text" },
+                { "key": "authorGithub", "value": "https://github.com/johndoe", "type": "text" },
+                { "key": "authorWebsite", "value": "https://johndoe.dev", "type": "text" },
+                { "key": "seoTitle", "value": "My First Blog Post | Site Name", "type": "text" },
+                { "key": "seoDescription", "value": "SEO meta description for the blog post.", "type": "text" },
+                { "key": "seoKeywords", "value": "[\"nodejs\",\"blog\"]", "type": "text", "description": "JSON array string" },
+                { "key": "seoOgImage", "value": "", "type": "text" },
+                { "key": "coverImage", "type": "file", "src": [], "description": "Cover image file upload" },
+                { "key": "authorAvatar", "type": "file", "src": [], "description": "Author avatar file upload" }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/admin/create-blog",
+              "host": ["{{baseUrl}}"],
+              "path": ["admin", "create-blog"]
+            },
+            "description": "Admin: Create a new blog post. Accepts multipart/form-data with optional coverImage and authorAvatar file uploads."
+          },
+          "response": []
+        },
+        {
+          "name": "Admin: Update Blog",
+          "request": {
+            "method": "PUT",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "title", "value": "Updated Blog Title", "type": "text" },
+                { "key": "content", "value": "<p>Updated content.</p>", "type": "text" },
+                { "key": "excerpt", "value": "Updated excerpt.", "type": "text" },
+                { "key": "category_id", "value": "{{categoryId}}", "type": "text" },
+                { "key": "tags", "value": "[\"updated\",\"tag\"]", "type": "text" },
+                { "key": "status", "value": "published", "type": "text" },
+                { "key": "featured", "value": "true", "type": "text" },
+                { "key": "relatedPosts", "value": "[]", "type": "text" },
+                { "key": "authorName", "value": "Jane Doe", "type": "text" },
+                { "key": "authorBio", "value": "Updated bio.", "type": "text" },
+                { "key": "authorJobTitle", "value": "Tech Lead", "type": "text" },
+                { "key": "authorUserId", "value": "", "type": "text" },
+                { "key": "authorTwitter", "value": "", "type": "text" },
+                { "key": "authorLinkedin", "value": "", "type": "text" },
+                { "key": "authorGithub", "value": "", "type": "text" },
+                { "key": "authorWebsite", "value": "", "type": "text" },
+                { "key": "seoTitle", "value": "Updated Blog | Site Name", "type": "text" },
+                { "key": "seoDescription", "value": "Updated SEO description.", "type": "text" },
+                { "key": "seoKeywords", "value": "[\"updated\"]", "type": "text" },
+                { "key": "seoOgImage", "value": "", "type": "text" },
+                { "key": "coverImage", "type": "file", "src": [], "description": "New cover image (optional — replaces old)" },
+                { "key": "authorAvatar", "type": "file", "src": [], "description": "New author avatar (optional — replaces old)" }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/admin/update-blog/{{blogId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["admin", "update-blog", "{{blogId}}"]
+            },
+            "description": "Admin: Update an existing blog post by ID. Only send fields you want to change. New images replace and delete the old ones."
+          },
+          "response": []
+        },
+        {
+          "name": "Admin: Delete Blog",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/delete-blog/{{blogId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["admin", "delete-blog", "{{blogId}}"]
+            },
+            "description": "Admin: Delete a blog post by ID. Also deletes associated coverImage and authorAvatar files from disk."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Admin — Categories",
+      "item": [
+        {
+          "name": "Admin: Create Category",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Technology\",\n  \"description\": \"Articles about the latest in tech.\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/admin/create-category",
+              "host": ["{{baseUrl}}"],
+              "path": ["admin", "create-category"]
+            },
+            "description": "Admin: Create a new blog category. Slug is auto-generated from the name."
+          },
+          "response": []
+        },
+        {
+          "name": "Admin: Update Category",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Updated Category Name\",\n  \"description\": \"Updated description.\",\n  \"status\": \"active\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/admin/update-category/{{categoryId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["admin", "update-category", "{{categoryId}}"]
+            },
+            "description": "Admin: Update a blog category by ID. Re-slugs automatically if name changes. Status: active | inactive."
+          },
+          "response": []
+        },
+        {
+          "name": "Admin: Delete Category",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/delete-category/{{categoryId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["admin", "delete-category", "{{categoryId}}"]
+            },
+            "description": "Admin: Delete a blog category by ID."
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}
