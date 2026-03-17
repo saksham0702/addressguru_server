@@ -51,6 +51,7 @@ const toArray = (val) => (Array.isArray(val) ? val : [val].filter(Boolean));
 
 // ─── POST /marketplace-listings ───────────────────────────────────────────────
 export const createMarketplaceListing = async (req, res) => {
+  console.log("category-id",req.body)
   try {
     const {
       category_id,
@@ -194,8 +195,8 @@ export const updateMarketplaceListingStep = async (req, res) => {
         break;
       }
 
-      /* ── STEP 2 – CONTACT DETAILS ── */
-      case 2: {
+      /* ── STEP 3– CONTACT DETAILS ── */
+      case 3: {
         listing.contactPersonName = req.body.name || null;
         listing.email = req.body.email || null;
         listing.countryCode = req.body.country_code || null;
@@ -208,19 +209,6 @@ export const updateMarketplaceListingStep = async (req, res) => {
         break;
       }
 
-      /* ── STEP 3 – SOCIAL & LINKS ── */
-      case 3: {
-        listing.websiteLink = req.body.website_link || null;
-        listing.videoLink = req.body.video_link || null;
-        listing.socialLinks = {
-          facebook: req.body.facebook || null,
-          instagram: req.body.instagram || null,
-          twitter: req.body.twitter || null,
-          linkedin: req.body.linkedin || null,
-          youtube: req.body.youtube || null,
-        };
-        break;
-      }
 
       /* ── STEP 4 – SEO ── */
       case 4: {
@@ -232,7 +220,7 @@ export const updateMarketplaceListingStep = async (req, res) => {
       }
 
       /* ── STEP 5 – MEDIA ── */
-      case 5: {
+      case 2: {
         if (req.files?.images?.length > 0) {
           const newImages = req.files.images.map((img) => img.path);
           listing.images = [...(listing.images || []), ...newImages];

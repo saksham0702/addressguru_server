@@ -1,5 +1,5 @@
 // ─── propertyListingController.js ────────────────────────────────────────────
-import PropertyListing from "../model/propertyListingSchema.js";
+import PropertyListing from "../model/propertiesListingSchema.js";
 import AdditionalField from "../model/additionalFieldSchema.js";
 import slugify from "slugify";
 import { successData, errorData } from "../services/helper.js";
@@ -54,25 +54,16 @@ export const createPropertyListing = async (req, res) => {
     const {
       category_id,
       sub_category_id,
+      city_id,
       title,
       description,
       purpose,
-      property_type,
       price_amount,
       price_currency = "AED",
       price_negotiable = false,
       price_period = "one-time",
       area_size,
-      area_unit = "square-meter",
-      bedrooms,
-      bathrooms,
-      floor_number,
-      total_floors,
-      construction_status = "ready",
-      furnishing = "unfurnished",
-      amenities = [],
-      utilities = [],
-      nearby_places = [],
+      area_unit = "marla",
       payments = [],
       additional_fields = [],
     } = req.body;
@@ -102,7 +93,6 @@ export const createPropertyListing = async (req, res) => {
       title,
       description,
       purpose,
-      propertyType: property_type,
       price: {
         amount: price_amount || null,
         currency: price_currency,
@@ -113,15 +103,6 @@ export const createPropertyListing = async (req, res) => {
         size: area_size || null,
         unit: area_unit,
       },
-      bedrooms: bedrooms || null,
-      bathrooms: bathrooms || null,
-      floorNumber: floor_number || null,
-      totalFloors: total_floors || null,
-      constructionStatus: construction_status,
-      furnishing: furnishing,
-      amenities: toArray(amenities),
-      utilities: toArray(utilities),
-      nearbyPlaces: toArray(nearby_places),
       paymentModes: toArray(payments),
       additionalFields: validated,
       slug,
@@ -168,22 +149,12 @@ export const updatePropertyListingStep = async (req, res) => {
           title,
           description,
           purpose,
-          property_type,
           price_amount,
-          price_currency = "PKR",
+          price_currency = "AED",
           price_negotiable = false,
           price_period = "one-time",
           area_size,
           area_unit = "marla",
-          bedrooms,
-          bathrooms,
-          floor_number,
-          total_floors,
-          construction_status = "ready",
-          furnishing = "unfurnished",
-          amenities = [],
-          utilities = [],
-          nearby_places = [],
           payments = [],
           additional_fields = [],
         } = req.body;
@@ -214,7 +185,6 @@ export const updatePropertyListingStep = async (req, res) => {
         listing.city = city_id;
         listing.description = description || null;
         listing.purpose = purpose;
-        listing.propertyType = property_type;
         listing.price = {
           amount: price_amount || null,
           currency: price_currency,
@@ -222,32 +192,21 @@ export const updatePropertyListingStep = async (req, res) => {
           period: price_period,
         };
         listing.area = { size: area_size || null, unit: area_unit };
-        listing.bedrooms = bedrooms || null;
-        listing.bathrooms = bathrooms || null;
-        listing.floorNumber = floor_number || null;
-        listing.totalFloors = total_floors || null;
-        listing.constructionStatus = construction_status;
-        listing.furnishing = furnishing;
-        listing.amenities = toArray(amenities);
-        listing.utilities = toArray(utilities);
-        listing.nearbyPlaces = toArray(nearby_places);
         listing.paymentModes = toArray(payments);
         listing.additionalFields = validated;
         break;
       }
 
-      /* ── STEP 2 – LOCATION ── */
+      /* ── STEP 2 – MEDIA (IMAGES) ── */
       case 2: {
-        listing.location = {
-          address: req.body.address || null,
-          locality: req.body.locality || null,
-          mapLat: req.body.map_lat || null,
-          mapLng: req.body.map_lng || null,
-        };
+        if (req.files?.images?.length > 0) {
+          const newImages = req.files.images.map((img) => img.path);
+          listing.images = [...(listing.images || []), ...newImages];
+        }
         break;
       }
 
-      /* ── STEP 3 – CONTACT ── */
+      /* ── STEP 3 – CONTACT DETAILS ── */
       case 3: {
         listing.contactPersonName = req.body.name || null;
         listing.email = req.body.email || null;
@@ -279,20 +238,8 @@ export const updatePropertyListingStep = async (req, res) => {
         break;
       }
 
-      /* ── STEP 6 – MEDIA ── */
+      /* ── STEP 6 – PLAN & PUBLISH ── */
       case 6: {
-        if (req.files?.images?.length > 0) {
-          const newImages = req.files.images.map((img) => img.path);
-          listing.images = [...(listing.images || []), ...newImages];
-        }
-        if (req.files?.floor_plan?.[0]) {
-          listing.floorPlan = req.files.floor_plan[0].path;
-        }
-        break;
-      }
-
-      /* ── STEP 7 – PLAN & PUBLISH ── */
-      case 7: {
         listing.plan = req.body.plan_id;
         listing.isPublished = true;
         break;

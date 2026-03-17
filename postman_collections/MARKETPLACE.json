@@ -1,0 +1,161 @@
+{
+  "info": {
+    "name": "Marketplace Listing API",
+    "_postman_id": "marketplace-collection-001",
+    "description": "Step-wise Marketplace Listing APIs",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:5000/marketplace"
+    },
+    {
+      "key": "slug",
+      "value": "your-listing-slug"
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Create Listing (Step 1)",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"category_id\": \"65f1234567890abcdef1234\",\n  \"sub_category_id\": \"65f1234567890abcdef5678\",\n  \"title\": \"iPhone 14 Pro\",\n  \"description\": \"Almost new condition\",\n  \"condition\": \"used-like-new\",\n  \"price_amount\": 900,\n  \"price_currency\": \"AED\",\n  \"price_negotiable\": true,\n  \"price_fixed\": false,\n  \"price_free\": false,\n  \"additional_fields\": []\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/create-listing",
+          "host": ["{{base_url}}"],
+          "path": ["create-listing"]
+        }
+      }
+    },
+    {
+      "name": "2. Step 2 - Upload Images",
+      "request": {
+        "method": "PUT",
+        "body": {
+          "mode": "formdata",
+          "formdata": [
+            {
+              "key": "images",
+              "type": "file",
+              "src": []
+            }
+          ]
+        },
+        "url": {
+          "raw": "{{base_url}}/update-listing/{{slug}}/step/2",
+          "host": ["{{base_url}}"],
+          "path": ["update-listing", "{{slug}}", "step", "2"]
+        }
+      }
+    },
+    {
+      "name": "3. Step 3 - Contact Details",
+      "request": {
+        "method": "PUT",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"John Doe\",\n  \"email\": \"john@example.com\",\n  \"country_code\": \"+91\",\n  \"mobile_number\": 9999999999,\n  \"alt_country_code\": \"+91\",\n  \"second_mobile_number\": 8888888888,\n  \"locality\": \"Sector 62\",\n  \"address\": \"Noida\",\n  \"city_id\": \"Delhi\"\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/update-listing/{{slug}}/step/3",
+          "host": ["{{base_url}}"],
+          "path": ["update-listing", "{{slug}}", "step", "3"]
+        }
+      }
+    },
+    {
+      "name": "4. Step 4 - SEO",
+      "request": {
+        "method": "PUT",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"seo_title\": \"Best iPhone Deal\",\n  \"seo_description\": \"Buy iPhone at best price\"\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/update-listing/{{slug}}/step/4",
+          "host": ["{{base_url}}"],
+          "path": ["update-listing", "{{slug}}", "step", "4"]
+        }
+      }
+    },
+    {
+      "name": "5. Step 5 - Select Plan & Publish",
+      "request": {
+        "method": "PUT",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"plan_id\": \"65fplan1234567890abcd\"\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/update-listing/{{slug}}/step/6",
+          "host": ["{{base_url}}"],
+          "path": ["update-listing", "{{slug}}", "step", "6"]
+        }
+      }
+    },
+    {
+      "name": "6. Get All Listings",
+      "request": {
+        "method": "GET",
+        "url": {
+          "raw": "{{base_url}}/get-all-listings?page=1&limit=10",
+          "host": ["{{base_url}}"],
+          "path": ["get-all-listings"],
+          "query": [
+            { "key": "page", "value": "1" },
+            { "key": "limit", "value": "10" }
+          ]
+        }
+      }
+    },
+    {
+      "name": "7. Get Listing By Slug",
+      "request": {
+        "method": "GET",
+        "url": {
+          "raw": "{{base_url}}/get-listing-by-slug/{{slug}}",
+          "host": ["{{base_url}}"],
+          "path": ["get-listing-by-slug", "{{slug}}"]
+        }
+      }
+    },
+    {
+      "name": "8. Mark As Sold",
+      "request": {
+        "method": "PATCH",
+        "url": {
+          "raw": "{{base_url}}/mark-as-sold/{{slug}}",
+          "host": ["{{base_url}}"],
+          "path": ["mark-as-sold", "{{slug}}"]
+        }
+      }
+    },
+    {
+      "name": "9. Delete Listing",
+      "request": {
+        "method": "DELETE",
+        "url": {
+          "raw": "{{base_url}}/delete-listing/{{slug}}",
+          "host": ["{{base_url}}"],
+          "path": ["delete-listing", "{{slug}}"]
+        }
+      }
+    }
+  ]
+}

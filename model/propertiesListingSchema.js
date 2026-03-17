@@ -26,7 +26,6 @@ const propertyListingSchema = new mongoose.Schema(
       required: true,
     },
     subCategory: { type: mongoose.Schema.Types.ObjectId, ref: "SubCategory" },
-    city: { type: mongoose.Schema.Types.ObjectId, ref: "City", required: true },
 
     /* =========================
        STEP 1 – PROPERTY INFO
@@ -39,26 +38,25 @@ const propertyListingSchema = new mongoose.Schema(
       enum: ["sale", "rent", "lease"], // for-sale / for-rent / for-lease
       required: true,
     },
-
-    propertyType: {
-      type: String,
-      enum: [
-        "house",
-        "apartment",
-        "plot",
-        "commercial",
-        "office",
-        "shop",
-        "warehouse",
-        "room",
-        "other",
-      ],
-      required: true,
-    },
+    // propertyType: {
+    //   type: String,
+    //   enum: [
+    //     "house",
+    //     "apartment",
+    //     "plot",
+    //     "commercial",
+    //     "office",
+    //     "shop",
+    //     "warehouse",
+    //     "room",
+    //     "other",
+    //   ],
+    //   required: true,
+    // },
 
     price: {
       amount: { type: Number, default: null },
-      currency: { type: String, default: "PKR" },
+      currency: { type: String, default: "AED" },
       isNegotiable: { type: Boolean, default: false },
       period: {
         // relevant for rent/lease
@@ -78,25 +76,6 @@ const propertyListingSchema = new mongoose.Schema(
       },
     },
 
-    // ── Rooms ─────────────────────────────────────────────────────────────
-    bedrooms: { type: Number, default: null },
-    bathrooms: { type: Number, default: null },
-
-    floorNumber: { type: Number, default: null }, // which floor
-    totalFloors: { type: Number, default: null }, // total floors in building
-
-    constructionStatus: {
-      type: String,
-      enum: ["ready", "under-construction", "off-plan"],
-      default: "ready",
-    },
-
-    furnishing: {
-      type: String,
-      enum: ["furnished", "semi-furnished", "unfurnished"],
-      default: "unfurnished",
-    },
-
     // dynamic fields per category
     additionalFields: {
       type: [additionalFieldValueSchema],
@@ -104,30 +83,27 @@ const propertyListingSchema = new mongoose.Schema(
     },
 
     // CategoryFeature-linked arrays
-    amenities: [{ type: mongoose.Schema.Types.ObjectId }], // parking, pool, gym…
-    utilities: [{ type: mongoose.Schema.Types.ObjectId }], // gas, water, electricity…
-    nearbyPlaces: [{ type: mongoose.Schema.Types.ObjectId }], // school, hospital, market…
+    // amenities: [{ type: mongoose.Schema.Types.ObjectId }], // parking, pool, gym…
+    // utilities: [{ type: mongoose.Schema.Types.ObjectId }], // gas, water, electricity…
+    // nearbyPlaces: [{ type: mongoose.Schema.Types.ObjectId }], // school, hospital, market…
     paymentModes: [{ type: mongoose.Schema.Types.ObjectId }],
-
-    /* =========================
-       STEP 2 – LOCATION
-    ========================== */
-    location: {
-      address: String,
-      locality: String,
-      mapLat: Number, // latitude  for map pin
-      mapLng: Number, // longitude for map pin
-    },
 
     /* =========================
        STEP 3 – CONTACT DETAILS
     ========================== */
     contactPersonName: String,
     email: { type: String, lowercase: true },
+    city: { type: mongoose.Schema.Types.ObjectId, ref: "City", required: true },
     countryCode: Number,
     mobileNumber: Number,
     altCountryCode: Number,
     alternateMobileNumber: Number,
+    location: {
+      address: String,
+      locality: String,
+      mapLat: Number, // latitude  for map pin
+      mapLng: Number, // longitude for map pin
+    },
 
     /* =========================
        STEP 4 – SOCIAL & LINKS
@@ -147,11 +123,9 @@ const propertyListingSchema = new mongoose.Schema(
     slug: { type: String, unique: true, index: true },
 
     /* =========================
-       STEP 6 – MEDIA
+       STEP 2 – MEDIA
     ========================== */
     images: [String],
-    floorPlan: String, // single floor plan image URL
-
     /* =========================
        STEP 7 – PLAN
     ========================== */

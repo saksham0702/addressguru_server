@@ -30,6 +30,7 @@ import additionalFieldRouter from "./routes/additionalField.Router.js";
 import featureRouter from "./routes/feature.Router.js";
 import adminUserRouter from "./routes/adminUser.Router.js";
 import marketplaceListingRouter from "./routes/marketplaceRouter.js";
+import blogRouter from "./routes/blog.Router.js";
 
 var app = express();
 
@@ -42,7 +43,7 @@ const allowedOrigins = [
   "http://localhost:3002",
   "http://localhost:3001",
   "https://addressguru.ae",
-  "*"
+  "*",
   // Add any other frontend origins here
 ];
 
@@ -69,6 +70,7 @@ app.use(express.static(join(__dirname, "public")));
 
 // Serve uploaded images publicly
 // app.use("/uploads", express.static(path.join(process.cwd(), "public")));
+app.use("/uploads", express.static(join(process.cwd(), "uploads")));
 
 app.get("/api", async (req, res) => {
   const html = `
@@ -128,6 +130,7 @@ app.use(`/user`, usersRouter);
 app.use(`/jobs-listing`, jobsListingRouter);
 app.use(`/admin/users`, adminUserRouter);
 app.use(`/features`, featureRouter);
+app.use(`/blogs`, blogRouter);
 
 app.get("/test-cookie", (req, res) => {
   console.log("cookies:", req.cookies);
@@ -155,7 +158,8 @@ app.use(function (err, req, res, next) {
   res.locals.error = req.app.get("env") === "development" ? err : {};
   // Log error with Winston
   logger.error(
-    `${err.status || 500} - ${err.message} - ${req.originalUrl} - ${req.method
+    `${err.status || 500} - ${err.message} - ${req.originalUrl} - ${
+      req.method
     } - ${req.ip}`,
   );
 
