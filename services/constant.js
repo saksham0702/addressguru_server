@@ -82,6 +82,19 @@ export const VALID_ROLES = Object.values(ROLES); // [1,2,3,4,5]
 // );
 
 // API_PREFIX ROLES
+export const ROLE_PREFIX = {
+  ADMIN: "admin",
+  BDE: "bde",
+  LISTPARTNER: "listpartner",
+  USER: "user",
+};
+
+
+// FOURSQUARE MAP API
+export const FOURSQUARE_API_KEY = process.env.FOURSQUARE_API_KEY;
+
+// GOOGLE
+export const GOOGLE_API_KEY = process.env.GOOGLE_API_KEY;
 // export const ROLE_PREFIX = {
 //   ADMIN: "admin",
 //   BDE: "bde",

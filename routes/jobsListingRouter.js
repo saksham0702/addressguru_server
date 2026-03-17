@@ -8,7 +8,7 @@ import {
   deleteJob,
 } from "../controller/jobsListing.Controller.js";
 import upload from "../middleware/multerConfig.js";
-import authenticate from "../middleware/userAuth.js";
+import {authenticate} from "../middleware/userAuth.js";
 
 const router = express.Router();
 
@@ -19,11 +19,11 @@ const jobUpload = upload.fields([
 
 router
   .route("/save-job/:step")
-  .post(jobUpload, authenticate, validateStep(jobStepSchemas), saveJobStep)
-  .put(jobUpload, authenticate, validateStep(jobStepSchemas), saveJobStep);
+  .post(jobUpload, validateStep(jobStepSchemas), saveJobStep)
+  .put(jobUpload, validateStep(jobStepSchemas), saveJobStep);
 
 router.get("/get-all-jobs", getAllJobsWithPaginationAndFilters);
-router.get("/get-job/:slug", getJobById)
+router.get("/get-job/:slug", getJobById);
 router.delete("/delete-job/:slug", deleteJob);
 
 export default router;

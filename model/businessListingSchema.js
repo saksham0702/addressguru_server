@@ -39,11 +39,6 @@ const businessListingSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "SubCategory",
     },
-    city: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "City",
-      // required: true,
-    },
 
     /* =========================
        STEP 1 – BUSINESS INFO
@@ -124,6 +119,16 @@ const businessListingSchema = new mongoose.Schema(
     isVerified: { type: Boolean, default: false },
     isPublished: { type: Boolean, default: false },
     createdBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+
+    provider: {
+      type: String,
+      enum: ["google", "user"],
+    },
+
+    approvedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+    },
 
     /* =========================
        SOFT DELETE

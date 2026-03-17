@@ -12,7 +12,7 @@ import {
   updateProfile,
   verifyOTP,
 } from "../controller/user.Controller.js";
-import authenticate from "../middleware/userAuth.js";
+import {authenticate} from "../middleware/userAuth.js";
 import upload from "../middleware/multerConfig.js";
 
 const router = express.Router();

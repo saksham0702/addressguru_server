@@ -1,0 +1,563 @@
+{
+  "info": {
+    "name": "Job Application API",
+    "_postman_id": "job-application-collection-v1",
+    "description": "Complete API collection for Job Application section — Apply, Manage, Status Updates, Stats",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:5000",
+      "type": "string"
+    },
+    {
+      "key": "jobSlug",
+      "value": "software-engineer-at-techcorp",
+      "type": "string"
+    },
+    {
+      "key": "applicationId",
+      "value": "665f1a2b3c4d5e6f7a8b9c0d",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "📨 Apply for Job",
+      "item": [
+        {
+          "name": "Apply (Guest — no login)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "fullName",        "value": "John Doe",              "type": "text" },
+                { "key": "email",           "value": "john@example.com",      "type": "text" },
+                { "key": "phone",           "value": "+923001234567",          "type": "text" },
+                { "key": "whatsapp",        "value": "+923001234567",          "type": "text" },
+                { "key": "coverLetter",     "value": "I am very interested in this position and believe my skills align well with your requirements.", "type": "text" },
+                { "key": "expectedSalary",  "value": "80000",                 "type": "text" },
+                { "key": "availableFrom",   "value": "2025-08-01",            "type": "text" },
+                { "key": "currentJobTitle", "value": "Junior Developer",      "type": "text" },
+                { "key": "currentCompany",  "value": "Old Corp",              "type": "text" },
+                { "key": "totalExperience", "value": "3",                     "type": "text" },
+                { "key": "portfolioUrl",    "value": "https://johndoe.dev",   "type": "text" },
+                { "key": "linkedinUrl",     "value": "https://linkedin.com/in/johndoe", "type": "text" },
+                { "key": "githubUrl",       "value": "https://github.com/johndoe",      "type": "text" },
+                { "key": "source",          "value": "website",               "type": "text" },
+                { "key": "resume",          "value": "",                      "type": "file", "src": "" }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/applications/{{jobSlug}}/apply",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "applications", "{{jobSlug}}", "apply"]
+            },
+            "description": "Guest apply — no auth cookie needed. Resume is optional (PDF/DOC/DOCX, max 5MB)."
+          },
+          "response": [
+            {
+              "name": "201 — Application Submitted",
+              "status": "Created",
+              "code": 201,
+              "body": "{\n  \"success\": true,\n  \"message\": \"Application submitted successfully\",\n  \"data\": {\n    \"applicationId\": \"665f1a2b3c4d5e6f7a8b9c0d\",\n    \"status\": \"pending\"\n  }\n}"
+            },
+            {
+              "name": "409 — Already Applied",
+              "status": "Conflict",
+              "code": 409,
+              "body": "{\n  \"success\": false,\n  \"message\": \"You have already applied for this job\"\n}"
+            },
+            {
+              "name": "400 — Deadline Passed",
+              "status": "Bad Request",
+              "code": 400,
+              "body": "{\n  \"success\": false,\n  \"message\": \"Application deadline has passed\"\n}"
+            },
+            {
+              "name": "404 — Job Not Found",
+              "status": "Not Found",
+              "code": 404,
+              "body": "{\n  \"success\": false,\n  \"message\": \"Job not found or no longer active\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Apply (Logged-in User)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "fullName",        "value": "Jane Smith",            "type": "text" },
+                { "key": "email",           "value": "jane@example.com",      "type": "text" },
+                { "key": "phone",           "value": "+923007654321",          "type": "text" },
+                { "key": "coverLetter",     "value": "Excited to apply for this role.",  "type": "text" },
+                { "key": "expectedSalary",  "value": "100000",                "type": "text" },
+                { "key": "totalExperience", "value": "5",                     "type": "text" },
+                { "key": "source",          "value": "website",               "type": "text" },
+                { "key": "resume",          "value": "",                      "type": "file", "src": "" }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/applications/{{jobSlug}}/apply",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "applications", "{{jobSlug}}", "apply"]
+            },
+            "description": "Logged-in user apply — authToken cookie is sent automatically by Postman if set."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "📋 My Applications (User)",
+      "item": [
+        {
+          "name": "Get My Applications",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/applications/my?page=1&limit=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "applications", "my"],
+              "query": [
+                { "key": "page",   "value": "1" },
+                { "key": "limit",  "value": "10" },
+                { "key": "status", "value": "", "disabled": true }
+              ]
+            },
+            "description": "Get all applications submitted by the logged-in user. Requires authToken cookie."
+          },
+          "response": [
+            {
+              "name": "200 — My Applications",
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"success\": true,\n  \"message\": \"Your applications\",\n  \"data\": {\n    \"applications\": [\n      {\n        \"_id\": \"665f1a2b3c4d5e6f7a8b9c0d\",\n        \"job\": {\n          \"_id\": \"665e0a1b2c3d4e5f6a7b8c9d\",\n          \"title\": \"Software Engineer\",\n          \"slug\": \"software-engineer-at-techcorp\",\n          \"company\": { \"name\": \"TechCorp\" },\n          \"location\": { \"city\": \"Lahore\" },\n          \"jobType\": \"full-time\",\n          \"status\": \"active\"\n        },\n        \"fullName\": \"Jane Smith\",\n        \"email\": \"jane@example.com\",\n        \"status\": \"pending\",\n        \"createdAt\": \"2025-07-01T10:00:00.000Z\"\n      }\n    ],\n    \"pagination\": {\n      \"total\": 1,\n      \"page\": 1,\n      \"limit\": 10,\n      \"totalPages\": 1\n    }\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Get My Applications — Filter by Status",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/applications/my?page=1&limit=10&status=shortlisted",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "applications", "my"],
+              "query": [
+                { "key": "page",   "value": "1" },
+                { "key": "limit",  "value": "10" },
+                { "key": "status", "value": "shortlisted" }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Withdraw Application",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/applications/{{applicationId}}/withdraw",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "applications", "{{applicationId}}", "withdraw"]
+            },
+            "description": "Applicant withdraws their own application. Cannot withdraw if status is hired/rejected/withdrawn."
+          },
+          "response": [
+            {
+              "name": "200 — Withdrawn",
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"success\": true,\n  \"message\": \"Application withdrawn successfully\"\n}"
+            },
+            {
+              "name": "400 — Cannot Withdraw",
+              "status": "Bad Request",
+              "code": 400,
+              "body": "{\n  \"success\": false,\n  \"message\": \"Cannot withdraw application with status: hired\"\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "🛠️ Manage Applications (Owner / Admin)",
+      "item": [
+        {
+          "name": "Get All Applications for a Job",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/applications/{{jobSlug}}?page=1&limit=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "applications", "{{jobSlug}}"],
+              "query": [
+                { "key": "page",   "value": "1" },
+                { "key": "limit",  "value": "10" },
+                { "key": "status", "value": "",       "disabled": true, "description": "pending | reviewing | shortlisted | interview | offered | hired | rejected | withdrawn" },
+                { "key": "search", "value": "",       "disabled": true, "description": "Search by applicant name or email" }
+              ]
+            },
+            "description": "Get paginated list of all applications for a job. Only job owner or admin can access."
+          },
+          "response": [
+            {
+              "name": "200 — Applications List",
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"success\": true,\n  \"message\": \"Applications fetched successfully\",\n  \"data\": {\n    \"applications\": [\n      {\n        \"_id\": \"665f1a2b3c4d5e6f7a8b9c0d\",\n        \"fullName\": \"John Doe\",\n        \"email\": \"john@example.com\",\n        \"phone\": \"+923001234567\",\n        \"status\": \"pending\",\n        \"isRead\": false,\n        \"resume\": {\n          \"url\": \"uploads/resumes/resume-1720000000000-123456.pdf\",\n          \"originalName\": \"john-cv.pdf\"\n        },\n        \"createdAt\": \"2025-07-01T10:00:00.000Z\"\n      }\n    ],\n    \"pagination\": {\n      \"total\": 25,\n      \"page\": 1,\n      \"limit\": 10,\n      \"totalPages\": 3\n    }\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Get All Applications — Filter by Status",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/applications/{{jobSlug}}?page=1&limit=10&status=shortlisted",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "applications", "{{jobSlug}}"],
+              "query": [
+                { "key": "page",   "value": "1" },
+                { "key": "limit",  "value": "10" },
+                { "key": "status", "value": "shortlisted" }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get All Applications — Search by Name/Email",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/applications/{{jobSlug}}?page=1&limit=10&search=john",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "applications", "{{jobSlug}}"],
+              "query": [
+                { "key": "page",   "value": "1" },
+                { "key": "limit",  "value": "10" },
+                { "key": "search", "value": "john" }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Single Application by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/applications/detail/{{applicationId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "applications", "detail", "{{applicationId}}"]
+            },
+            "description": "View full details of one application. Marks isRead = true when owner/admin views it."
+          },
+          "response": [
+            {
+              "name": "200 — Application Detail",
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"success\": true,\n  \"message\": \"Application fetched\",\n  \"data\": {\n    \"_id\": \"665f1a2b3c4d5e6f7a8b9c0d\",\n    \"job\": {\n      \"_id\": \"665e0a1b2c3d4e5f6a7b8c9d\",\n      \"title\": \"Software Engineer\",\n      \"slug\": \"software-engineer-at-techcorp\",\n      \"createdBy\": \"664a0b1c2d3e4f5a6b7c8d9e\"\n    },\n    \"fullName\": \"John Doe\",\n    \"email\": \"john@example.com\",\n    \"phone\": \"+923001234567\",\n    \"whatsapp\": \"+923001234567\",\n    \"coverLetter\": \"I am very interested...\",\n    \"expectedSalary\": 80000,\n    \"availableFrom\": \"2025-08-01T00:00:00.000Z\",\n    \"currentJobTitle\": \"Junior Developer\",\n    \"currentCompany\": \"Old Corp\",\n    \"totalExperience\": 3,\n    \"portfolioUrl\": \"https://johndoe.dev\",\n    \"linkedinUrl\": \"https://linkedin.com/in/johndoe\",\n    \"githubUrl\": \"https://github.com/johndoe\",\n    \"resume\": {\n      \"url\": \"uploads/resumes/resume-1720000000000-123456.pdf\",\n      \"originalName\": \"john-cv.pdf\"\n    },\n    \"status\": \"reviewing\",\n    \"adminNote\": null,\n    \"source\": \"website\",\n    \"isRead\": true,\n    \"createdAt\": \"2025-07-01T10:00:00.000Z\"\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Update Application Status",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"shortlisted\",\n  \"adminNote\": \"Strong candidate, schedule interview for next week\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/applications/{{applicationId}}/status",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "applications", "{{applicationId}}", "status"]
+            },
+            "description": "Valid statuses: pending | reviewing | shortlisted | interview | offered | hired | rejected | withdrawn"
+          },
+          "response": [
+            {
+              "name": "200 — Status Updated",
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"success\": true,\n  \"message\": \"Application status updated\",\n  \"data\": {\n    \"applicationId\": \"665f1a2b3c4d5e6f7a8b9c0d\",\n    \"status\": \"shortlisted\"\n  }\n}"
+            },
+            {
+              "name": "400 — Invalid Status",
+              "status": "Bad Request",
+              "code": 400,
+              "body": "{\n  \"success\": false,\n  \"message\": \"Invalid status. Must be one of: pending, reviewing, shortlisted, interview, offered, hired, rejected, withdrawn\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Update Status → reviewing",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"reviewing\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/applications/{{applicationId}}/status",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "applications", "{{applicationId}}", "status"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update Status → interview",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"interview\",\n  \"adminNote\": \"Interview scheduled for July 15, 2025 at 10AM\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/applications/{{applicationId}}/status",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "applications", "{{applicationId}}", "status"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update Status → hired",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"hired\",\n  \"adminNote\": \"Offer accepted. Start date: Aug 1, 2025\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/applications/{{applicationId}}/status",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "applications", "{{applicationId}}", "status"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update Status → rejected",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"rejected\",\n  \"adminNote\": \"Not enough experience for this role\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/applications/{{applicationId}}/status",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "applications", "{{applicationId}}", "status"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Application Stats for a Job",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/applications/{{jobSlug}}/stats",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "applications", "{{jobSlug}}", "stats"]
+            },
+            "description": "Returns count per status + total + unread count. Only job owner or admin."
+          },
+          "response": [
+            {
+              "name": "200 — Stats",
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"success\": true,\n  \"message\": \"Application stats\",\n  \"data\": {\n    \"total\": 25,\n    \"unread\": 4,\n    \"pending\": 10,\n    \"reviewing\": 6,\n    \"shortlisted\": 4,\n    \"interview\": 2,\n    \"offered\": 1,\n    \"hired\": 1,\n    \"rejected\": 1,\n    \"withdrawn\": 0\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Delete Application (Admin only)",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/applications/{{applicationId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "applications", "{{applicationId}}"]
+            },
+            "description": "Soft delete — sets isDeleted: true. Admin role required."
+          },
+          "response": [
+            {
+              "name": "200 — Deleted",
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"success\": true,\n  \"message\": \"Application deleted\"\n}"
+            },
+            {
+              "name": "403 — Not Admin",
+              "status": "Forbidden",
+              "code": 403,
+              "body": "{\n  \"success\": false,\n  \"message\": \"Admin access required\"\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "❌ Error Cases",
+      "item": [
+        {
+          "name": "Apply — Missing Required Fields",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "email", "value": "missing-name@example.com", "type": "text" }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/applications/{{jobSlug}}/apply",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "applications", "{{jobSlug}}", "apply"]
+            },
+            "description": "Should return 400 — fullName is required."
+          },
+          "response": [
+            {
+              "name": "400 — Missing fullName",
+              "status": "Bad Request",
+              "code": 400,
+              "body": "{\n  \"success\": false,\n  \"message\": \"Full name and email are required\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Apply — Invalid Email",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "fullName", "value": "John Doe",   "type": "text" },
+                { "key": "email",    "value": "not-an-email","type": "text" }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/applications/{{jobSlug}}/apply",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "applications", "{{jobSlug}}", "apply"]
+            }
+          },
+          "response": [
+            {
+              "name": "400 — Invalid Email",
+              "status": "Bad Request",
+              "code": 400,
+              "body": "{\n  \"success\": false,\n  \"message\": \"Invalid email address\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Apply — Job Not Found",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "fullName", "value": "John Doe",          "type": "text" },
+                { "key": "email",    "value": "john@example.com",  "type": "text" }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/applications/non-existent-job-slug/apply",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "applications", "non-existent-job-slug", "apply"]
+            }
+          },
+          "response": [
+            {
+              "name": "404 — Job Not Found",
+              "status": "Not Found",
+              "code": 404,
+              "body": "{\n  \"success\": false,\n  \"message\": \"Job not found or no longer active\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Status Update — Invalid Status Value",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"approved\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/applications/{{applicationId}}/status",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "applications", "{{applicationId}}", "status"]
+            },
+            "description": "'approved' is not a valid status — should return 400."
+          },
+          "response": []
+        },
+        {
+          "name": "No Auth Cookie — Protected Route",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/applications/my",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "applications", "my"]
+            },
+            "description": "Calling a protected route without authToken cookie — should return 401."
+          },
+          "response": [
+            {
+              "name": "401 — Unauthorized",
+              "status": "Unauthorized",
+              "code": 401,
+              "body": "{\n  \"success\": false,\n  \"message\": \"Unauthorized: No token provided\"\n}"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -6,7 +6,7 @@ import {
   updateField,
   deleteField
 } from "../controller/additionalField.Controller.js";
-import authenticate from "../middleware/userAuth.js";
+import {authenticate} from "../middleware/userAuth.js";
 import verifyAdmin from "../middleware/verifyAdmin.js";
 
 const router = express.Router();
