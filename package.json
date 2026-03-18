@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "start": "nodemon ./bin/www",
+    "start": "node ./bin/www",
     "db:export": "bash scripts/db-export.sh",
     "db:import": "bash scripts/db-import.sh",
     "prepare": "husky"
