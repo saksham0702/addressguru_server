@@ -1,160 +1,589 @@
 {
   "info": {
     "name": "Marketplace Listing API",
-    "_postman_id": "marketplace-collection-001",
-    "description": "Step-wise Marketplace Listing APIs",
+    "_postman_id": "marketplace-listing-collection",
+    "description": "Complete API collection for Marketplace Listing module including all steps",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
     {
       "key": "base_url",
-      "value": "http://localhost:5000/marketplace"
+      "value": "http://localhost:5000/api",
+      "type": "string"
     },
     {
       "key": "slug",
-      "value": "your-listing-slug"
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "token",
+      "value": "",
+      "type": "string"
     }
   ],
   "item": [
     {
-      "name": "1. Create Listing (Step 1)",
+      "name": "1️⃣ Create Listing — Step 1 (Basic Info)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "const res = pm.response.json();",
+              "if (res.success && res.data && res.data.slug) {",
+              "  pm.collectionVariables.set('slug', res.data.slug);",
+              "  console.log('Slug saved:', res.data.slug);",
+              "}"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
       "request": {
         "method": "POST",
         "header": [
-          { "key": "Content-Type", "value": "application/json" }
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}",
+            "type": "text"
+          }
         ],
         "body": {
-          "mode": "raw",
-          "raw": "{\n  \"category_id\": \"65f1234567890abcdef1234\",\n  \"sub_category_id\": \"65f1234567890abcdef5678\",\n  \"title\": \"iPhone 14 Pro\",\n  \"description\": \"Almost new condition\",\n  \"condition\": \"used-like-new\",\n  \"price_amount\": 900,\n  \"price_currency\": \"AED\",\n  \"price_negotiable\": true,\n  \"price_fixed\": false,\n  \"price_free\": false,\n  \"additional_fields\": []\n}"
+          "mode": "formdata",
+          "formdata": [
+            {
+              "key": "category_id",
+              "value": "665f1a2b3c4d5e6f7a8b9c0d",
+              "type": "text",
+              "description": "Valid Category ObjectId"
+            },
+            {
+              "key": "sub_category_id",
+              "value": "665f1a2b3c4d5e6f7a8b9c0e",
+              "type": "text",
+              "description": "Valid SubCategory ObjectId (optional)"
+            },
+            {
+              "key": "title",
+              "value": "iPhone 14 Pro Max 256GB Space Black",
+              "type": "text"
+            },
+            {
+              "key": "description",
+              "value": "Selling my iPhone 14 Pro Max in excellent condition. Bought 6 months ago, comes with original box and accessories.",
+              "type": "text"
+            },
+            {
+              "key": "condition",
+              "value": "used-like-new",
+              "type": "text",
+              "description": "new | used-like-new | used-good | used-fair"
+            },
+            {
+              "key": "price_amount",
+              "value": "3500",
+              "type": "text"
+            },
+            {
+              "key": "price_currency",
+              "value": "AED",
+              "type": "text"
+            },
+            {
+              "key": "price_negotiable",
+              "value": "true",
+              "type": "text"
+            },
+            {
+              "key": "price_fixed",
+              "value": "false",
+              "type": "text"
+            },
+            {
+              "key": "price_free",
+              "value": "false",
+              "type": "text"
+            },
+            {
+              "key": "additional_fields",
+              "value": "[{\"field_id\":\"665f1a2b3c4d5e6f7a8b9c10\",\"value\":\"256GB\"},{\"field_id\":\"665f1a2b3c4d5e6f7a8b9c11\",\"value\":\"Space Black\"}]",
+              "type": "text",
+              "description": "JSON stringified array — only field_id and value"
+            }
+          ]
         },
         "url": {
-          "raw": "{{base_url}}/create-listing",
+          "raw": "{{base_url}}/marketplace/create-listing/step/1",
           "host": ["{{base_url}}"],
-          "path": ["create-listing"]
-        }
+          "path": ["marketplace", "create-listing", "step", "1"]
+        },
+        "description": "Step 1 — Creates the listing with basic product info. Saves slug to collection variable automatically."
       }
     },
     {
-      "name": "2. Step 2 - Upload Images",
+      "name": "2️⃣ Update Listing — Step 1 (Edit Basic Info)",
       "request": {
         "method": "PUT",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}",
+            "type": "text"
+          }
+        ],
+        "body": {
+          "mode": "formdata",
+          "formdata": [
+            {
+              "key": "category_id",
+              "value": "665f1a2b3c4d5e6f7a8b9c0d",
+              "type": "text"
+            },
+            {
+              "key": "sub_category_id",
+              "value": "665f1a2b3c4d5e6f7a8b9c0e",
+              "type": "text"
+            },
+            {
+              "key": "title",
+              "value": "iPhone 14 Pro Max 256GB Updated Title",
+              "type": "text"
+            },
+            {
+              "key": "description",
+              "value": "Updated description. Selling my iPhone 14 Pro Max in excellent condition with original accessories.",
+              "type": "text"
+            },
+            {
+              "key": "condition",
+              "value": "used-good",
+              "type": "text"
+            },
+            {
+              "key": "price_amount",
+              "value": "3200",
+              "type": "text"
+            },
+            {
+              "key": "price_currency",
+              "value": "AED",
+              "type": "text"
+            },
+            {
+              "key": "price_negotiable",
+              "value": "true",
+              "type": "text"
+            },
+            {
+              "key": "price_fixed",
+              "value": "false",
+              "type": "text"
+            },
+            {
+              "key": "price_free",
+              "value": "false",
+              "type": "text"
+            },
+            {
+              "key": "additional_fields",
+              "value": "[{\"field_id\":\"665f1a2b3c4d5e6f7a8b9c10\",\"value\":\"256GB\"},{\"field_id\":\"665f1a2b3c4d5e6f7a8b9c11\",\"value\":\"Midnight\"}]",
+              "type": "text"
+            }
+          ]
+        },
+        "url": {
+          "raw": "{{base_url}}/marketplace/update-listing/{{slug}}/step/1",
+          "host": ["{{base_url}}"],
+          "path": ["marketplace", "update-listing", "{{slug}}", "step", "1"]
+        },
+        "description": "Update Step 1 — Edit basic info of an existing listing."
+      }
+    },
+    {
+      "name": "3️⃣ Update Listing — Step 2 (Upload Images)",
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}",
+            "type": "text"
+          }
+        ],
         "body": {
           "mode": "formdata",
           "formdata": [
             {
               "key": "images",
               "type": "file",
-              "src": []
+              "src": [],
+              "description": "Upload 1–15 images (jpg, png, webp)"
+            },
+            {
+              "key": "images",
+              "type": "file",
+              "src": [],
+              "description": "Second image (optional)"
             }
           ]
         },
         "url": {
-          "raw": "{{base_url}}/update-listing/{{slug}}/step/2",
+          "raw": "{{base_url}}/marketplace/update-listing/{{slug}}/step/2",
           "host": ["{{base_url}}"],
-          "path": ["update-listing", "{{slug}}", "step", "2"]
-        }
+          "path": ["marketplace", "update-listing", "{{slug}}", "step", "2"]
+        },
+        "description": "Step 2 — Upload listing images. Max 15. Use multipart/form-data."
       }
     },
     {
-      "name": "3. Step 3 - Contact Details",
+      "name": "4️⃣ Update Listing — Step 3 (Contact Details)",
       "request": {
         "method": "PUT",
         "header": [
-          { "key": "Content-Type", "value": "application/json" }
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}",
+            "type": "text"
+          }
         ],
         "body": {
-          "mode": "raw",
-          "raw": "{\n  \"name\": \"John Doe\",\n  \"email\": \"john@example.com\",\n  \"country_code\": \"+91\",\n  \"mobile_number\": 9999999999,\n  \"alt_country_code\": \"+91\",\n  \"second_mobile_number\": 8888888888,\n  \"locality\": \"Sector 62\",\n  \"address\": \"Noida\",\n  \"city_id\": \"Delhi\"\n}"
-        },
-        "url": {
-          "raw": "{{base_url}}/update-listing/{{slug}}/step/3",
-          "host": ["{{base_url}}"],
-          "path": ["update-listing", "{{slug}}", "step", "3"]
-        }
-      }
-    },
-    {
-      "name": "4. Step 4 - SEO",
-      "request": {
-        "method": "PUT",
-        "header": [
-          { "key": "Content-Type", "value": "application/json" }
-        ],
-        "body": {
-          "mode": "raw",
-          "raw": "{\n  \"seo_title\": \"Best iPhone Deal\",\n  \"seo_description\": \"Buy iPhone at best price\"\n}"
-        },
-        "url": {
-          "raw": "{{base_url}}/update-listing/{{slug}}/step/4",
-          "host": ["{{base_url}}"],
-          "path": ["update-listing", "{{slug}}", "step", "4"]
-        }
-      }
-    },
-    {
-      "name": "5. Step 5 - Select Plan & Publish",
-      "request": {
-        "method": "PUT",
-        "header": [
-          { "key": "Content-Type", "value": "application/json" }
-        ],
-        "body": {
-          "mode": "raw",
-          "raw": "{\n  \"plan_id\": \"65fplan1234567890abcd\"\n}"
-        },
-        "url": {
-          "raw": "{{base_url}}/update-listing/{{slug}}/step/6",
-          "host": ["{{base_url}}"],
-          "path": ["update-listing", "{{slug}}", "step", "6"]
-        }
-      }
-    },
-    {
-      "name": "6. Get All Listings",
-      "request": {
-        "method": "GET",
-        "url": {
-          "raw": "{{base_url}}/get-all-listings?page=1&limit=10",
-          "host": ["{{base_url}}"],
-          "path": ["get-all-listings"],
-          "query": [
-            { "key": "page", "value": "1" },
-            { "key": "limit", "value": "10" }
+          "mode": "formdata",
+          "formdata": [
+            {
+              "key": "name",
+              "value": "John Doe",
+              "type": "text"
+            },
+            {
+              "key": "email",
+              "value": "johndoe@example.com",
+              "type": "text"
+            },
+            {
+              "key": "country_code",
+              "value": "+971",
+              "type": "text"
+            },
+            {
+              "key": "mobile_number",
+              "value": "501234567",
+              "type": "text",
+              "description": "String — preserves leading zeros"
+            },
+            {
+              "key": "alt_country_code",
+              "value": "+91",
+              "type": "text",
+              "description": "Optional"
+            },
+            {
+              "key": "second_mobile_number",
+              "value": "9876543210",
+              "type": "text",
+              "description": "Optional alternate number"
+            },
+            {
+              "key": "locality",
+              "value": "Dubai Marina",
+              "type": "text"
+            },
+            {
+              "key": "address",
+              "value": "Apartment 12B, Marina Heights Tower, Dubai Marina",
+              "type": "text"
+            },
+            {
+              "key": "city_id",
+              "value": "665f1a2b3c4d5e6f7a8b9c20",
+              "type": "text",
+              "description": "Valid City ObjectId"
+            }
           ]
-        }
+        },
+        "url": {
+          "raw": "{{base_url}}/marketplace/update-listing/{{slug}}/step/3",
+          "host": ["{{base_url}}"],
+          "path": ["marketplace", "update-listing", "{{slug}}", "step", "3"]
+        },
+        "description": "Step 3 — Seller contact and location details."
       }
     },
     {
-      "name": "7. Get Listing By Slug",
+      "name": "5️⃣ Update Listing — Step 4 (SEO)",
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}",
+            "type": "text"
+          }
+        ],
+        "body": {
+          "mode": "formdata",
+          "formdata": [
+            {
+              "key": "seo_title",
+              "value": "Buy iPhone 14 Pro Max 256GB in Dubai — Best Price",
+              "type": "text"
+            },
+            {
+              "key": "seo_description",
+              "value": "Used iPhone 14 Pro Max 256GB Space Black for sale in Dubai Marina. Excellent condition, original box included.",
+              "type": "text"
+            }
+          ]
+        },
+        "url": {
+          "raw": "{{base_url}}/marketplace/update-listing/{{slug}}/step/4",
+          "host": ["{{base_url}}"],
+          "path": ["marketplace", "update-listing", "{{slug}}", "step", "4"]
+        },
+        "description": "Step 4 — SEO title and description for the listing."
+      }
+    },
+    {
+      "name": "6️⃣ Update Listing — Step 5 (Plan & Publish)",
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}",
+            "type": "text"
+          }
+        ],
+        "body": {
+          "mode": "formdata",
+          "formdata": [
+            {
+              "key": "plan_id",
+              "value": "665f1a2b3c4d5e6f7a8b9c30",
+              "type": "text",
+              "description": "Valid Plan ObjectId"
+            }
+          ]
+        },
+        "url": {
+          "raw": "{{base_url}}/marketplace/update-listing/{{slug}}/step/5",
+          "host": ["{{base_url}}"],
+          "path": ["marketplace", "update-listing", "{{slug}}", "step", "5"]
+        },
+        "description": "Step 5 — Select a plan and publish the listing. Requires all previous steps completed (stepCompleted >= 4)."
+      }
+    },
+    {
+      "name": "7️⃣ Get All Listings",
       "request": {
         "method": "GET",
+        "header": [],
         "url": {
-          "raw": "{{base_url}}/get-listing-by-slug/{{slug}}",
+          "raw": "{{base_url}}/marketplace/get-all-listings?page=1&limit=10",
           "host": ["{{base_url}}"],
-          "path": ["get-listing-by-slug", "{{slug}}"]
-        }
+          "path": ["marketplace", "get-all-listings"],
+          "query": [
+            {
+              "key": "page",
+              "value": "1"
+            },
+            {
+              "key": "limit",
+              "value": "10"
+            },
+            {
+              "key": "condition",
+              "value": "used-like-new",
+              "disabled": true,
+              "description": "new | used-like-new | used-good | used-fair"
+            },
+            {
+              "key": "category_id",
+              "value": "665f1a2b3c4d5e6f7a8b9c0d",
+              "disabled": true
+            },
+            {
+              "key": "sub_category_id",
+              "value": "665f1a2b3c4d5e6f7a8b9c0e",
+              "disabled": true
+            },
+            {
+              "key": "city_id",
+              "value": "665f1a2b3c4d5e6f7a8b9c20",
+              "disabled": true
+            },
+            {
+              "key": "min_price",
+              "value": "100",
+              "disabled": true
+            },
+            {
+              "key": "max_price",
+              "value": "5000",
+              "disabled": true
+            },
+            {
+              "key": "is_free",
+              "value": "false",
+              "disabled": true
+            },
+            {
+              "key": "is_sold",
+              "value": "false",
+              "disabled": true
+            },
+            {
+              "key": "is_published",
+              "value": "true",
+              "disabled": true
+            },
+            {
+              "key": "is_verified",
+              "value": "true",
+              "disabled": true
+            }
+          ]
+        },
+        "description": "Get all listings with optional filters. Disabled query params can be enabled as needed."
       }
     },
     {
-      "name": "8. Mark As Sold",
+      "name": "8️⃣ Get Listing by Slug",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/marketplace/get-listing-by-slug/{{slug}}",
+          "host": ["{{base_url}}"],
+          "path": ["marketplace", "get-listing-by-slug", "{{slug}}"]
+        },
+        "description": "Get a single listing by its slug. Uses the slug saved from Step 1."
+      }
+    },
+    {
+      "name": "9️⃣ Mark Listing as Sold",
       "request": {
         "method": "PATCH",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}",
+            "type": "text"
+          }
+        ],
         "url": {
-          "raw": "{{base_url}}/mark-as-sold/{{slug}}",
+          "raw": "{{base_url}}/marketplace/mark-as-sold/{{slug}}",
           "host": ["{{base_url}}"],
-          "path": ["mark-as-sold", "{{slug}}"]
-        }
+          "path": ["marketplace", "mark-as-sold", "{{slug}}"]
+        },
+        "description": "Mark a listing as sold. Only the owner can do this."
       }
     },
     {
-      "name": "9. Delete Listing",
+      "name": "🔟 Delete Listing (Soft Delete)",
       "request": {
         "method": "DELETE",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}",
+            "type": "text"
+          }
+        ],
         "url": {
-          "raw": "{{base_url}}/delete-listing/{{slug}}",
+          "raw": "{{base_url}}/marketplace/delete-listing/{{slug}}",
           "host": ["{{base_url}}"],
-          "path": ["delete-listing", "{{slug}}"]
-        }
+          "path": ["marketplace", "delete-listing", "{{slug}}"]
+        },
+        "description": "Soft delete a listing. Sets isDeleted=true. Only the owner can do this."
+      }
+    },
+    {
+      "name": "❌ Validation — Missing Required Fields (Step 1)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}",
+            "type": "text"
+          }
+        ],
+        "body": {
+          "mode": "formdata",
+          "formdata": [
+            {
+              "key": "title",
+              "value": "Hi",
+              "type": "text",
+              "description": "Too short — min 3 chars"
+            },
+            {
+              "key": "description",
+              "value": "Short",
+              "type": "text",
+              "description": "Too short — min 10 chars"
+            }
+          ]
+        },
+        "url": {
+          "raw": "{{base_url}}/marketplace/create-listing/step/1",
+          "host": ["{{base_url}}"],
+          "path": ["marketplace", "create-listing", "step", "1"]
+        },
+        "description": "Should return 400 with multiple validation errors — category_id missing, title too short, description too short, condition missing."
+      }
+    },
+    {
+      "name": "❌ Validation — Invalid Step",
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}",
+            "type": "text"
+          }
+        ],
+        "body": {
+          "mode": "formdata",
+          "formdata": []
+        },
+        "url": {
+          "raw": "{{base_url}}/marketplace/update-listing/{{slug}}/step/99",
+          "host": ["{{base_url}}"],
+          "path": ["marketplace", "update-listing", "{{slug}}", "step", "99"]
+        },
+        "description": "Should return 400 — Invalid step."
+      }
+    },
+    {
+      "name": "❌ Validation — Publish Without Completing Steps",
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}",
+            "type": "text"
+          }
+        ],
+        "body": {
+          "mode": "formdata",
+          "formdata": [
+            {
+              "key": "plan_id",
+              "value": "665f1a2b3c4d5e6f7a8b9c30",
+              "type": "text"
+            }
+          ]
+        },
+        "url": {
+          "raw": "{{base_url}}/marketplace/update-listing/{{slug}}/step/5",
+          "host": ["{{base_url}}"],
+          "path": ["marketplace", "update-listing", "{{slug}}", "step", "5"]
+        },
+        "description": "Should return 400 — Please complete all previous steps before publishing (if stepCompleted < 4)."
       }
     }
   ]

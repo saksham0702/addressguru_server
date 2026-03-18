@@ -16,17 +16,17 @@ const router = express.Router();
 
 router.post(
   "/create-listing/step/:step",
-  // setUploadFolder("marketplace-listings"),
+  setUploadFolder("marketplace-listings"),
+  upload.fields([{ name: "images", maxCount: 15 }]),
   validateMarketplaceStep,
   createMarketplaceListing,
 );
 
 router.put(
   "/update-listing/:slug/step/:step",
+  setUploadFolder("marketplace-listings"),
+  upload.fields([{ name: "images", maxCount: 15 }]),
   validateMarketplaceStep,
-  // setUploadFolder("marketplace-listings"),
-  // upload.fields([{ name: "images", maxCount: 15 }]),
-  // validateStep(marketplaceStepSchemas),
   updateMarketplaceListingStep,
 );
 

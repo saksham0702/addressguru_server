@@ -1,9 +1,10 @@
-import marketplaceStepSchema from "../validations/marketplace.validator.js";
+// ─── middleware/validateProperty.js ──────────────────────────────────────────
+import propertyStepSchema from "../validations/property.validator.js";
 
-export const validateMarketplaceStep = (req, res, next) => {
+export const validatePropertyStep = (req, res, next) => {
   try {
     const step = Number(req.params.step);
-    const schema = marketplaceStepSchema[step];
+    const schema = propertyStepSchema[step];
 
     if (!schema) {
       return res.status(400).json({
@@ -18,8 +19,8 @@ export const validateMarketplaceStep = (req, res, next) => {
 
     const { error, value } = schema.validate(req.body, {
       abortEarly: false,
-      stripUnknown: true, // remove any extra fields not in schema
-      convert: true, // auto-convert strings to booleans/numbers where needed
+      stripUnknown: true, // remove extra fields not in schema
+      convert: true, // auto-convert "true"/"false" strings from formdata to booleans
     });
 
     if (error) {
@@ -38,12 +39,12 @@ export const validateMarketplaceStep = (req, res, next) => {
       });
     }
 
-    // Replace req.body with the sanitized + defaulted value from Joi
+    // Replace req.body with sanitized + defaulted value from Joi
     req.body = value;
 
     next();
   } catch (err) {
-    console.error("Validation middleware error:", err);
+    console.error("Property validation middleware error:", err);
     return res.status(500).json({
       success: false,
       message: "Internal validation error",

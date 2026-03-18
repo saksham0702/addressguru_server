@@ -34,6 +34,7 @@ import jobApplicationRoutes from "./routes/jobApplicationRoutes.js";
 import adminUserRouter from "./routes/adminUser.Router.js";
 import marketplaceListingRouter from "./routes/marketplaceRouter.js";
 import blogRouter from "./routes/blog.Router.js";
+import propertyRouter from "./routes/property.Router.js";
 
 var app = express();
 
@@ -136,6 +137,7 @@ app.use(`/jobs-listing`, jobsListingRouter);
 app.use(`/admin/users`, adminUserRouter);
 app.use(`/features`, featureRouter);
 app.use(`/blogs`, blogRouter);
+app.use(`/property-listings`, propertyRouter);
 
 app.use(`/google-listing`, googleListingRoutes);
 
