@@ -1,4 +1,4 @@
-// models/marketplaceListingSchema.js
+// ─── models/marketplaceListingSchema.js ──────────────────────────────────────
 import mongoose from "mongoose";
 
 const additionalFieldValueSchema = new mongoose.Schema(
@@ -24,17 +24,11 @@ const marketplaceListingSchema = new mongoose.Schema(
     },
     subCategory: { type: mongoose.Schema.Types.ObjectId, ref: "SubCategory" },
 
-    // step -1
+    // ── Step 1 – Product Info ──────────────────────────────────────────────
     title: { type: String, required: true, trim: true },
     description: { type: String, required: true },
-
     slug: { type: String, unique: true, index: true },
-
-    condition: {
-      type: String,
-      // enum: ["new", "used-like-new", "used-good", "used-fair"],
-      required: true,
-    },
+    condition: { type: String, required: true },
 
     price: {
       amount: { type: Number, default: null },
@@ -44,48 +38,50 @@ const marketplaceListingSchema = new mongoose.Schema(
       isFree: { type: Boolean, default: false },
     },
 
-    // dynamic fields per category
+    // Dynamic fields per category
     additionalFields: {
       type: [additionalFieldValueSchema],
       default: [],
     },
-     // step -2
+
+    // ── Step 2 – Media ────────────────────────────────────────────────────
     images: [String],
 
-    // step -3
-    contactPersonName: String,
+    // ── Step 3 – Contact Details ──────────────────────────────────────────
+    contactPersonName: { type: String },
     email: { type: String, lowercase: true },
-    countryCode: String,
-    mobileNumber: Number,
-    altCountryCode: Number,
-    alternateMobileNumber: Number,
-    locality: String,
-    address: String,
-    // city: { type: mongoose.Schema.Types.ObjectId, ref: "City" },
-    city: String,
+    countryCode: { type: String }, // e.g. "+971" — kept as String
+    mobileNumber: { type: String }, // String to preserve leading zeros / intl format
+    altCountryCode: { type: String }, // fixed: was Number, should be String
+    alternateMobileNumber: { type: String }, // fixed: was Number, should be String
+    locality: { type: String },
+    address: { type: String },
+    city: { type: mongoose.Schema.Types.ObjectId, ref: "City" },
 
+    // ── Step 4 – SEO ──────────────────────────────────────────────────────
+    seo: {
+      title: { type: String },
+      description: { type: String },
+    },
 
-    // step -4
-    seo: { title: String, description: String },
-   
-
-    // step -5
+    // ── Step 5 – Plan & Publish ───────────────────────────────────────────
     plan: { type: mongoose.Schema.Types.ObjectId, ref: "Plan" },
 
-    // status & flow
+    // ── Status & Flow ─────────────────────────────────────────────────────
     stepCompleted: { type: Number, default: 1 },
     isVerified: { type: Boolean, default: false },
     isPublished: { type: Boolean, default: false },
-    isSold: { type: Boolean, default: false }, // mark as sold without deleting
+    isSold: { type: Boolean, default: false },
     createdBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
 
-    // soft delete
+    // ── Soft Delete ───────────────────────────────────────────────────────
     isDeleted: { type: Boolean, default: false },
   },
   { timestamps: true },
 );
 
-// filter indexes
+// ── Indexes ───────────────────────────────────────────────────────────────────
+marketplaceListingSchema.index({ slug: 1 });
 marketplaceListingSchema.index({ "price.amount": 1 });
 marketplaceListingSchema.index({ condition: 1 });
 marketplaceListingSchema.index({ category: 1, subCategory: 1 });

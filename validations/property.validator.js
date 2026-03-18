@@ -1,8 +1,9 @@
+// ─── validations/property.validator.js ───────────────────────────────────────
 import Joi from "joi";
 
-const marketplaceStepSchema = {
+const propertyStepSchema = {
   /* =========================
-     STEP 1 – BASIC INFO
+     STEP 1 – PROPERTY INFO
   ========================= */
   1: Joi.object({
     category_id: Joi.string().required().messages({
@@ -26,9 +27,10 @@ const marketplaceStepSchema = {
       "string.max": "Description must not exceed 700 characters",
     }),
 
-    condition: Joi.string().required().messages({
-      "any.required": "Condition is required",
-      "string.empty": "Condition is required",
+    purpose: Joi.string().valid("sale", "rent", "lease").required().messages({
+      "any.required": "Purpose is required",
+      "string.empty": "Purpose is required",
+      "any.only": "Purpose must be one of: sale, rent, lease",
     }),
 
     price_amount: Joi.number().min(0).allow(null).optional(),
@@ -36,11 +38,32 @@ const marketplaceStepSchema = {
     price_currency: Joi.string().default("AED").optional(),
 
     price_negotiable: Joi.boolean().default(false).optional(),
-    price_fixed: Joi.boolean().default(false).optional(),
-    price_free: Joi.boolean().default(false).optional(),
+
+    price_period: Joi.string()
+      .valid("monthly", "yearly", "weekly", "one-time")
+      .default("one-time")
+      .optional()
+      .messages({
+        "any.only":
+          "Price period must be one of: monthly, yearly, weekly, one-time",
+      }),
+
+    area_size: Joi.number().min(0).allow(null).optional(),
+
+    area_unit: Joi.string()
+      .valid("sqft", "sqm", "marla", "kanal")
+      .default("sqft")
+      .optional()
+      .messages({
+        "any.only": "Area unit must be one of: sqft, sqm, marla, kanal",
+      }),
+
+    payments: Joi.alternatives()
+      .try(Joi.array().items(Joi.string()), Joi.string())
+      .optional()
+      .default([]),
 
     // Client sends only field_id + value
-    // field_label and field_type are resolved server-side from DB
     additional_fields: Joi.alternatives()
       .try(
         Joi.array().items(
@@ -63,7 +86,7 @@ const marketplaceStepSchema = {
      Multer handles files,
      no body fields expected
   ========================= */
-  2: Joi.object({}).options({ allowUnknown: true }), // allow multer-parsed fields silently
+  2: Joi.object({}).options({ allowUnknown: true }),
 
   /* =========================
      STEP 3 – CONTACT DETAILS
@@ -84,7 +107,6 @@ const marketplaceStepSchema = {
 
     country_code: Joi.string().allow("", null).optional(),
 
-    // String to preserve leading zeros and international format
     mobile_number: Joi.string().required().messages({
       "any.required": "Mobile number is required",
       "string.empty": "Mobile number is required",
@@ -94,9 +116,9 @@ const marketplaceStepSchema = {
 
     second_mobile_number: Joi.string().allow("", null).optional(),
 
-    locality: Joi.string().required().messages({
-      "any.required": "Locality is required",
-      "string.empty": "Locality is required",
+    city_id: Joi.string().required().messages({
+      "any.required": "City is required",
+      "string.empty": "City is required",
     }),
 
     address: Joi.string().required().messages({
@@ -104,9 +126,16 @@ const marketplaceStepSchema = {
       "string.empty": "Address is required",
     }),
 
-    city_id: Joi.string().required().messages({
-      "any.required": "City is required",
-      "string.empty": "City is required",
+    locality: Joi.string().allow("", null).optional(),
+
+    map_lat: Joi.number().min(-90).max(90).allow(null).optional().messages({
+      "number.min": "Latitude must be between -90 and 90",
+      "number.max": "Latitude must be between -90 and 90",
+    }),
+
+    map_lng: Joi.number().min(-180).max(180).allow(null).optional().messages({
+      "number.min": "Longitude must be between -180 and 180",
+      "number.max": "Longitude must be between -180 and 180",
     }),
   }).options({ allowUnknown: false }),
 
@@ -139,4 +168,5 @@ const marketplaceStepSchema = {
     }),
   }).options({ allowUnknown: false }),
 };
-export default marketplaceStepSchema;
+
+export default propertyStepSchema;

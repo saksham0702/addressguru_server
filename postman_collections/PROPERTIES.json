@@ -1,8 +1,8 @@
 {
   "info": {
-    "name": "Property Listings API",
-    "_postman_id": "property-listings-collection",
-    "description": "Complete API collection for Property Listings — create, update steps, fetch, and delete.",
+    "name": "Property Listing API",
+    "_postman_id": "property-listing-collection",
+    "description": "Complete API collection for Property Listing module including all steps",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -12,30 +12,28 @@
       "type": "string"
     },
     {
-      "key": "listing_id",
+      "key": "slug",
       "value": "",
       "type": "string"
     },
     {
-      "key": "listing_slug",
+      "key": "token",
       "value": "",
       "type": "string"
     }
   ],
   "item": [
     {
-      "name": "POST – Create Listing (Step 1)",
+      "name": "1️⃣ Create Listing — Step 1 (Property Info)",
       "event": [
         {
           "listen": "test",
           "script": {
             "exec": [
               "const res = pm.response.json();",
-              "if (res.data?.id) {",
-              "  pm.collectionVariables.set('listing_id', res.data.id);",
-              "}",
-              "if (res.data?.slug) {",
-              "  pm.collectionVariables.set('listing_slug', res.data.slug);",
+              "if (res.success && res.data && res.data.slug) {",
+              "  pm.collectionVariables.set('slug', res.data.slug);",
+              "  console.log('Slug saved:', res.data.slug);",
               "}"
             ],
             "type": "text/javascript"
@@ -44,211 +42,629 @@
       ],
       "request": {
         "method": "POST",
-        "header": [],
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}",
+            "type": "text"
+          }
+        ],
         "body": {
           "mode": "formdata",
           "formdata": [
-            { "key": "category_id",       "value": "664f1e2b3a4c5d6e7f8a9b0c", "type": "text" },
-            { "key": "sub_category_id",   "value": "664f1e2b3a4c5d6e7f8a9b0d", "type": "text" },
-            { "key": "city_id",           "value": "664f1e2b3a4c5d6e7f8a9b0e", "type": "text" },
-            { "key": "title",             "value": "Luxury 5 Marla House for Sale in DHA",  "type": "text" },
-            { "key": "description",       "value": "A beautifully designed 5 marla house located in DHA Phase 6 with modern interiors.", "type": "text" },
-            { "key": "purpose",           "value": "sale",       "type": "text", "description": "sale | rent | lease" },
-            { "key": "price_amount",      "value": "25000000",   "type": "text" },
-            { "key": "price_currency",    "value": "AED",        "type": "text" },
-            { "key": "price_negotiable",  "value": "false",      "type": "text" },
-            { "key": "price_period",      "value": "one-time",   "type": "text", "description": "one-time | monthly | yearly | weekly" },
-            { "key": "area_size",         "value": "5",          "type": "text" },
-            { "key": "area_unit",         "value": "marla",      "type": "text", "description": "marla | kanal | sqft | sqm | sqyd" },
-            { "key": "payments",          "value": "664f1e2b3a4c5d6e7f8a9b10", "type": "text" },
-            { "key": "additional_fields", "value": "[{\"field_id\":\"664f1e2b3a4c5d6e7f8a9b11\",\"value\":\"5\"}]", "type": "text" }
+            {
+              "key": "category_id",
+              "value": "665f1a2b3c4d5e6f7a8b9c0d",
+              "type": "text",
+              "description": "Valid Category ObjectId"
+            },
+            {
+              "key": "sub_category_id",
+              "value": "665f1a2b3c4d5e6f7a8b9c0e",
+              "type": "text",
+              "description": "Valid SubCategory ObjectId (optional)"
+            },
+            {
+              "key": "title",
+              "value": "3 BHK Apartment in Dubai Marina",
+              "type": "text"
+            },
+            {
+              "key": "description",
+              "value": "Spacious 3 bedroom apartment with full sea view in Dubai Marina. Recently renovated with modern interiors.",
+              "type": "text"
+            },
+            {
+              "key": "purpose",
+              "value": "sale",
+              "type": "text",
+              "description": "sale | rent | lease"
+            },
+            {
+              "key": "price_amount",
+              "value": "2500000",
+              "type": "text"
+            },
+            {
+              "key": "price_currency",
+              "value": "AED",
+              "type": "text"
+            },
+            {
+              "key": "price_negotiable",
+              "value": "true",
+              "type": "text"
+            },
+            {
+              "key": "price_period",
+              "value": "one-time",
+              "type": "text",
+              "description": "monthly | yearly | weekly | one-time"
+            },
+            {
+              "key": "area_size",
+              "value": "1850",
+              "type": "text"
+            },
+            {
+              "key": "area_unit",
+              "value": "sqft",
+              "type": "text",
+              "description": "sqft | sqm | marla | kanal"
+            },
+            {
+              "key": "payments",
+              "value": "[\"665f1a2b3c4d5e6f7a8b9c40\",\"665f1a2b3c4d5e6f7a8b9c41\"]",
+              "type": "text",
+              "description": "JSON stringified array of payment mode ObjectIds (optional)"
+            },
+            {
+              "key": "additional_fields",
+              "value": "[{\"field_id\":\"665f1a2b3c4d5e6f7a8b9c10\",\"value\":\"3\"},{\"field_id\":\"665f1a2b3c4d5e6f7a8b9c11\",\"value\":\"2\"}]",
+              "type": "text",
+              "description": "JSON stringified array — only field_id and value"
+            }
           ]
         },
         "url": {
-          "raw": "{{base_url}}/property-listings/create-listing",
+          "raw": "{{base_url}}/property/create-listing/step/1",
           "host": ["{{base_url}}"],
-          "path": ["property-listings", "create-listing"]
-        }
+          "path": ["property", "create-listing", "step", "1"]
+        },
+        "description": "Step 1 — Creates the property listing with basic info. Saves slug to collection variable automatically."
       }
     },
     {
-      "name": "PUT – Step 1: Property Info",
+      "name": "2️⃣ Update Listing — Step 1 (Edit Property Info)",
       "request": {
         "method": "PUT",
-        "header": [],
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}",
+            "type": "text"
+          }
+        ],
         "body": {
           "mode": "formdata",
           "formdata": [
-            { "key": "category_id",       "value": "664f1e2b3a4c5d6e7f8a9b0c", "type": "text" },
-            { "key": "sub_category_id",   "value": "664f1e2b3a4c5d6e7f8a9b0d", "type": "text" },
-            { "key": "city_id",           "value": "664f1e2b3a4c5d6e7f8a9b0e", "type": "text" },
-            { "key": "title",             "value": "Updated Luxury 5 Marla House",           "type": "text" },
-            { "key": "description",       "value": "Updated description for the property.",  "type": "text" },
-            { "key": "purpose",           "value": "sale",       "type": "text" },
-            { "key": "price_amount",      "value": "26000000",   "type": "text" },
-            { "key": "price_currency",    "value": "AED",        "type": "text" },
-            { "key": "price_negotiable",  "value": "true",       "type": "text" },
-            { "key": "price_period",      "value": "one-time",   "type": "text" },
-            { "key": "area_size",         "value": "5",          "type": "text" },
-            { "key": "area_unit",         "value": "marla",      "type": "text" },
-            { "key": "payments",          "value": "664f1e2b3a4c5d6e7f8a9b10", "type": "text" },
-            { "key": "additional_fields", "value": "[{\"field_id\":\"664f1e2b3a4c5d6e7f8a9b11\",\"value\":\"5\"}]", "type": "text" }
+            {
+              "key": "category_id",
+              "value": "665f1a2b3c4d5e6f7a8b9c0d",
+              "type": "text"
+            },
+            {
+              "key": "sub_category_id",
+              "value": "665f1a2b3c4d5e6f7a8b9c0e",
+              "type": "text"
+            },
+            {
+              "key": "title",
+              "value": "3 BHK Apartment in Dubai Marina — Updated",
+              "type": "text"
+            },
+            {
+              "key": "description",
+              "value": "Updated description. Spacious 3 bedroom apartment in Dubai Marina with sea view and modern interiors.",
+              "type": "text"
+            },
+            {
+              "key": "purpose",
+              "value": "rent",
+              "type": "text"
+            },
+            {
+              "key": "price_amount",
+              "value": "12000",
+              "type": "text"
+            },
+            {
+              "key": "price_currency",
+              "value": "AED",
+              "type": "text"
+            },
+            {
+              "key": "price_negotiable",
+              "value": "false",
+              "type": "text"
+            },
+            {
+              "key": "price_period",
+              "value": "monthly",
+              "type": "text"
+            },
+            {
+              "key": "area_size",
+              "value": "1850",
+              "type": "text"
+            },
+            {
+              "key": "area_unit",
+              "value": "sqft",
+              "type": "text"
+            },
+            {
+              "key": "additional_fields",
+              "value": "[{\"field_id\":\"665f1a2b3c4d5e6f7a8b9c10\",\"value\":\"3\"}]",
+              "type": "text"
+            }
           ]
         },
         "url": {
-          "raw": "{{base_url}}/property-listings/update-listing/{{listing_id}}/step/1",
+          "raw": "{{base_url}}/property/update-listing/{{slug}}/step/1",
           "host": ["{{base_url}}"],
-          "path": ["property-listings", "update-listing", "{{listing_id}}", "step", "1"]
-        }
+          "path": ["property", "update-listing", "{{slug}}", "step", "1"]
+        },
+        "description": "Update Step 1 — Edit property info of an existing listing."
       }
     },
     {
-      "name": "PUT – Step 2: Media (Images)",
+      "name": "3️⃣ Update Listing — Step 2 (Upload Images)",
       "request": {
         "method": "PUT",
-        "header": [],
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}",
+            "type": "text"
+          }
+        ],
         "body": {
           "mode": "formdata",
           "formdata": [
-            { "key": "images", "type": "file", "src": [], "description": "Upload up to 20 images" },
-            { "key": "images", "type": "file", "src": [], "description": "Upload up to 20 images" },
-            { "key": "images", "type": "file", "src": [], "description": "Upload up to 20 images" }
+            {
+              "key": "images",
+              "type": "file",
+              "src": [],
+              "description": "Upload 1–20 images (jpg, png, webp)"
+            },
+            {
+              "key": "images",
+              "type": "file",
+              "src": [],
+              "description": "Second image (optional)"
+            }
           ]
         },
         "url": {
-          "raw": "{{base_url}}/property-listings/update-listing/{{listing_id}}/step/2",
+          "raw": "{{base_url}}/property/update-listing/{{slug}}/step/2",
           "host": ["{{base_url}}"],
-          "path": ["property-listings", "update-listing", "{{listing_id}}", "step", "2"]
-        }
+          "path": ["property", "update-listing", "{{slug}}", "step", "2"]
+        },
+        "description": "Step 2 — Upload listing images. Max 20. Use multipart/form-data."
       }
     },
     {
-      "name": "PUT – Step 3: Contact Details",
+      "name": "4️⃣ Update Listing — Step 3 (Contact Details)",
       "request": {
         "method": "PUT",
-        "header": [],
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}",
+            "type": "text"
+          }
+        ],
         "body": {
           "mode": "formdata",
           "formdata": [
-            { "key": "name",                "value": "Ahmed Raza",    "type": "text" },
-            { "key": "email",               "value": "ahmed@example.com", "type": "text" },
-            { "key": "country_code",        "value": "92",            "type": "text" },
-            { "key": "mobile_number",       "value": "3001234567",    "type": "text" },
-            { "key": "alt_country_code",    "value": "92",            "type": "text" },
-            { "key": "second_mobile_number","value": "3019876543",    "type": "text" }
+            {
+              "key": "name",
+              "value": "Ahmed Al Rashid",
+              "type": "text"
+            },
+            {
+              "key": "email",
+              "value": "ahmed@example.com",
+              "type": "text"
+            },
+            {
+              "key": "country_code",
+              "value": "+971",
+              "type": "text"
+            },
+            {
+              "key": "mobile_number",
+              "value": "501234567",
+              "type": "text",
+              "description": "String — preserves leading zeros"
+            },
+            {
+              "key": "alt_country_code",
+              "value": "+91",
+              "type": "text",
+              "description": "Optional"
+            },
+            {
+              "key": "second_mobile_number",
+              "value": "9876543210",
+              "type": "text",
+              "description": "Optional"
+            },
+            {
+              "key": "city_id",
+              "value": "665f1a2b3c4d5e6f7a8b9c20",
+              "type": "text",
+              "description": "Valid City ObjectId"
+            },
+            {
+              "key": "address",
+              "value": "Tower 5, Dubai Marina Walk, Dubai",
+              "type": "text"
+            },
+            {
+              "key": "locality",
+              "value": "Dubai Marina",
+              "type": "text",
+              "description": "Optional"
+            },
+            {
+              "key": "map_lat",
+              "value": "25.0769",
+              "type": "text",
+              "description": "Optional — latitude for map pin"
+            },
+            {
+              "key": "map_lng",
+              "value": "55.1339",
+              "type": "text",
+              "description": "Optional — longitude for map pin"
+            }
           ]
         },
         "url": {
-          "raw": "{{base_url}}/property-listings/update-listing/{{listing_id}}/step/3",
+          "raw": "{{base_url}}/property/update-listing/{{slug}}/step/3",
           "host": ["{{base_url}}"],
-          "path": ["property-listings", "update-listing", "{{listing_id}}", "step", "3"]
-        }
+          "path": ["property", "update-listing", "{{slug}}", "step", "3"]
+        },
+        "description": "Step 3 — Contact details and property location with map coordinates."
       }
     },
     {
-      "name": "PUT – Step 4: Social & Links",
+      "name": "5️⃣ Update Listing — Step 4 (SEO)",
       "request": {
         "method": "PUT",
-        "header": [],
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}",
+            "type": "text"
+          }
+        ],
         "body": {
           "mode": "formdata",
           "formdata": [
-            { "key": "website_link", "value": "https://myproperty.com",                        "type": "text" },
-            { "key": "video_link",   "value": "https://youtube.com/watch?v=abc123",             "type": "text" },
-            { "key": "facebook",     "value": "https://facebook.com/myproperty",               "type": "text" },
-            { "key": "instagram",    "value": "https://instagram.com/myproperty",              "type": "text" },
-            { "key": "youtube",      "value": "https://youtube.com/channel/myproperty",        "type": "text" }
+            {
+              "key": "seo_title",
+              "value": "3 BHK Apartment for Sale in Dubai Marina — Sea View",
+              "type": "text"
+            },
+            {
+              "key": "seo_description",
+              "value": "Buy a spacious 3 bedroom apartment in Dubai Marina with full sea view. Renovated, modern interiors, 1850 sqft.",
+              "type": "text"
+            }
           ]
         },
         "url": {
-          "raw": "{{base_url}}/property-listings/update-listing/{{listing_id}}/step/4",
+          "raw": "{{base_url}}/property/update-listing/{{slug}}/step/4",
           "host": ["{{base_url}}"],
-          "path": ["property-listings", "update-listing", "{{listing_id}}", "step", "4"]
-        }
+          "path": ["property", "update-listing", "{{slug}}", "step", "4"]
+        },
+        "description": "Step 4 — SEO title and description for the listing."
       }
     },
     {
-      "name": "PUT – Step 5: SEO",
+      "name": "6️⃣ Update Listing — Step 5 (Plan & Publish)",
       "request": {
         "method": "PUT",
-        "header": [],
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}",
+            "type": "text"
+          }
+        ],
         "body": {
           "mode": "formdata",
           "formdata": [
-            { "key": "seo_title",       "value": "Buy 5 Marla House in DHA Lahore – Best Price", "type": "text" },
-            { "key": "seo_description", "value": "Find the best 5 marla house for sale in DHA Phase 6 Lahore at an affordable price.", "type": "text" }
+            {
+              "key": "plan_id",
+              "value": "665f1a2b3c4d5e6f7a8b9c30",
+              "type": "text",
+              "description": "Valid Plan ObjectId"
+            }
           ]
         },
         "url": {
-          "raw": "{{base_url}}/property-listings/update-listing/{{listing_id}}/step/5",
+          "raw": "{{base_url}}/property/update-listing/{{slug}}/step/5",
           "host": ["{{base_url}}"],
-          "path": ["property-listings", "update-listing", "{{listing_id}}", "step", "5"]
-        }
-      }
-    },
-    {
-      "name": "PUT – Step 6: Plan & Publish",
-      "request": {
-        "method": "PUT",
-        "header": [],
-        "body": {
-          "mode": "formdata",
-          "formdata": [
-            { "key": "plan_id", "value": "664f1e2b3a4c5d6e7f8a9b20", "type": "text" }
-          ]
+          "path": ["property", "update-listing", "{{slug}}", "step", "5"]
         },
-        "url": {
-          "raw": "{{base_url}}/property-listings/update-listing/{{listing_id}}/step/6",
-          "host": ["{{base_url}}"],
-          "path": ["property-listings", "update-listing", "{{listing_id}}", "step", "6"]
-        }
+        "description": "Step 5 — Select a plan and publish the listing. Requires stepCompleted >= 4."
       }
     },
     {
-      "name": "GET – All Listings (Paginated + Filters)",
+      "name": "7️⃣ Get All Listings",
       "request": {
         "method": "GET",
         "header": [],
         "url": {
-          "raw": "{{base_url}}/property-listings/get-all-listings?page=1&limit=10&purpose=sale&city_id=664f1e2b3a4c5d6e7f8a9b0e&min_price=1000000&max_price=50000000",
+          "raw": "{{base_url}}/property/get-all-listings?page=1&limit=10",
           "host": ["{{base_url}}"],
-          "path": ["property-listings", "get-all-listings"],
+          "path": ["property", "get-all-listings"],
           "query": [
-            { "key": "page",         "value": "1" },
-            { "key": "limit",        "value": "10" },
-            { "key": "purpose",      "value": "sale",                        "description": "sale | rent | lease" },
-            { "key": "city_id",      "value": "664f1e2b3a4c5d6e7f8a9b0e",   "description": "MongoDB ObjectId of the city" },
-            { "key": "min_price",    "value": "1000000",                     "description": "Minimum price filter" },
-            { "key": "max_price",    "value": "50000000",                    "description": "Maximum price filter" },
-            { "key": "property_type","value": "",                            "description": "Optional property type filter", "disabled": true },
-            { "key": "furnishing",   "value": "",                            "description": "Optional furnishing filter",     "disabled": true },
-            { "key": "bedrooms",     "value": "",                            "description": "Optional bedrooms filter",       "disabled": true }
+            { "key": "page", "value": "1" },
+            { "key": "limit", "value": "10" },
+            {
+              "key": "purpose",
+              "value": "sale",
+              "disabled": true,
+              "description": "sale | rent | lease"
+            },
+            {
+              "key": "category_id",
+              "value": "665f1a2b3c4d5e6f7a8b9c0d",
+              "disabled": true
+            },
+            {
+              "key": "sub_category_id",
+              "value": "665f1a2b3c4d5e6f7a8b9c0e",
+              "disabled": true
+            },
+            {
+              "key": "city_id",
+              "value": "665f1a2b3c4d5e6f7a8b9c20",
+              "disabled": true
+            },
+            {
+              "key": "min_price",
+              "value": "500000",
+              "disabled": true
+            },
+            {
+              "key": "max_price",
+              "value": "5000000",
+              "disabled": true
+            },
+            {
+              "key": "min_area",
+              "value": "500",
+              "disabled": true
+            },
+            {
+              "key": "max_area",
+              "value": "5000",
+              "disabled": true
+            },
+            {
+              "key": "area_unit",
+              "value": "sqft",
+              "disabled": true,
+              "description": "sqft | sqm | marla | kanal"
+            },
+            {
+              "key": "is_sold",
+              "value": "false",
+              "disabled": true
+            },
+            {
+              "key": "is_published",
+              "value": "true",
+              "disabled": true
+            },
+            {
+              "key": "is_verified",
+              "value": "true",
+              "disabled": true
+            }
           ]
-        }
+        },
+        "description": "Get all listings with optional filters. Toggle disabled params as needed."
       }
     },
     {
-      "name": "GET – Single Listing by Slug",
+      "name": "8️⃣ Get Listing by Slug",
       "request": {
         "method": "GET",
         "header": [],
         "url": {
-          "raw": "{{base_url}}/property-listings/get-listing-by-slug/{{listing_slug}}",
+          "raw": "{{base_url}}/property/get-listing-by-slug/{{slug}}",
           "host": ["{{base_url}}"],
-          "path": ["property-listings", "get-listing-by-slug", "{{listing_slug}}"]
-        }
+          "path": ["property", "get-listing-by-slug", "{{slug}}"]
+        },
+        "description": "Get a single listing by its slug."
       }
     },
     {
-      "name": "DELETE – Delete Listing",
+      "name": "9️⃣ Mark Listing as Sold",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/property/mark-as-sold/{{slug}}",
+          "host": ["{{base_url}}"],
+          "path": ["property", "mark-as-sold", "{{slug}}"]
+        },
+        "description": "Mark a listing as sold. Only the owner can do this."
+      }
+    },
+    {
+      "name": "🔟 Delete Listing (Soft Delete)",
       "request": {
         "method": "DELETE",
-        "header": [],
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}",
+            "type": "text"
+          }
+        ],
         "url": {
-          "raw": "{{base_url}}/property-listings/delete-listing/{{listing_id}}",
+          "raw": "{{base_url}}/property/delete-listing/{{slug}}",
           "host": ["{{base_url}}"],
-          "path": ["property-listings", "delete-listing", "{{listing_id}}"]
-        }
+          "path": ["property", "delete-listing", "{{slug}}"]
+        },
+        "description": "Soft delete a listing. Sets isDeleted=true. Only the owner can do this."
+      }
+    },
+    {
+      "name": "❌ Validation — Missing Required Fields (Step 1)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}",
+            "type": "text"
+          }
+        ],
+        "body": {
+          "mode": "formdata",
+          "formdata": [
+            {
+              "key": "title",
+              "value": "Hi",
+              "type": "text",
+              "description": "Too short — min 3 chars"
+            },
+            {
+              "key": "description",
+              "value": "Short",
+              "type": "text",
+              "description": "Too short — min 10 chars"
+            }
+          ]
+        },
+        "url": {
+          "raw": "{{base_url}}/property/create-listing/step/1",
+          "host": ["{{base_url}}"],
+          "path": ["property", "create-listing", "step", "1"]
+        },
+        "description": "Should return 400 with key-value errors — category_id missing, title too short, description too short, purpose missing."
+      }
+    },
+    {
+      "name": "❌ Validation — Invalid Purpose Value",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}",
+            "type": "text"
+          }
+        ],
+        "body": {
+          "mode": "formdata",
+          "formdata": [
+            {
+              "key": "category_id",
+              "value": "665f1a2b3c4d5e6f7a8b9c0d",
+              "type": "text"
+            },
+            {
+              "key": "title",
+              "value": "Valid Property Title Here",
+              "type": "text"
+            },
+            {
+              "key": "description",
+              "value": "This is a valid description that is long enough.",
+              "type": "text"
+            },
+            {
+              "key": "purpose",
+              "value": "buy",
+              "type": "text",
+              "description": "Invalid — must be sale | rent | lease"
+            }
+          ]
+        },
+        "url": {
+          "raw": "{{base_url}}/property/create-listing/step/1",
+          "host": ["{{base_url}}"],
+          "path": ["property", "create-listing", "step", "1"]
+        },
+        "description": "Should return 400 — purpose must be one of: sale, rent, lease."
+      }
+    },
+    {
+      "name": "❌ Validation — Invalid Step",
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}",
+            "type": "text"
+          }
+        ],
+        "body": {
+          "mode": "formdata",
+          "formdata": []
+        },
+        "url": {
+          "raw": "{{base_url}}/property/update-listing/{{slug}}/step/99",
+          "host": ["{{base_url}}"],
+          "path": ["property", "update-listing", "{{slug}}", "step", "99"]
+        },
+        "description": "Should return 400 — Invalid step."
+      }
+    },
+    {
+      "name": "❌ Validation — Publish Without Completing Steps",
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}",
+            "type": "text"
+          }
+        ],
+        "body": {
+          "mode": "formdata",
+          "formdata": [
+            {
+              "key": "plan_id",
+              "value": "665f1a2b3c4d5e6f7a8b9c30",
+              "type": "text"
+            }
+          ]
+        },
+        "url": {
+          "raw": "{{base_url}}/property/update-listing/{{slug}}/step/5",
+          "host": ["{{base_url}}"],
+          "path": ["property", "update-listing", "{{slug}}", "step", "5"]
+        },
+        "description": "Should return 400 — Please complete all previous steps before publishing (if stepCompleted < 4)."
       }
     }
   ]

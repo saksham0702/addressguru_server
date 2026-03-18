@@ -1,6 +1,8 @@
 // ─── propertyListingController.js ────────────────────────────────────────────
 import PropertyListing from "../model/propertiesListingSchema.js";
 import AdditionalField from "../model/additionalFieldSchema.js";
+import Category from "../model/categoriesSchema.js";
+import SubCategory from "../model/subCategoriesSchema.js";
 import slugify from "slugify";
 import { successData, errorData } from "../services/helper.js";
 
@@ -54,7 +56,6 @@ export const createPropertyListing = async (req, res) => {
     const {
       category_id,
       sub_category_id,
-      city_id,
       title,
       description,
       purpose,
@@ -63,12 +64,30 @@ export const createPropertyListing = async (req, res) => {
       price_negotiable = false,
       price_period = "one-time",
       area_size,
-      area_unit = "marla",
+      area_unit = "sqft",
       payments = [],
       additional_fields = [],
     } = req.body;
 
-    // parse additional_fields if string (multipart safety)
+    // Validate category
+    const category = await Category.findOne({
+      _id: category_id,
+      isDeleted: false,
+    });
+    if (!category) return errorData(res, 404, false, "Category not found");
+
+    // Validate sub-category if provided
+    if (sub_category_id) {
+      const subCategory = await SubCategory.findOne({
+        _id: sub_category_id,
+        category: category_id,
+        isDeleted: false,
+      });
+      if (!subCategory)
+        return errorData(res, 404, false, "Sub-category not found");
+    }
+
+    // Parse additional_fields if string (multipart safety)
     let parsedAdditionalFields = additional_fields;
     if (typeof additional_fields === "string") {
       try {
@@ -89,7 +108,6 @@ export const createPropertyListing = async (req, res) => {
     const listing = await PropertyListing.create({
       category: category_id,
       subCategory: sub_category_id || null,
-      city: city_id,
       title,
       description,
       purpose,
@@ -109,6 +127,7 @@ export const createPropertyListing = async (req, res) => {
       stepCompleted: 1,
       isVerified: false,
       isPublished: false,
+      isSold: false,
       createdBy: req.user?._id || null,
     });
 
@@ -128,16 +147,30 @@ export const createPropertyListing = async (req, res) => {
   }
 };
 
-// ─── PUT /property-listings/:id/step/:step ────────────────────────────────────
+// ─── PUT /property-listings/:slug/step/:step ──────────────────────────────────
 export const updatePropertyListingStep = async (req, res) => {
   try {
-    const { id, step } = req.params;
+    const { slug, step } = req.params;
 
     const listing = await PropertyListing.findOne({
-      _id: id,
+      slug,
       isDeleted: false,
     });
     if (!listing) return errorData(res, 404, false, "Listing not found");
+
+    // ── Ownership check ──
+    if (
+      listing.createdBy &&
+      req.user?._id &&
+      listing.createdBy.toString() !== req.user._id.toString()
+    ) {
+      return errorData(
+        res,
+        403,
+        false,
+        "Forbidden: you do not own this listing",
+      );
+    }
 
     switch (Number(step)) {
       /* ── STEP 1 – PROPERTY INFO ── */
@@ -145,7 +178,6 @@ export const updatePropertyListingStep = async (req, res) => {
         const {
           category_id,
           sub_category_id,
-          city_id,
           title,
           description,
           purpose,
@@ -154,10 +186,31 @@ export const updatePropertyListingStep = async (req, res) => {
           price_negotiable = false,
           price_period = "one-time",
           area_size,
-          area_unit = "marla",
+          area_unit = "sqft",
           payments = [],
           additional_fields = [],
         } = req.body;
+
+        // Validate category if provided
+        if (category_id) {
+          const category = await Category.findOne({
+            _id: category_id,
+            isDeleted: false,
+          });
+          if (!category)
+            return errorData(res, 404, false, "Category not found");
+        }
+
+        // Validate sub-category if provided
+        if (sub_category_id) {
+          const subCategory = await SubCategory.findOne({
+            _id: sub_category_id,
+            category: category_id || listing.category,
+            isDeleted: false,
+          });
+          if (!subCategory)
+            return errorData(res, 404, false, "Sub-category not found");
+        }
 
         let parsedAdditionalFields = additional_fields;
         if (typeof additional_fields === "string") {
@@ -180,11 +233,10 @@ export const updatePropertyListingStep = async (req, res) => {
           listing.slug = `${slugify(title, { lower: true, strict: true })}-${Date.now()}`;
         }
 
-        listing.category = category_id;
+        if (category_id) listing.category = category_id;
         listing.subCategory = sub_category_id || null;
-        listing.city = city_id;
-        listing.description = description || null;
-        listing.purpose = purpose;
+        if (description !== undefined) listing.description = description;
+        if (purpose !== undefined) listing.purpose = purpose;
         listing.price = {
           amount: price_amount || null,
           currency: price_currency,
@@ -202,6 +254,8 @@ export const updatePropertyListingStep = async (req, res) => {
         if (req.files?.images?.length > 0) {
           const newImages = req.files.images.map((img) => img.path);
           listing.images = [...(listing.images || []), ...newImages];
+        } else {
+          return errorData(res, 400, false, "No images provided");
         }
         break;
       }
@@ -214,23 +268,18 @@ export const updatePropertyListingStep = async (req, res) => {
         listing.mobileNumber = req.body.mobile_number || null;
         listing.altCountryCode = req.body.alt_country_code || null;
         listing.alternateMobileNumber = req.body.second_mobile_number || null;
-        break;
-      }
-
-      /* ── STEP 4 – SOCIAL & LINKS ── */
-      case 4: {
-        listing.websiteLink = req.body.website_link || null;
-        listing.videoLink = req.body.video_link || null;
-        listing.socialLinks = {
-          facebook: req.body.facebook || null,
-          instagram: req.body.instagram || null,
-          youtube: req.body.youtube || null,
+        listing.city = req.body.city_id || null;
+        listing.location = {
+          address: req.body.address || null,
+          locality: req.body.locality || null,
+          mapLat: req.body.map_lat ? Number(req.body.map_lat) : null,
+          mapLng: req.body.map_lng ? Number(req.body.map_lng) : null,
         };
         break;
       }
 
-      /* ── STEP 5 – SEO ── */
-      case 5: {
+      /* ── STEP 4 – SEO ── */
+      case 4: {
         listing.seo = {
           title: req.body.seo_title || null,
           description: req.body.seo_description || null,
@@ -238,9 +287,17 @@ export const updatePropertyListingStep = async (req, res) => {
         break;
       }
 
-      /* ── STEP 6 – PLAN & PUBLISH ── */
-      case 6: {
-        listing.plan = req.body.plan_id;
+      /* ── STEP 5 – PLAN & PUBLISH ── */
+      case 5: {
+        if (listing.stepCompleted < 4) {
+          return errorData(
+            res,
+            400,
+            false,
+            "Please complete all previous steps before publishing",
+          );
+        }
+        listing.plan = req.body.plan_id || null;
         listing.isPublished = true;
         break;
       }
@@ -254,6 +311,7 @@ export const updatePropertyListingStep = async (req, res) => {
 
     return successData(res, 200, true, `Step ${step} saved successfully`, {
       id: listing._id,
+      slug: listing.slug,
       stepCompleted: listing.stepCompleted,
     });
   } catch (error) {
@@ -262,20 +320,29 @@ export const updatePropertyListingStep = async (req, res) => {
   }
 };
 
-/* ── GET ALL (paginated) ── */
+/* ── GET ALL (paginated + filtered) ── */
 export const getAllPropertyListings = async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
     const skip = (page - 1) * limit;
 
-    // Basic filters from query
-    const filter = { isDeleted: false, isPublished: true, isVerified: true };
+    // Base filter — only non-deleted listings
+    const filter = { isDeleted: false };
+
+    // Optional filters from query params
     if (req.query.purpose) filter.purpose = req.query.purpose;
-    if (req.query.property_type) filter.propertyType = req.query.property_type;
     if (req.query.city_id) filter.city = req.query.city_id;
-    if (req.query.furnishing) filter.furnishing = req.query.furnishing;
-    if (req.query.bedrooms) filter.bedrooms = Number(req.query.bedrooms);
+    if (req.query.category_id) filter.category = req.query.category_id;
+    if (req.query.sub_category_id)
+      filter.subCategory = req.query.sub_category_id;
+    if (req.query.area_unit) filter["area.unit"] = req.query.area_unit;
+    if (req.query.is_sold !== undefined)
+      filter.isSold = req.query.is_sold === "true";
+    if (req.query.is_published !== undefined)
+      filter.isPublished = req.query.is_published === "true";
+    if (req.query.is_verified !== undefined)
+      filter.isVerified = req.query.is_verified === "true";
 
     // Price range
     if (req.query.min_price || req.query.max_price) {
@@ -284,6 +351,15 @@ export const getAllPropertyListings = async (req, res) => {
         filter["price.amount"].$gte = Number(req.query.min_price);
       if (req.query.max_price)
         filter["price.amount"].$lte = Number(req.query.max_price);
+    }
+
+    // Area size range
+    if (req.query.min_area || req.query.max_area) {
+      filter["area.size"] = {};
+      if (req.query.min_area)
+        filter["area.size"].$gte = Number(req.query.min_area);
+      if (req.query.max_area)
+        filter["area.size"].$lte = Number(req.query.max_area);
     }
 
     const [listings, total] = await Promise.all([
@@ -319,7 +395,6 @@ export const getPropertyListingBySlug = async (req, res) => {
     const listing = await PropertyListing.findOne({
       slug,
       isDeleted: false,
-      isPublished: true,
     })
       .populate("category", "name")
       .populate("subCategory", "name")
@@ -336,18 +411,72 @@ export const getPropertyListingBySlug = async (req, res) => {
   }
 };
 
+/* ── MARK AS SOLD ── */
+export const markPropertyListingAsSold = async (req, res) => {
+  try {
+    const { slug } = req.params;
+    if (!slug) return errorData(res, 400, false, "Slug is required");
+
+    const listing = await PropertyListing.findOne({
+      slug,
+      isDeleted: false,
+    });
+    if (!listing) return errorData(res, 404, false, "Listing not found");
+
+    // Ownership check
+    if (
+      listing.createdBy &&
+      req.user?._id &&
+      listing.createdBy.toString() !== req.user._id.toString()
+    ) {
+      return errorData(
+        res,
+        403,
+        false,
+        "Forbidden: you do not own this listing",
+      );
+    }
+
+    listing.isSold = true;
+    await listing.save();
+
+    return successData(res, 200, true, "Listing marked as sold", {
+      id: listing._id,
+    });
+  } catch (error) {
+    console.error("Mark as sold error:", error);
+    return errorData(res, 500, false, "Internal server error");
+  }
+};
+
 /* ── SOFT DELETE ── */
 export const deletePropertyListing = async (req, res) => {
   try {
-    const { id } = req.params;
-    if (!id) return errorData(res, 400, false, "Listing id is required");
+    const { slug } = req.params;
+    if (!slug) return errorData(res, 400, false, "Slug is required");
 
-    const listing = await PropertyListing.findByIdAndUpdate(
-      id,
-      { isDeleted: true },
-      { new: true },
-    );
+    const listing = await PropertyListing.findOne({
+      slug,
+      isDeleted: false,
+    });
     if (!listing) return errorData(res, 404, false, "Listing not found");
+
+    // Ownership check
+    if (
+      listing.createdBy &&
+      req.user?._id &&
+      listing.createdBy.toString() !== req.user._id.toString()
+    ) {
+      return errorData(
+        res,
+        403,
+        false,
+        "Forbidden: you do not own this listing",
+      );
+    }
+
+    listing.isDeleted = true;
+    await listing.save();
 
     return successData(res, 200, true, "Listing deleted successfully", {
       id: listing._id,
