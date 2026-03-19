@@ -191,7 +191,7 @@ export const register = async (req, res) => {
     if (error) {
       return successData(res, 400, false, error.details[0].message);
     }
-
+    console.log("Value :", value);
     const {
       name,
       email,
@@ -278,16 +278,21 @@ export const register = async (req, res) => {
     console.log("OTP ::--->>", otp);
 
     // Send welcome mail (optional). sendMail should be implemented to not expose passwords.
-    // try {
-    //   // NOTE: it's unsafe to send plaintext passwords in real apps — consider sending a password-reset link or templated welcome email without password.
-    //   await sendOTPMail(email, name, otp);
-    // } catch (mailErr) {
-    //   console.warn("sendMail failed:", mailErr?.message || mailErr);
-    // }
+
+    // // NOTE: it's unsafe to send plaintext passwords in real apps — consider sending a password-reset link or templated welcome email without password.
+
+    try {
+      console.log("Sending OTP email to:", email);
+      // NOTE: it's unsafe to send plaintext passwords in real apps — consider sending a password-reset link or templated welcome email without password.
+      await sendOTPMail(email, name, otp);
+      console.log("OTP email sent successfully");
+    } catch (mailErr) {
+      console.warn("sendMail failed:", mailErr?.message || mailErr);
+    }
 
     // Remove password from response
-    // const userResponse = user.toObject();
-    // delete userResponse.password;
+    const userResponse = user.toObject();
+    delete userResponse.password;
 
     return successData(
       res,
