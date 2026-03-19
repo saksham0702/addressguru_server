@@ -21,3 +21,15 @@ const featureSchema = new mongoose.Schema(
 );
 
 export default mongoose.model("Feature", featureSchema);
+
+featureSchema.index({ type: 1, isActive: 1 });
+
+featureSchema.index({ name: 1, type: 1 });
+
+featureSchema.index({ slug: 1 });
+
+featureSchema.index({ isDeleted: 1 });
+  
+featureSchema.index({ createdAt: 1 });
+
+featureSchema.index({ updatedAt: 1 });

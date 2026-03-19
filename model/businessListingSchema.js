@@ -1,4 +1,4 @@
-// models/Listing.js
+// models/businessListingSchema.js
 import mongoose from "mongoose";
 
 // ─── Sub-schema: one additional field answer ───────────────────────────────
@@ -9,20 +9,11 @@ const additionalFieldValueSchema = new mongoose.Schema(
       ref: "AdditionalField",
       required: true,
     },
-    field_label: {
-      type: String,
-      required: true, // snapshot of label at time of save
-    },
-    field_type: {
-      type: String,
-      required: true, // snapshot of type (text / number / checkbox …)
-    },
-    value: {
-      type: mongoose.Schema.Types.Mixed, // string | number | string[]
-      default: null,
-    },
+    field_label: { type: String, required: true },
+    field_type: { type: String, required: true },
+    value: { type: mongoose.Schema.Types.Mixed, default: null },
   },
-  { _id: false }, // no separate _id per answer – field_id is the key
+  { _id: false },
 );
 
 const businessListingSchema = new mongoose.Schema(
@@ -43,72 +34,76 @@ const businessListingSchema = new mongoose.Schema(
     /* =========================
        STEP 1 – BUSINESS INFO
     ========================== */
-    businessName: { type: String, required: true, unique: true, trim: true },
+    businessName: { type: String, required: true, trim: true },
+    // removed unique:true from field level — handled in controller
+    // to avoid blocking re-creation after soft delete
+
     businessAddress: { type: String, required: true },
     description: { type: String, required: true },
-    establishedYear: { type: Number },
-    taxNumber: { type: String },
+    establishedYear: { type: Number, default: null },
+    taxNumber: { type: String, default: null },
 
-    /*  ADDITIONAL / DYNAMIC FIELDS
-       (answers to AdditionalField docs for this category) */
+    // Dynamic fields per category
     additionalFields: {
       type: [additionalFieldValueSchema],
       default: [],
     },
 
-    // ── CategoryFeature-linked arrays ──────────────────────────────────────
-    // Each ObjectId points to an item inside Feature.items[]
+    // CategoryFeature-linked arrays
     facilities: [{ type: mongoose.Schema.Types.ObjectId }],
     services: [{ type: mongoose.Schema.Types.ObjectId }],
     courses: [{ type: mongoose.Schema.Types.ObjectId }],
     paymentModes: [{ type: mongoose.Schema.Types.ObjectId }],
 
-    workingHours: { type: Object },
+    workingHours: { type: Object, default: null },
 
     /* =========================
        STEP 2 – SOCIAL LINKS
     ========================== */
-    websiteLink: String,
-    videoLink: String,
+    websiteLink: { type: String, default: null },
+    videoLink: { type: String, default: null },
     socialLinks: {
-      facebook: String,
-      instagram: String,
-      twitter: String,
-      linkedin: String,
-      youtube: String,
+      facebook: { type: String, default: null },
+      instagram: { type: String, default: null },
+      twitter: { type: String, default: null },
+      linkedin: { type: String, default: null },
+      youtube: { type: String, default: null },
     },
 
     /* =========================
        STEP 3 – CONTACT DETAILS
     ========================== */
-    contactPersonName: String,
+    contactPersonName: { type: String },
     email: { type: String, lowercase: true },
-    countryCode: Number,
-    mobileNumber: Number,
-    altCountryCode: Number,
-    alternateMobileNumber: Number,
-    locality: String,
-    // city: {
-    //   type: mongoose.Schema.Types.ObjectId,
-    //   ref: "City",
-    //   // required: true,
-    // },
-    city: { type: String },
+
+    // fixed: was required:true — city is set in step 3, not step 1
+    city: { type: mongoose.Schema.Types.ObjectId, ref: "City" },
+
+    // fixed: all were Number — changed to String
+    countryCode: { type: String },
+    mobileNumber: { type: String },
+    altCountryCode: { type: String },
+    alternateMobileNumber: { type: String },
+
+    locality: { type: String },
 
     /* =========================
        STEP 4 – SEO
     ========================== */
-    seo: { title: String, description: String },
+    seo: {
+      title: { type: String },
+      description: { type: String },
+    },
     slug: { type: String, unique: true, index: true },
 
     /* =========================
        STEP 5 – MEDIA
     ========================== */
-    logo: String,
+    logo: { type: String, default: null },
     images: [String],
 
     /* =========================
-       STEP 6 – PLAN
+       STEP 6 – PLAN & PUBLISH
     ========================== */
     plan: { type: mongoose.Schema.Types.ObjectId, ref: "Plan" },
 
@@ -123,11 +118,13 @@ const businessListingSchema = new mongoose.Schema(
     provider: {
       type: String,
       enum: ["google", "user"],
+      default: "user",
     },
 
     approvedBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
+      default: null,
     },
 
     /* =========================
@@ -138,6 +135,11 @@ const businessListingSchema = new mongoose.Schema(
   { timestamps: true },
 );
 
-export default mongoose.model("BusinessListing", businessListingSchema);
+// ── Indexes ───────────────────────────────────────────────────────────────────
+businessListingSchema.index({ slug: 1 });
+businessListingSchema.index({ businessName: 1, isDeleted: 1 }); // for duplicate name check
+businessListingSchema.index({ category: 1, subCategory: 1 });
+businessListingSchema.index({ city: 1 });
+businessListingSchema.index({ isDeleted: 1, isPublished: 1, isVerified: 1 });
 
-// GET /api/additional-fields?category=<id>&subcategory=<id>
+export default mongoose.model("BusinessListing", businessListingSchema);
