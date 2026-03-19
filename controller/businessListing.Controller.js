@@ -4,6 +4,7 @@ import AdditionalField from "../model/additionalFieldSchema.js";
 import Category from "../model/categoriesSchema.js";
 import SubCategory from "../model/subCategoriesSchema.js";
 import categoryFeatures from "../model/categoryFeatures.js";
+import Feature from "../model/featureSchema.js";
 import slugify from "slugify";
 import { successData, errorData } from "../services/helper.js";
 
@@ -370,22 +371,23 @@ export const getFeaturesAndAdditionalFieldsByCategory = async (req, res) => {
       ...(subcategory_id && { subcategory_id }),
     };
 
-    const [features, additionalFields] = await Promise.all([
+    const [features, additionalFields, paymentModes] = await Promise.all([
       categoryFeatures
         .findOne(featureFilter)
         .populate("facilities", "name icon _id")
         .populate("services", "name icon _id")
-        .populate("courses", "name icon _id")
-        .populate("payment_modes", "name icon _id"),
+        .populate("courses", "name icon _id"),
+
       AdditionalField.find(additionalFieldFilter).sort({ display_order: 1 }),
+
+      // ✅ FIXED: isDeleted (camelCase) to match Feature schema
+      Feature.find({
+        type: "payment_mode",
+        isDeleted: false,
+      }).select("name icon _id"),
     ]);
 
-    const {
-      facilities = [],
-      services = [],
-      courses = [],
-      payment_modes = [],
-    } = features || {};
+    const { facilities = [], services = [], courses = [] } = features || {};
 
     return successData(
       res,
@@ -393,7 +395,12 @@ export const getFeaturesAndAdditionalFieldsByCategory = async (req, res) => {
       true,
       "Features and additional fields fetched successfully",
       {
-        features: { facilities, services, courses, payment_modes },
+        features: {
+          facilities,
+          services,
+          courses,
+        },
+        payment_modes: paymentModes,
         additionalFields: additionalFields || [],
       },
     );
@@ -468,6 +475,36 @@ export const getListingBySlug = async (req, res) => {
     if (!listing) return errorData(res, 404, false, "Listing not found");
 
     return successData(res, 200, true, "Listing fetched successfully", listing);
+  } catch (error) {
+    console.error("Listing fetch error:", error);
+    return errorData(res, 500, false, "Internal server error");
+  }
+};
+
+// get listing by user
+export const getListingByUser = async (req, res) => {
+  console.log("req.params", req.params);
+  try {
+    const { id } = req.params;
+    console.log("id", id);
+
+    const listings = await BusinessListing.find({
+      createdBy: id,
+      isDeleted: false,
+    })
+      .populate("category", "name")
+      .populate("subCategory", "name")
+      .populate("city", "name")
+      .populate("createdBy", "name email phone avatar") // optional: show owner info
+      .lean();
+
+    if (!listings.length)
+      return errorData(res, 404, false, "No listings found for this user");
+
+    return successData(res, 200, true, "Listings fetched successfully", {
+      total: listings.length,
+      listings,
+    });
   } catch (error) {
     console.error("Listing fetch error:", error);
     return errorData(res, 500, false, "Internal server error");

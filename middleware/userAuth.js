@@ -17,7 +17,7 @@ const extractToken = (req) => {
 };
 
 // ─── authenticate — required auth, blocks if no valid token ──────────────────
-const authenticate = async (req, res, next) => {
+export const authenticate = async (req, res, next) => {
   try {
     const token = extractToken(req);
 
@@ -39,7 +39,7 @@ const authenticate = async (req, res, next) => {
 };
 
 // ─── optionalAuth — soft auth, sets req.user = null if no/invalid token ───────
-const optionalAuth = (req, res, next) => {
+export const optionalAuth = (req, res, next) => {
   try {
     const token = extractToken(req);
     if (token) {
@@ -54,4 +54,4 @@ const optionalAuth = (req, res, next) => {
   next();
 };
 
-export { authenticate, optionalAuth };
+
