@@ -418,7 +418,7 @@ export const getFeaturesAndAdditionalFieldsByCategory = async (req, res) => {
 export const getAllListingsWithPaginationAndFilters = async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 10;
+    const limit = parseInt(req.query.limit) || 100;
     const skip = (page - 1) * limit;
 
     // Base filter — only non-deleted
@@ -440,6 +440,7 @@ export const getAllListingsWithPaginationAndFilters = async (req, res) => {
         .populate("category", "name")
         .populate("subCategory", "name")
         .populate("city", "name")
+        .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit)
         .lean(),
@@ -464,27 +465,25 @@ export const getListingBySlug = async (req, res) => {
   try {
     const { slug } = req.params;
     if (!slug) return errorData(res, 400, false, "Listing slug is required");
-
     const listing = await BusinessListing.findOne({
       slug,
       isDeleted: false,
-      // removed hardcoded isPublished:true — allow fetching drafts
     })
       .populate("category", "name")
       .populate("subCategory", "name")
       .populate("city", "name")
       .populate("additionalFields.field_id", "field_label field_type")
+      .populate("facilities", "name")
+      .populate("services", "name")
+      .populate("paymentModes", "name")
       .lean();
-
     if (!listing) return errorData(res, 404, false, "Listing not found");
-
     return successData(res, 200, true, "Listing fetched successfully", listing);
   } catch (error) {
     console.error("Listing fetch error:", error);
     return errorData(res, 500, false, "Internal server error");
   }
 };
-
 // get listing by user
 export const getListingByUser = async (req, res) => {
   console.log("req.user get listing by user", req.user);

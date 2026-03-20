@@ -50,10 +50,10 @@ const businessListingSchema = new mongoose.Schema(
     },
 
     // CategoryFeature-linked arrays
-    facilities: [{ type: mongoose.Schema.Types.ObjectId }],
-    services: [{ type: mongoose.Schema.Types.ObjectId }],
-    courses: [{ type: mongoose.Schema.Types.ObjectId }],
-    paymentModes: [{ type: mongoose.Schema.Types.ObjectId }],
+    facilities: [{ type: mongoose.Schema.Types.ObjectId, ref: "Feature" }],
+    services: [{ type: mongoose.Schema.Types.ObjectId, ref: "Feature" }],
+    courses: [{ type: mongoose.Schema.Types.ObjectId, ref: "Feature" }],
+    paymentModes: [{ type: mongoose.Schema.Types.ObjectId, ref: "Feature" }],
 
     workingHours: { type: Object, default: null },
 
