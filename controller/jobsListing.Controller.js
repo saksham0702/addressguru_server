@@ -425,6 +425,59 @@ export const getAllJobsWithPaginationAndFilters = async (req, res) => {
 
 
 /* =========================
+   GET ALL JOBS BY USER
+========================== */
+export const getAllJobsByUser = async (req, res) => {
+  try {
+    const user = req?.user;
+    if (!user || !user.id) {
+      return errorData(res, 401, false, "Unauthorized");
+    }
+
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
+
+    const filter = {
+      createdBy: user.id,
+      isDeleted: false,
+    };
+
+    if (req.query.status) {
+      filter.status = req.query.status;
+    }
+
+    const [jobs, total] = await Promise.all([
+      Job.find(filter)
+        .populate("category", "name")
+        .populate("subCategory", "name")
+        .skip(skip)
+        .limit(limit)
+        .sort({ createdAt: -1 })
+        .lean(),
+      Job.countDocuments(filter),
+    ]);
+
+    if (!jobs.length)
+      return errorData(res, 404, false, "No jobs found for this user");
+
+    return successData(res, 200, true, "User jobs fetched successfully", {
+      jobs,
+      pagination: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      },
+    });
+  } catch (error) {
+    console.error("User job fetch error:", error);
+    return errorData(res, 500, false, "Internal server error");
+  }
+};
+
+
+/* =========================
    GET SINGLE JOB BY ID
 ========================== */
 export const getJobById = async (req, res) => {

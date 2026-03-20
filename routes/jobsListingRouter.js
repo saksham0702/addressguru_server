@@ -6,6 +6,7 @@ import {
   getAllJobsWithPaginationAndFilters,
   getJobById,
   deleteJob,
+  getAllJobsByUser,
 } from "../controller/jobsListing.Controller.js";
 import upload from "../middleware/multerConfig.js";
 import {authenticate} from "../middleware/userAuth.js";
@@ -23,6 +24,7 @@ router
   .put(jobUpload, validateStep(jobStepSchemas), saveJobStep);
 
 router.get("/get-all-jobs", getAllJobsWithPaginationAndFilters);
+router.get("/get-user-jobs", authenticate, getAllJobsByUser);
 router.get("/get-job/:slug", getJobById);
 router.delete("/delete-job/:slug", deleteJob);
 
