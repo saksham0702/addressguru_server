@@ -14,10 +14,6 @@ jobs:
     # ✅ Skip draft PRs safely
     if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
 
-    strategy:
-      matrix:
-        node-version: [18, 20]
-
     # ✅ MongoDB Service (IMPORTANT)
     services:
       mongo:
