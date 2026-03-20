@@ -1,6 +1,9 @@
 import { MongoMemoryServer } from 'mongodb-memory-server';
 import mongoose from 'mongoose';
 
+// Ensure critical environment variables exist for isolated testing (e.g., GitHub Actions without .env)
+process.env.JWT_SECRET = process.env.JWT_SECRET || 'test-jwt-secret-for-ci';
+
 let mongoServer;
 
 beforeAll(async () => {
