@@ -35,6 +35,7 @@ import adminUserRouter from "./routes/adminUser.Router.js";
 import marketplaceListingRouter from "./routes/marketplaceRouter.js";
 import blogRouter from "./routes/blog.Router.js";
 import propertyRouter from "./routes/property.Router.js";
+import plansRouter from "./routes/plans.Router.js";
 
 var app = express();
 
@@ -143,6 +144,7 @@ app.use(`/google-listing`, googleListingRoutes);
 
 app.use(`/`, listingFeaturesRoutes);
 app.use(`/api/applications`, jobApplicationRoutes);
+app.use(`/plans`, plansRouter);
 
 app.get("/test-cookie", (req, res) => {
   console.log("cookies:", req.cookies);
