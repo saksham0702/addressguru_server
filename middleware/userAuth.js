@@ -27,7 +27,7 @@ export const authenticate = async (req, res, next) => {
 
     const decoded = jwt.verify(token, SECRET_KEY);
     req.user = decoded?.user;
-
+    console.log("req.user auth middleware", req.user);
     next();
   } catch (error) {
     if (error.name === "TokenExpiredError") {
@@ -45,6 +45,7 @@ export const optionalAuth = (req, res, next) => {
     if (token) {
       const decoded = jwt.verify(token, SECRET_KEY);
       req.user = decoded?.user;
+      console.log("req.user optional auth middleware", req.user);
     } else {
       req.user = null;
     }

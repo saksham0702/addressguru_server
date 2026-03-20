@@ -19,7 +19,7 @@ const router = express.Router();
 router.post(
   "/create-listing/step/:step",
   // optionalAuth,
-  // authenticate,
+  authenticate,
   setUploadFolder("business-listings"),
   upload.fields([
     { name: "logo", maxCount: 1 },
@@ -32,7 +32,7 @@ router.post(
 // Update — uses slug, not id
 router.put(
   "/update-listing/:slug/step/:step",
-  // authenticate,
+  authenticate,
   // optionalAuth,
   setUploadFolder("business-listings"),
   upload.fields([
@@ -52,7 +52,7 @@ router.get("/", (req, res) => {
   `);
 });
 
-router.get("/get-listing-by-user/:id", getListingByUser);
+router.get("/get-listing-by-user/",authenticate, getListingByUser);
 router.get("/get-all-listings", getAllListingsWithPaginationAndFilters);
 router.get("/get-listing-by-slug/:slug", getListingBySlug);
 router.delete("/delete-listing/:slug", deleteListing);

@@ -65,6 +65,7 @@ const parseJSON = (val, fallback = null) => {
 
 // ─── POST /business-listings ──────────────────────────────────────────────────
 export const createListing = async (req, res) => {
+  console.log("req.user testing create listing", req.user);
   try {
     const {
       category_id,
@@ -142,7 +143,7 @@ export const createListing = async (req, res) => {
       stepCompleted: 1,
       isVerified: false,
       isPublished: false,
-      createdBy: req.user?._id || null,
+      createdBy: req.user.id,
     });
 
     return successData(res, 201, true, "Listing created successfully", {
@@ -157,6 +158,9 @@ export const createListing = async (req, res) => {
 
 // ─── PUT /business-listings/:slug/step/:step ──────────────────────────────────
 export const updateListingStep = async (req, res) => {
+  // console.log("req.user update listing step", req.user);
+  // console.log("req.params update listing step", req.params);
+  // console.log("req body",req.body);
   try {
     const { slug, step } = req.params;
 
@@ -166,8 +170,8 @@ export const updateListingStep = async (req, res) => {
     // ── Ownership check ──
     if (
       listing.createdBy &&
-      req.user?._id &&
-      listing.createdBy.toString() !== req.user._id.toString()
+      req.user?.id &&
+      listing.createdBy.toString() !== req.user.id.toString()
     ) {
       return errorData(
         res,
@@ -483,11 +487,9 @@ export const getListingBySlug = async (req, res) => {
 
 // get listing by user
 export const getListingByUser = async (req, res) => {
-  console.log("req.params", req.params);
+  console.log("req.user get listing by user", req.user);
   try {
-    const { id } = req.params;
-    console.log("id", id);
-
+    const id = req.user.id;
     const listings = await BusinessListing.find({
       createdBy: id,
       isDeleted: false,

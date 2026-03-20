@@ -128,7 +128,7 @@ export const createPropertyListing = async (req, res) => {
       isVerified: false,
       isPublished: false,
       isSold: false,
-      createdBy: req.user?._id || null,
+      createdBy: req.user?.id || null,
     });
 
     return successData(
@@ -161,8 +161,8 @@ export const updatePropertyListingStep = async (req, res) => {
     // ── Ownership check ──
     if (
       listing.createdBy &&
-      req.user?._id &&
-      listing.createdBy.toString() !== req.user._id.toString()
+      req.user?.id &&
+      listing.createdBy.toString() !== req.user.id.toString()
     ) {
       return errorData(
         res,
@@ -411,6 +411,33 @@ export const getPropertyListingBySlug = async (req, res) => {
   }
 };
 
+// get property by user
+export const getPropertyListingByUser = async (req, res) => {
+  console.log("req.user get property by user", req.user);
+  try {
+    const id = req.user?.id;
+    if (!id) return errorData(res, 400, false, "Id is required");
+
+    const listing = await PropertyListing.find({
+      createdBy: id,
+      isDeleted: false,
+    })
+      .populate("category", "name")
+      .populate("subCategory", "name")
+      .populate("city", "name")
+      .populate("additionalFields.field_id", "field_label field_type")
+      .lean();
+
+    if (!listing.length)
+      return errorData(res, 404, false, "No listings found");
+
+    return successData(res, 200, true, "Listings fetched successfully", listing);
+  } catch (error) {
+    console.error("Property listing fetch error:", error);
+    return errorData(res, 500, false, "Internal server error");
+  }
+};
+
 /* ── MARK AS SOLD ── */
 export const markPropertyListingAsSold = async (req, res) => {
   try {
@@ -426,8 +453,8 @@ export const markPropertyListingAsSold = async (req, res) => {
     // Ownership check
     if (
       listing.createdBy &&
-      req.user?._id &&
-      listing.createdBy.toString() !== req.user._id.toString()
+      req.user?.id &&
+      listing.createdBy.toString() !== req.user.id.toString()
     ) {
       return errorData(
         res,

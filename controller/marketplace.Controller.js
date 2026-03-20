@@ -49,6 +49,7 @@ const validateAdditionalFields = async (additionalFields = []) => {
 
 // ─── POST /marketplace-listings ───────────────────────────────────────────────
 export const createMarketplaceListing = async (req, res) => {
+  console.log("req.user in marketplace", req.user);
   try {
     const {
       category_id,
@@ -116,7 +117,7 @@ export const createMarketplaceListing = async (req, res) => {
       isVerified: false,
       isPublished: false,
       isSold: false,
-      createdBy: req.user?._id || null,
+      createdBy: req.user?.id || null,
     });
 
     return successData(res, 201, true, "Listing created successfully", {
@@ -143,8 +144,8 @@ export const updateMarketplaceListingStep = async (req, res) => {
     // ── Ownership check ──
     if (
       listing.createdBy &&
-      req.user?._id &&
-      listing.createdBy.toString() !== req.user._id.toString()
+      req.user?.id &&
+      listing.createdBy.toString() !== req.user.id.toString()
     ) {
       return errorData(
         res,
@@ -371,6 +372,29 @@ export const getMarketplaceListingBySlug = async (req, res) => {
     if (!listing) return errorData(res, 404, false, "Listing not found");
 
     return successData(res, 200, true, "Listing fetched successfully", listing);
+  } catch (error) {
+    console.error("Marketplace listing fetch error:", error);
+    return errorData(res, 500, false, "Internal server error");
+  }
+};
+
+//get listing by user
+export const getMarketplaceListingByUser = async (req, res) => {
+  console.log("req.user get listing by user", req.user);
+  try {
+    const id = req.user.id;
+    const listings = await MarketplaceListing.find({ 
+      createdBy: id,
+      isDeleted: false,
+    })
+      .populate("category", "name")
+      .populate("subCategory", "name")
+      .populate("city", "name")
+      .populate("additionalFields.field_id", "field_label field_type")
+      .lean();
+    if (!listings.length)
+      return errorData(res, 404, false, "No listings found");
+    return successData(res, 200, true, "Listings fetched successfully", listings);
   } catch (error) {
     console.error("Marketplace listing fetch error:", error);
     return errorData(res, 500, false, "Internal server error");
