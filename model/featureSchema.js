@@ -13,7 +13,7 @@ const featureSchema = new mongoose.Schema(
     isActive: { type: Boolean, default: true },
     isDeleted: { type: Boolean, default: false },
   },
-  { timestamps: true },
+  { timestamps: true }, 
 );
 
 // ✅ Indexes BEFORE model export
