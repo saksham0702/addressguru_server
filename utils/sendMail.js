@@ -61,13 +61,58 @@ const sendOTPMail = (email, name = "", otp) => {
   return transporter.sendMail(mailOptions);
 };
 
+// ── FIX 1: templatePath scoping bug fixed ────────────────────────────────────
+const sendApprovedAndRejectedListingMail = (email, name, status, message) => {
+  console.log(
+    "EMAIL:", email,
+    "Name:", name,
+    "Status:", status,
+    "Message:", message
+  );
+ 
+  // ✅ Declare outside the if block so it's accessible below
+  let templatePath;
+  if (status === "approved") {
+    templatePath = path.resolve("utils/mailThemes/ListingApproved.hjs");
+  } else {
+    templatePath = path.resolve("utils/mailThemes/ListingRejected.hjs");
+  }
+ 
+  const template = fs.readFileSync(templatePath, "utf-8");
+  const compiledTemplate = Hogan.compile(template);
+  const mailBody = compiledTemplate.render({ name, status, message });
+ 
+  const transporter = nodemailer.createTransport({
+    host: emailConfig.SMTP_HOST,
+    port: emailConfig.SMTP_PORT,
+    secure: true,
+    auth: {
+      user: emailConfig.SMTP_EMAIL,
+      pass: emailConfig.SMTP_PASS,
+    },
+  });
+ 
+  const mailOptions = {
+    from: '"AddressGuru UAE" <adx.ddn@gmail.com>',
+    to: email,
+    subject:
+      status === "approved"
+        ? "🎉 Your Listing Has Been Approved!"
+        : "Your Listing Status Update",
+    text: `Your listing status is: ${status}`,
+    html: mailBody,
+  };
+ 
+  return transporter.sendMail(mailOptions);
+};
+
 const sendChangeEMail = (email, otp) => {
   console.log("EMAILL :", email, "OTP :", otp);
 
   const path = require("path");
   const tamplatePath = path.resolve(
     __dirname,
-    "./mailThemes/changeEmailOTP.hjs"
+    "./mailThemes/changeEmailOTP.hjs",
   );
   const tamplate = fs.readFileSync(tamplatePath, "utf-8");
   const compliledtamplete = Hogan.compile(tamplate);
@@ -101,7 +146,7 @@ const sendChangeEMailSuccess = (name, email) => {
   const path = require("path");
   const tamplatePath = path.resolve(
     __dirname,
-    "./mailThemes/changeEmailOTP.hjs"
+    "./mailThemes/changeEmailOTP.hjs",
   );
   const tamplate = fs.readFileSync(tamplatePath, "utf-8");
   const compliledtamplete = Hogan.compile(tamplate);
@@ -275,4 +320,5 @@ export {
   sendChangeEMail,
   sendChangeEMailSuccess,
   sendSuccessMail,
+  sendApprovedAndRejectedListingMail,
 };

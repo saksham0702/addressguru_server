@@ -7,6 +7,8 @@ import categoryFeatures from "../model/categoryFeatures.js";
 import Feature from "../model/featureSchema.js";
 import slugify from "slugify";
 import { successData, errorData } from "../services/helper.js";
+import CitiesSchema from "../model/CitiesSchema.js";
+import { sendApprovedAndRejectedListingMail } from "../utils/sendMail.js";
 
 // ─── Helper: validate additional fields ───────────────────────────────────────
 const validateAdditionalFields = async (additionalFields = []) => {
@@ -418,7 +420,7 @@ export const getFeaturesAndAdditionalFieldsByCategory = async (req, res) => {
 export const getAllListingsWithPaginationAndFilters = async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 100;
+    const limit = parseInt(req.query.limit) || 10;
     const skip = (page - 1) * limit;
 
     // Base filter — only non-deleted
@@ -440,6 +442,8 @@ export const getAllListingsWithPaginationAndFilters = async (req, res) => {
         .populate("category", "name")
         .populate("subCategory", "name")
         .populate("city", "name")
+        .populate("plan", "name")
+        .populate("createdBy", "name")
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit)
@@ -453,6 +457,90 @@ export const getAllListingsWithPaginationAndFilters = async (req, res) => {
     return successData(res, 200, true, "Listings fetched successfully", {
       listings,
       pagination: { total, page, limit, totalPages: Math.ceil(total / limit) },
+    });
+  } catch (error) {
+    console.error("Listing fetch error:", error);
+    return errorData(res, 500, false, "Internal server error");
+  }
+};
+
+// get listings for website
+export const getListingsByCategoryAndCity = async (req, res) => {
+  console.log("req.params", req.params);
+  console.log("req.query", req.query);
+
+  try {
+    const { category_slug, city_slug } = req.params;
+    const { page = 1, limit = 10 } = req.query; // ✅ pagination from query, not params
+
+    // 🔴 1. Category is REQUIRED
+    if (!category_slug) {
+      return errorData(res, 400, false, "Category slug is required");
+    }
+
+    // 🔍 2. Find category by slug — debug log added
+    console.log("🔍 Looking for category with slug:", category_slug);
+
+    const category = await Category.findOne({
+      slug: category_slug,
+      isDeleted: false,
+    });
+
+    console.log("📦 Category found:", category); // will be null if not matched
+
+    if (!category) {
+      return errorData(res, 404, false, "Category not found");
+    }
+
+    // 🧩 3. Build filter
+    const filter = {
+      category: category._id,
+      isDeleted: false,
+    };
+
+    // 🏙️ 4. Optional city filter
+    if (city_slug) {
+      const city = await CitiesSchema.findOne({
+        slug: city_slug,
+        deletedAt: null,
+      });
+
+      if (!city) {
+        return errorData(res, 404, false, "City not found");
+      }
+
+      filter.city = city._id;
+    }
+
+    // 📄 5. Pagination logic
+    const skip = (Number(page) - 1) * Number(limit); // ✅ ensure Numbers
+
+    // 📊 6. Fetch data + count
+    const [listings, total] = await Promise.all([
+      BusinessListing.find(filter)
+        .populate("category", "name slug")
+        .populate("subCategory", "name slug")
+        .populate("city", "name slug")
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(Number(limit))
+        .lean(),
+
+      BusinessListing.countDocuments(filter),
+    ]);
+
+    if (!listings.length) {
+      return errorData(res, 404, false, "No listings found");
+    }
+
+    return successData(res, 200, true, "Listings fetched successfully", {
+      listings,
+      pagination: {
+        total,
+        page: Number(page),
+        limit: Number(limit),
+        totalPages: Math.ceil(total / Number(limit)),
+      },
     });
   } catch (error) {
     console.error("Listing fetch error:", error);
@@ -549,3 +637,196 @@ export const deleteListing = async (req, res) => {
     return errorData(res, 500, false, "Internal server error");
   }
 };
+
+// aprove or reject
+// export const aproveReject = async (req,res) => {
+//   try {
+//     const { slug } = req.params;
+//     const { status, rejectionReason } = req.body;
+//     if (!slug) return errorData(res, 400, false, "Slug is required");
+//     if (!status) return errorData(res, 400, false, "Status is required");
+//     const listing = await BusinessListing.findOne({
+//       slug,
+//       isDeleted: false,
+//     });
+//     if (!listing) return errorData(res, 404, false, "Listing not found");
+//     listing.status = status;
+//     if (status === "rejected") {
+//       listing.rejectionReason = rejectionReason;
+//       sendApprovedAndRejectedListingMail(listing.email, listing.name, status, rejectionReason);
+//     }
+//     await listing.save();
+//     return successData(res, 200, true, "Listing status updated successfully", {
+//       id: listing._id,
+//     });
+//   } catch (error) {
+//     console.error("Listing status update error:", error);
+//     return errorData(res, 500, false, "Internal server error");
+//   }
+// }
+
+export const updateListingStatus = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status, rejectionReason } = req.body;
+    const adminId = req.user._id;
+
+    // ── Validate status value ───────────────────────────────────────────────
+    if (!["approved", "rejected"].includes(status)) {
+      return res.status(400).json({
+        success: false,
+        message: "Status must be either 'approved' or 'rejected'",
+      });
+    }
+
+    // ── Rejection must have a reason ────────────────────────────────────────
+    if (status === "rejected" && !rejectionReason?.trim()) {
+      return res.status(400).json({
+        success: false,
+        message: "Rejection reason is required when rejecting a listing",
+      });
+    }
+
+    // ── Find the listing ────────────────────────────────────────────────────
+    const listing = await BusinessListing.findById(id);
+    if (!listing) {
+      return res.status(404).json({
+        success: false,
+        message: "Listing not found",
+      });
+    }
+
+    // ── Update fields based on status ───────────────────────────────────────
+    listing.status = status;
+
+    if (status === "approved") {
+      listing.approvedBy = adminId;
+      listing.rejectedBy = null;
+      listing.rejectionReason = null;
+    }
+
+    if (status === "rejected") {
+      listing.rejectedBy = adminId;
+      listing.rejectionReason = rejectionReason.trim();
+      listing.approvedBy = null;
+    }
+
+    await listing.save();
+
+    // ── Send mail ────────────────────────────────────────────────────────────
+    try {
+      await sendApprovedAndRejectedListingMail(
+        listing.email,
+        listing.contactPersonName || listing.businessName,
+        status,
+        status === "rejected" ? rejectionReason.trim() : null,
+      );
+      console.log(`✅ Mail sent to ${listing.email} for status: ${status}`);
+    } catch (mailError) {
+      console.error("❌ Mail send failed:", mailError.message);
+    }
+
+    // Populate for response
+    await listing.populate("approvedBy rejectedBy", "name email");
+
+    return res.status(200).json({
+      success: true,
+      message: `Listing ${status} successfully`,
+      data: {
+        _id: listing._id,
+        businessName: listing.businessName,
+        status: listing.status,
+        approvedBy: listing.approvedBy,
+        rejectedBy: listing.rejectedBy,
+        rejectionReason: listing.rejectionReason,
+      },
+    });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const aproveReject = async (req, res) => {
+  try {
+    const { slug } = req.params;
+    const { status, rejectionReason } = req.body;
+
+    // ── Validations ─────────────────────────────────────────────────────────
+    if (!slug) return errorData(res, 400, false, "Slug is required");
+    if (!status) return errorData(res, 400, false, "Status is required");
+
+    if (!["approved", "rejected"].includes(status)) {
+      return errorData(
+        res,
+        400,
+        false,
+        "Status must be 'approved' or 'rejected'",
+      );
+    }
+
+    // ✅ Rejection must have a reason
+    if (status === "rejected" && !rejectionReason?.trim()) {
+      return errorData(res, 400, false, "Rejection reason is required");
+    }
+
+    // ── Find listing ─────────────────────────────────────────────────────────
+    const listing = await BusinessListing.findOne({ slug, isDeleted: false });
+    if (!listing) return errorData(res, 404, false, "Listing not found");
+
+    // ── Update status fields ─────────────────────────────────────────────────
+    listing.status = status;
+
+    if (status === "approved") {
+      listing.approvedBy = req.user._id;
+      listing.rejectedBy = null;
+      listing.rejectionReason = null;
+    }
+
+    if (status === "rejected") {
+      listing.rejectedBy = req.user._id;
+      listing.rejectionReason = rejectionReason.trim();
+      listing.approvedBy = null;
+    }
+
+    await listing.save();
+
+    // ── Send mail ────────────────────────────────────────────────────────────
+    // ✅ Send on BOTH approved and rejected
+    // ✅ Use contactPersonName not listing.name (that field doesn't exist)
+    // ✅ For approved: message is null (your template handles it)
+    //    For rejected: message is the rejection reason
+    try {
+      await sendApprovedAndRejectedListingMail(
+        listing.email,
+        listing.contactPersonName || listing.businessName,
+        status,
+        status === "rejected" ? rejectionReason.trim() : null,
+      );
+      console.log(`✅ Mail sent to ${listing.email} for status: ${status}`);
+    } catch (mailError) {
+      // ✅ Mail failure should NOT fail the whole request
+      // Listing is already saved — just log the error
+      console.error("❌ Mail send failed:", mailError.message);
+    }
+
+    return successData(res, 200, true, "Listing status updated successfully", {
+      id: listing._id,
+      status: listing.status,
+    });
+  } catch (error) {
+    console.error("Listing status update error:", error);
+    return errorData(res, 500, false, "Internal server error");
+  }
+};
+
+//get all approved listings 
+export const getApprovedListings = async (req, res) => {
+  try {
+    const listings = await BusinessListing.find({ status: "approved", isDeleted: false });
+    return successData(res, 200, true, "Approved listings fetched successfully", listings);
+  } catch (error) {
+    console.error("Approved listings fetch error:", error);
+    return errorData(res, 500, false, "Internal server error");
+  }
+}
+
