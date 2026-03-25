@@ -1,8 +1,7 @@
-// utils/resolvelisting.js
 import BusinessListing from "../model/businessListingSchema.js";
 import Job             from "../model/jobsListingSchema.js";
-// import Property        from "../models/Property.js";
-// import Marketplace     from "../models/Marketplace.js";
+import PropertyListing  from "../model/propertiesListingSchema.js";
+import MarketplaceListing from "../model/marketplaceListingSchema.js";
 
 /**
  * Model map: listingType query param → { model, modelName }
@@ -11,8 +10,9 @@ import Job             from "../model/jobsListingSchema.js";
 const MODEL_MAP = {
   business:    { model: BusinessListing, modelName: "BusinessListing" },
   job:         { model: Job,             modelName: "Job"             },
-//   property:    { model: Property,        modelName: "Property"        },
-//   marketplace: { model: Marketplace,     modelName: "Marketplace"     },
+  property:    { model: PropertyListing,  modelName: "PropertyListing"  },
+  marketplace: { model: MarketplaceListing, modelName: "MarketplaceListing" },
+  product:     { model: MarketplaceListing, modelName: "MarketplaceListing" },
 };
 
 /**

@@ -3,8 +3,11 @@ import MarketplaceListing from "../model/marketplaceListingSchema.js";
 import AdditionalField from "../model/additionalFieldSchema.js";
 import Category from "../model/categoriesSchema.js";
 import SubCategory from "../model/subCategoriesSchema.js";
+import User from "../model/userSchema.js";
 import slugify from "slugify";
 import { successData, errorData } from "../services/helper.js";
+import googleIndexingService from "../services/googleIndexing.service.js";
+import { APP_BASE_URL } from "../services/constant.js";
 
 // ─── Helper: validate additional fields ──────────────────────────────────────
 const validateAdditionalFields = async (additionalFields = []) => {
@@ -96,7 +99,7 @@ export const createMarketplaceListing = async (req, res) => {
     if (errors.length)
       return errorData(res, 400, false, "Validation failed", { errors });
 
-    const slug = `${slugify(title, { lower: true, strict: true })}-${Date.now()}`;
+    const slug = `${slugify(title, { lower: true, strict: true })}`;
 
     const listing = await MarketplaceListing.create({
       category: category_id,
@@ -119,6 +122,18 @@ export const createMarketplaceListing = async (req, res) => {
       isSold: false,
       createdBy: req.user?.id || null,
     });
+
+    // Update User statistics
+    if (req.user?.id) {
+      await User.findByIdAndUpdate(req.user.id, {
+        $inc: {
+          statistics_totalListings: 1,
+          statistics_ProductListings: 1,
+          statistics_marketPlaceListings: 1,
+          statistics_activeListings: 1,
+        },
+      });
+    }
 
     return successData(res, 201, true, "Listing created successfully", {
       id: listing._id,
@@ -208,7 +223,7 @@ export const updateMarketplaceListingStep = async (req, res) => {
 
         if (title && title !== listing.title) {
           listing.title = title;
-          listing.slug = `${slugify(title, { lower: true, strict: true })}-${Date.now()}`;
+          listing.slug = `${slugify(title, { lower: true, strict: true })}`;
         }
 
         if (category_id) listing.category = category_id;
@@ -273,6 +288,7 @@ export const updateMarketplaceListingStep = async (req, res) => {
 
         listing.plan = req.body.plan_id || null;
         listing.isPublished = true;
+        googleIndexingService.notify(`${APP_BASE_URL}/marketplace/${listing.slug}`, "URL_UPDATED");
         break;
       }
 
@@ -383,7 +399,7 @@ export const getMarketplaceListingByUser = async (req, res) => {
   console.log("req.user get listing by user", req.user);
   try {
     const id = req.user.id;
-    const listings = await MarketplaceListing.find({ 
+    const listings = await MarketplaceListing.find({
       createdBy: id,
       isDeleted: false,
     })
@@ -430,6 +446,13 @@ export const markMarketplaceListingAsSold = async (req, res) => {
     listing.isSold = true;
     await listing.save();
 
+    // Update User statistics
+    if (listing.createdBy) {
+      await User.findByIdAndUpdate(listing.createdBy, {
+        $inc: { statistics_soldItems: 1 },
+      });
+    }
+
     return successData(res, 200, true, "Listing marked as sold", {
       id: listing._id,
     });
@@ -467,6 +490,20 @@ export const deleteMarketplaceListing = async (req, res) => {
 
     listing.isDeleted = true;
     await listing.save();
+
+    googleIndexingService.notify(`${APP_BASE_URL}/marketplace/${listing.slug}`, "URL_DELETED");
+
+    // Update User statistics
+    if (listing.createdBy) {
+      await User.findByIdAndUpdate(listing.createdBy, {
+        $inc: {
+          statistics_activeListings: -1,
+          statistics_totalListings: -1,
+          statistics_ProductListings: -1,
+          statistics_marketPlaceListings: -1
+        },
+      });
+    }
 
     return successData(res, 200, true, "Listing deleted successfully", {
       id: listing._id,

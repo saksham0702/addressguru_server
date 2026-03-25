@@ -1,5 +1,6 @@
-// controllers/reviewController.js
 import Review             from "../model/reviewListingSchema.js";
+import User               from "../model/userSchema.js";
+import ListingStats       from "../model/listingStatsSchema.js";
 import { resolveListing } from "../utils/resolveListing.js";
 
 // ─── Helper: recalculate & save rating on listing ─────────────────────────────
@@ -45,6 +46,23 @@ export const submitReview = async (req, res) => {
       ipAddress:    req.ip,
       userAgent:    req.headers["user-agent"],
     });
+
+    // Record the event in ListingStats
+    await ListingStats.create({
+      listingId: listing._id,
+      listingModel: modelName,
+      type: "review",
+      userId: req.user?._id || null,
+      ipAddress: req.ip,
+      userAgent: req.headers["user-agent"],
+    });
+
+    // Increment user stats
+    if (listing.createdBy) {
+      await User.findByIdAndUpdate(listing.createdBy, {
+        $inc: { statistics_totalReviews: 1 },
+      });
+    }
 
     await syncRating(listing._id, listing.constructor);
 
