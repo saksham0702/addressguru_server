@@ -3,10 +3,10 @@ import mongoose from "mongoose";
 // ── Each follow-up log entry created when agent submits the modal ─────────────
 const followUpSchema = new mongoose.Schema(
   {
-    // Which listing this follow-up belongs to
+    // Which listing this follow-up belongs to  
     listing: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "Listing",
+      ref: "BusinessListing",
       required: true,
     },
 

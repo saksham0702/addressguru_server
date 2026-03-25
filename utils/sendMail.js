@@ -1,3 +1,6 @@
+// 
+
+
 import nodemailer from "nodemailer";
 import fs from "fs";
 import Hogan from "hogan.js";
@@ -54,34 +57,43 @@ const sendOTPMail = (email, name = "", otp) => {
     from: '"AddressGuru UAE Support" <adx.ddn@gmail.com>',
     to: email,
     subject: "Your OTP for Verification 🚀",
-    text: `Your OTP is: ${otp}`, // Plain text fallback
-    html: mailBody, // HTML email content
+    text: `Your OTP is: ${otp}`,
+    html: mailBody,
   };
 
   return transporter.sendMail(mailOptions);
 };
 
-// ── FIX 1: templatePath scoping bug fixed ────────────────────────────────────
-const sendApprovedAndRejectedListingMail = (email, name, status, message) => {
-  console.log(
-    "EMAIL:", email,
-    "Name:", name,
-    "Status:", status,
-    "Message:", message
-  );
- 
-  // ✅ Declare outside the if block so it's accessible below
+// ─── UPDATED: Approved / Rejected listing mail ────────────────────────────────
+// Added optional `extra` param for richer approved template data.
+// Fully backward-compatible — existing callers with 4 args still work.
+const sendApprovedAndRejectedListingMail = (email, name, status, message, extra = {}) => {
+  console.log("EMAIL:", email, "Name:", name, "Status:", status, "Message:", message);
+
   let templatePath;
   if (status === "approved") {
     templatePath = path.resolve("utils/mailThemes/ListingApproved.hjs");
   } else {
     templatePath = path.resolve("utils/mailThemes/ListingRejected.hjs");
   }
- 
+
   const template = fs.readFileSync(templatePath, "utf-8");
   const compiledTemplate = Hogan.compile(template);
-  const mailBody = compiledTemplate.render({ name, status, message });
- 
+
+  const mailBody = compiledTemplate.render({
+    name,
+    status,
+    message,
+    // approved template extras (ignored by rejected template)
+    businessName:  extra.businessName  || name,
+    category:      extra.category      || "",
+    listingUrl:    extra.listingUrl    || "https://addressguru.ae",
+    previewLink:   extra.previewLink   || extra.listingUrl || "https://addressguru.ae",
+    dashboardUrl:  extra.dashboardUrl  || "https://addressguru.ae/dashboard",
+    plansUrl:      extra.plansUrl      || "https://addressguru.ae/plans",
+    year:          new Date().getFullYear(),
+  });
+
   const transporter = nodemailer.createTransport({
     host: emailConfig.SMTP_HOST,
     port: emailConfig.SMTP_PORT,
@@ -91,18 +103,57 @@ const sendApprovedAndRejectedListingMail = (email, name, status, message) => {
       pass: emailConfig.SMTP_PASS,
     },
   });
- 
+
   const mailOptions = {
     from: '"AddressGuru UAE" <adx.ddn@gmail.com>',
     to: email,
     subject:
       status === "approved"
-        ? "🎉 Your Listing Has Been Approved!"
-        : "Your Listing Status Update",
+        ? "🎉 Your Listing Has Been Approved — AddressGuru UAE"
+        : "⚠️ Action Required: Your Listing Needs Updates — AddressGuru UAE",
     text: `Your listing status is: ${status}`,
     html: mailBody,
   };
- 
+
+  return transporter.sendMail(mailOptions);
+};
+
+// ─── NEW: Listing submitted / pending mail ────────────────────────────────────
+// Call this after step-6 save in updateListingStep.
+const sendListingSubmittedMail = (email, name, businessName, category, submissionDate, dashboardUrl) => {
+  console.log("📧 sendListingSubmittedMail →", email, name, businessName);
+
+  const templatePath = path.resolve("utils/mailThemes/ListingSubmitted.hjs");
+  const template = fs.readFileSync(templatePath, "utf-8");
+  const compiledTemplate = Hogan.compile(template);
+
+  const mailBody = compiledTemplate.render({
+    name,
+    businessName,
+    category,
+    submissionDate,
+    dashboardUrl:  dashboardUrl || "https://addressguru.ae/dashboard",
+    year:          new Date().getFullYear(),
+  });
+
+  const transporter = nodemailer.createTransport({
+    host: emailConfig.SMTP_HOST,
+    port: emailConfig.SMTP_PORT,
+    secure: true,
+    auth: {
+      user: emailConfig.SMTP_EMAIL,
+      pass: emailConfig.SMTP_PASS,
+    },
+  });
+
+  const mailOptions = {
+    from: '"AddressGuru UAE" <adx.ddn@gmail.com>',
+    to: email,
+    subject: "📋 Your Listing Has Been Submitted — AddressGuru UAE",
+    text: `Hi ${name}, your listing "${businessName}" has been submitted and is under review.`,
+    html: mailBody,
+  };
+
   return transporter.sendMail(mailOptions);
 };
 
@@ -133,8 +184,8 @@ const sendChangeEMail = (email, otp) => {
     from: '"AddressGuru UAE Support" <adx.ddn@gmail.com>',
     to: email,
     subject: "Your OTP for Verification 🚀",
-    text: `Your OTP is: ${otp}`, // Plain text fallback
-    html: mailBody, // HTML email content
+    text: `Your OTP is: ${otp}`,
+    html: mailBody,
   };
 
   return transporter.sendMail(mailOptions);
@@ -167,8 +218,8 @@ const sendChangeEMailSuccess = (name, email) => {
     from: '"AddressGuru UAE Support" <adx.ddn@gmail.com>',
     to: email,
     subject: "Your OTP for Verification 🚀",
-    text: `Your OTP is: ${otp}`, // Plain text fallback
-    html: mailBody, // HTML email content
+    text: `Your OTP is: ${otp}`,
+    html: mailBody,
   };
 
   return transporter.sendMail(mailOptions);
@@ -257,47 +308,12 @@ const sendResendOTPMail = (email, name, otp) => {
     from: '"AddressGuru UAE Support" <adx.ddn@gmail.com>',
     to: email,
     subject: "Your OTP for Verification 🚀",
-    text: `Your OTP is: ${otp}`, // Plain text fallback
-    html: mailBody, // HTML email content
+    text: `Your OTP is: ${otp}`,
+    html: mailBody,
   };
 
   return transporter.sendMail(mailOptions);
 };
-
-// const sendDemoMail = (email) => {
-//   //   const { email, full_name, preferred_contact_slot } = demoData;
-
-//   // Configure the transporter
-//   const transporter = nodemailer.createTransport({
-//     host: SMTP_HOST,
-//     port: SMTP_PORT,
-//     secure: true,
-//     auth: {
-//       user: SMTP_EMAIL,
-//       pass: SMTP_PASS,
-//     },
-//   });
-
-//   // Mail options for a simple text email
-//   const mailOptions = {
-//     from: '"AddressGuru UAE Support" <adx.ddn@gmail.com>',
-//     to: email,
-//     subject: "Demo Booking Confirmation",
-//     text: `Hi ${email},
-
-//             Thank you for booking a demo with us! We have scheduled your demo for this Tool.
-
-//             Our team will reach out to you at the specified time.
-
-//             If you have any questions, feel free to reply to this email.
-
-//             Best regards,
-//            AddressGuru UAE Support Team`,
-//   };
-
-//   // Send the email
-//   return transporter.sendMail(mailOptions);
-// };
 
 const formatPreferredContactSlot = (datetime) => {
   const options = {
@@ -321,4 +337,5 @@ export {
   sendChangeEMailSuccess,
   sendSuccessMail,
   sendApprovedAndRejectedListingMail,
+  sendListingSubmittedMail,   // ← new export added
 };

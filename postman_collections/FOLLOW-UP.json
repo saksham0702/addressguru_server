@@ -6,62 +6,27 @@
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
-    {
-      "key": "baseUrl",
-      "value": "http://localhost:5000",
-      "type": "string"
-    },
-    {
-      "key": "token",
-      "value": "your_jwt_token_here",
-      "type": "string"
-    },
-    {
-      "key": "listingId",
-      "value": "69bd1aeba350f63562a43ed8",
-      "type": "string"
-    },
-    {
-      "key": "followUpId",
-      "value": "",
-      "type": "string"
-    },
-    {
-      "key": "activityOptionId",
-      "value": "",
-      "type": "string"
-    },
-    {
-      "key": "module",
-      "value": "listing",
-      "type": "string"
-    }
+    { "key": "baseUrl",          "value": "http://localhost:5000", "type": "string" },
+    { "key": "token",            "value": "your_jwt_token_here",   "type": "string" },
+    { "key": "listingId",        "value": "69bd1aeba350f63562a43ed8", "type": "string" },
+    { "key": "followUpId",       "value": "", "type": "string" },
+    { "key": "activityOptionId", "value": "", "type": "string" },
+    { "key": "module",           "value": "listing", "type": "string" }
   ],
   "auth": {
     "type": "bearer",
-    "bearer": [
-      {
-        "key": "token",
-        "value": "{{token}}",
-        "type": "string"
-      }
-    ]
+    "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }]
   },
   "item": [
     {
       "name": "📋 Follow Up Config (Settings)",
-      "description": "Manage activity options that appear in the Follow Up modal. Admin use only.",
+      "description": "Manage activity options that appear in the Follow Up modal. Admin use only.\n\nBase path: /api/followup-config",
       "item": [
         {
           "name": "Get Config (all options for a module)",
           "request": {
             "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token}}"
-              }
-            ],
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
             "url": {
               "raw": "{{baseUrl}}/api/followup-config/{{module}}",
               "host": ["{{baseUrl}}"],
@@ -142,7 +107,7 @@
               "status": "OK",
               "code": 200,
               "header": [{ "key": "Content-Type", "value": "application/json" }],
-              "body": "{\n  \"success\": true,\n  \"message\": \"Option updated successfully\",\n  \"data\": { ... }\n}"
+              "body": "{\n  \"success\": true,\n  \"message\": \"Option updated successfully\",\n  \"data\": { \"...\" : \"...\" }\n}"
             },
             {
               "name": "404 – Option Not Found",
@@ -179,9 +144,7 @@
           "name": "Delete Option",
           "request": {
             "method": "DELETE",
-            "header": [
-              { "key": "Authorization", "value": "Bearer {{token}}" }
-            ],
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
             "url": {
               "raw": "{{baseUrl}}/api/followup-config/{{module}}/option/{{activityOptionId}}",
               "host": ["{{baseUrl}}"],
@@ -195,7 +158,7 @@
               "status": "OK",
               "code": 200,
               "header": [{ "key": "Content-Type", "value": "application/json" }],
-              "body": "{\n  \"success\": true,\n  \"message\": \"Option deleted successfully\",\n  \"data\": { ... }\n}"
+              "body": "{\n  \"success\": true,\n  \"message\": \"Option deleted successfully\",\n  \"data\": { \"...\" : \"...\" }\n}"
             }
           ]
         },
@@ -217,7 +180,7 @@
               "host": ["{{baseUrl}}"],
               "path": ["api", "followup-config", "{{module}}", "reorder"]
             },
-            "description": "Reorder activity options by passing an array of option IDs in the desired order.\n\nThe index in the array becomes the new `order` value for each option.\n\nUseful when you implement drag-and-drop in FollowUpSettings."
+            "description": "Reorder activity options by passing an array of option IDs in the desired order.\n\nThe index in the array becomes the new `order` value for each option.\n\nIMPORTANT: This route is registered BEFORE /:module/option/:optionId in the router to avoid Express matching 'reorder' as an optionId.\n\nUseful when you implement drag-and-drop in FollowUpSettings."
           },
           "response": [
             {
@@ -225,7 +188,7 @@
               "status": "OK",
               "code": 200,
               "header": [{ "key": "Content-Type", "value": "application/json" }],
-              "body": "{\n  \"success\": true,\n  \"message\": \"Options reordered successfully\",\n  \"data\": { ... }\n}"
+              "body": "{\n  \"success\": true,\n  \"message\": \"Options reordered successfully\",\n  \"data\": { \"...\" : \"...\" }\n}"
             }
           ]
         }
@@ -233,7 +196,7 @@
     },
     {
       "name": "📞 Follow Up Logs",
-      "description": "Create and retrieve follow-up log entries. These are created when an agent submits the FollowUpModal.",
+      "description": "Create and retrieve follow-up log entries. These are created when an agent submits the FollowUpModal.\n\nBase path: /api/followups\n\nNOTE: GET /listing/:listingId is registered BEFORE GET /:id to avoid Express matching 'listing' as an ID.",
       "item": [
         {
           "name": "Create Follow Up Log",
@@ -268,7 +231,7 @@
               "host": ["{{baseUrl}}"],
               "path": ["api", "followups"]
             },
-            "description": "Log a new follow-up when agent submits the modal.\n\nFields:\n- listingId (required): The listing being followed up\n- activityOptionId (required): The _id of the option selected from FollowUpConfig\n- remark: Optional or required depending on the selected option's config\n- nextFollowUpDate: ISO date string for when to follow up next\n\nThe controller will:\n1. Validate the activityOptionId against FollowUpConfig\n2. Check if remark is required for that option\n3. Snapshot the label so history stays accurate even if option is renamed later\n4. Save and return the populated log"
+            "description": "Log a new follow-up when agent submits the modal.\n\nFields:\n- listingId (required): The listing being followed up\n- activityOptionId (required): The _id of the option selected from FollowUpConfig\n- remark: Optional or required depending on the selected option's config\n- nextFollowUpDate: ISO date string for when to follow up next\n\nThe controller will:\n1. Validate the activityOptionId against FollowUpConfig\n2. Check if remark is required for that option\n3. Snapshot the label so history stays accurate even if option is renamed later\n4. Save and return the populated log\n\nRequires: auth middleware (verifyToken) — createdBy is taken from req.user._id"
           },
           "response": [
             {
@@ -276,7 +239,7 @@
               "status": "Created",
               "code": 201,
               "header": [{ "key": "Content-Type", "value": "application/json" }],
-              "body": "{\n  \"success\": true,\n  \"message\": \"Follow-up logged successfully\",\n  \"data\": {\n    \"_id\": \"64fu001\",\n    \"listing\": \"69bd1aeba350f63562a43ed8\",\n    \"activityOptionId\": \"opt002\",\n    \"reason\": \"Talk With My Partner\",\n    \"remark\": \"Client said they will discuss with partner and get back by Friday.\",\n    \"nextFollowUpDate\": \"2026-03-25T10:00:00.000Z\",\n    \"module\": \"listing\",\n    \"createdBy\": {\n      \"_id\": \"user001\",\n      \"name\": \"Ayush Gupta\",\n      \"email\": \"ayush@addressguru.com\"\n    },\n    \"createdAt\": \"2026-03-20T12:30:00.000Z\",\n    \"updatedAt\": \"2026-03-20T12:30:00.000Z\"\n  }\n}"
+              "body": "{\n  \"success\": true,\n  \"message\": \"Follow-up logged successfully\",\n  \"data\": {\n    \"_id\": \"64fu001\",\n    \"listing\": \"69bd1aeba350f63562a43ed8\",\n    \"activityOptionId\": \"opt002\",\n    \"reason\": \"Talk With My Partner\",\n    \"remark\": \"Client said they will discuss with partner and get back by Friday.\",\n    \"nextFollowUpDate\": \"2026-03-25T10:00:00.000Z\",\n    \"module\": \"listing\",\n    \"isDeleted\": false,\n    \"createdBy\": {\n      \"_id\": \"user001\",\n      \"name\": \"Ayush Gupta\",\n      \"email\": \"ayush@addressguru.com\"\n    },\n    \"createdAt\": \"2026-03-20T12:30:00.000Z\",\n    \"updatedAt\": \"2026-03-20T12:30:00.000Z\"\n  }\n}"
             },
             {
               "name": "400 – Remark Required",
@@ -286,11 +249,25 @@
               "body": "{\n  \"success\": false,\n  \"message\": \"Remark is required for \\\"Not Interested\\\"\"\n}"
             },
             {
-              "name": "400 – Invalid Option",
+              "name": "400 – Missing Required Fields",
+              "status": "Bad Request",
+              "code": 400,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": false,\n  \"message\": \"listingId and activityOptionId are required\"\n}"
+            },
+            {
+              "name": "400 – Invalid or Inactive Option",
               "status": "Bad Request",
               "code": 400,
               "header": [{ "key": "Content-Type", "value": "application/json" }],
               "body": "{\n  \"success\": false,\n  \"message\": \"Invalid or inactive activity option\"\n}"
+            },
+            {
+              "name": "404 – Config Not Found",
+              "status": "Not Found",
+              "code": 404,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Follow-up config not found\"\n}"
             }
           ]
         },
@@ -298,15 +275,13 @@
           "name": "Get All Follow Ups for a Listing",
           "request": {
             "method": "GET",
-            "header": [
-              { "key": "Authorization", "value": "Bearer {{token}}" }
-            ],
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
             "url": {
               "raw": "{{baseUrl}}/api/followups/listing/{{listingId}}",
               "host": ["{{baseUrl}}"],
               "path": ["api", "followups", "listing", "{{listingId}}"]
             },
-            "description": "Get all follow-up logs for a specific listing.\n\nReturns newest first (createdAt: -1).\n\nUsed by FollowUpModal.jsx to populate the Interaction History panel on the right side."
+            "description": "Get all follow-up logs for a specific listing.\n\nReturns newest first (createdAt: -1).\nOnly returns non-deleted logs (isDeleted: false).\n\nUsed by FollowUpModal.jsx to populate the Interaction History panel on the right side.\n\nNOTE: This route /listing/:listingId is registered BEFORE /:id in the router to avoid Express matching 'listing' as an ID param."
           },
           "response": [
             {
@@ -314,7 +289,7 @@
               "status": "OK",
               "code": 200,
               "header": [{ "key": "Content-Type", "value": "application/json" }],
-              "body": "{\n  \"success\": true,\n  \"message\": \"Follow-ups fetched successfully\",\n  \"count\": 2,\n  \"data\": [\n    {\n      \"_id\": \"64fu002\",\n      \"listing\": \"69bd1aeba350f63562a43ed8\",\n      \"reason\": \"Interested\",\n      \"remark\": \"Very interested, wants a demo next week.\",\n      \"nextFollowUpDate\": \"2026-03-27T09:00:00.000Z\",\n      \"createdBy\": { \"_id\": \"user001\", \"name\": \"Ayush Gupta\", \"email\": \"ayush@addressguru.com\" },\n      \"createdAt\": \"2026-03-21T08:00:00.000Z\"\n    },\n    {\n      \"_id\": \"64fu001\",\n      \"listing\": \"69bd1aeba350f63562a43ed8\",\n      \"reason\": \"Call Back Later\",\n      \"remark\": null,\n      \"nextFollowUpDate\": \"2026-03-22T10:00:00.000Z\",\n      \"createdBy\": { \"_id\": \"user001\", \"name\": \"Ayush Gupta\", \"email\": \"ayush@addressguru.com\" },\n      \"createdAt\": \"2026-03-20T12:30:00.000Z\"\n    }\n  ]\n}"
+              "body": "{\n  \"success\": true,\n  \"message\": \"Follow-ups fetched successfully\",\n  \"count\": 2,\n  \"data\": [\n    {\n      \"_id\": \"64fu002\",\n      \"listing\": \"69bd1aeba350f63562a43ed8\",\n      \"reason\": \"Interested\",\n      \"remark\": \"Very interested, wants a demo next week.\",\n      \"nextFollowUpDate\": \"2026-03-27T09:00:00.000Z\",\n      \"isDeleted\": false,\n      \"createdBy\": { \"_id\": \"user001\", \"name\": \"Ayush Gupta\", \"email\": \"ayush@addressguru.com\" },\n      \"createdAt\": \"2026-03-21T08:00:00.000Z\"\n    },\n    {\n      \"_id\": \"64fu001\",\n      \"listing\": \"69bd1aeba350f63562a43ed8\",\n      \"reason\": \"Call Back Later\",\n      \"remark\": null,\n      \"nextFollowUpDate\": \"2026-03-22T10:00:00.000Z\",\n      \"isDeleted\": false,\n      \"createdBy\": { \"_id\": \"user001\", \"name\": \"Ayush Gupta\", \"email\": \"ayush@addressguru.com\" },\n      \"createdAt\": \"2026-03-20T12:30:00.000Z\"\n    }\n  ]\n}"
             },
             {
               "name": "200 – No Logs Yet",
@@ -329,15 +304,13 @@
           "name": "Get Single Follow Up by ID",
           "request": {
             "method": "GET",
-            "header": [
-              { "key": "Authorization", "value": "Bearer {{token}}" }
-            ],
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
             "url": {
               "raw": "{{baseUrl}}/api/followups/{{followUpId}}",
               "host": ["{{baseUrl}}"],
               "path": ["api", "followups", "{{followUpId}}"]
             },
-            "description": "Get a single follow-up log by its ID.\n\nIncludes populated createdBy (name, email) and listing (businessName)."
+            "description": "Get a single follow-up log by its MongoDB _id.\n\nIncludes populated createdBy (name, email) and listing (businessName).\n\nReturns 404 if not found."
           },
           "response": [
             {
@@ -345,7 +318,7 @@
               "status": "OK",
               "code": 200,
               "header": [{ "key": "Content-Type", "value": "application/json" }],
-              "body": "{\n  \"success\": true,\n  \"data\": {\n    \"_id\": \"64fu001\",\n    \"listing\": { \"_id\": \"69bd1aeba350f63562a43ed8\", \"businessName\": \"Dubai Taxi Company\" },\n    \"reason\": \"Interested\",\n    \"remark\": \"Very interested in the premium plan.\",\n    \"nextFollowUpDate\": \"2026-03-25T10:00:00.000Z\",\n    \"createdBy\": { \"_id\": \"user001\", \"name\": \"Ayush Gupta\", \"email\": \"ayush@addressguru.com\" },\n    \"createdAt\": \"2026-03-20T12:30:00.000Z\"\n  }\n}"
+              "body": "{\n  \"success\": true,\n  \"data\": {\n    \"_id\": \"64fu001\",\n    \"listing\": { \"_id\": \"69bd1aeba350f63562a43ed8\", \"businessName\": \"Dubai Taxi Company\" },\n    \"reason\": \"Interested\",\n    \"remark\": \"Very interested in the premium plan.\",\n    \"nextFollowUpDate\": \"2026-03-25T10:00:00.000Z\",\n    \"isDeleted\": false,\n    \"createdBy\": { \"_id\": \"user001\", \"name\": \"Ayush Gupta\", \"email\": \"ayush@addressguru.com\" },\n    \"createdAt\": \"2026-03-20T12:30:00.000Z\"\n  }\n}"
             },
             {
               "name": "404 – Not Found",
@@ -357,18 +330,16 @@
           ]
         },
         {
-          "name": "Delete Follow Up Log",
+          "name": "Delete Follow Up Log (Soft Delete)",
           "request": {
             "method": "DELETE",
-            "header": [
-              { "key": "Authorization", "value": "Bearer {{token}}" }
-            ],
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
             "url": {
               "raw": "{{baseUrl}}/api/followups/{{followUpId}}",
               "host": ["{{baseUrl}}"],
               "path": ["api", "followups", "{{followUpId}}"]
             },
-            "description": "Permanently delete a follow-up log entry. Admin only.\n\nNote: This does not affect the FollowUpConfig options."
+            "description": "Soft-delete a follow-up log by setting isDeleted: true.\n\nThe record is NOT removed from the database.\nIt will no longer appear in GET /listing/:listingId results.\n\nAdmin only."
           },
           "response": [
             {
