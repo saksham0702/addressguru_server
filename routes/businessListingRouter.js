@@ -8,6 +8,9 @@ import {
   deleteListing,
   getFeaturesAndAdditionalFieldsByCategory,
   getListingByUser,
+  updateListingStatus,
+  getListingsByCategoryAndCity,
+  getApprovedListings,
 } from "../controller/businessListing.Controller.js";
 import { setUploadFolder } from "../middleware/setUploadFolder.js";
 import upload from "../middleware/multerConfig.js";
@@ -53,9 +56,16 @@ router.get("/", (req, res) => {
 });
 
 router.get("/get-listing-by-user/",authenticate, getListingByUser);
+router.get("/get-listing-by-category-and-city/:category_slug/:city_slug", getListingsByCategoryAndCity);
 router.get("/get-all-listings", getAllListingsWithPaginationAndFilters);
 router.get("/get-listing-by-slug/:slug", getListingBySlug);
 router.delete("/delete-listing/:slug", deleteListing);
+
+router.get("/get-approved-listings", getApprovedListings);
+
+
+// in your listing routes file
+router.put("/:id/status", authenticate, updateListingStatus);
 
 // Features + additional fields by category (used to build step 1 form)
 router.get(
@@ -64,3 +74,7 @@ router.get(
 );
 
 export default router;
+
+// {status: "approved", 
+//   rejectedReason: ""
+// }

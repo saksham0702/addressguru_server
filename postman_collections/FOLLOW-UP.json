@@ -1,0 +1,364 @@
+{
+  "info": {
+    "name": "AddressGuru – Follow Up APIs",
+    "_postman_id": "addressguru-followup-collection",
+    "description": "Complete API collection for Follow Up Logs and Follow Up Config (Activity Options Settings)",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl",          "value": "http://localhost:5000", "type": "string" },
+    { "key": "token",            "value": "your_jwt_token_here",   "type": "string" },
+    { "key": "listingId",        "value": "69bd1aeba350f63562a43ed8", "type": "string" },
+    { "key": "followUpId",       "value": "", "type": "string" },
+    { "key": "activityOptionId", "value": "", "type": "string" },
+    { "key": "module",           "value": "listing", "type": "string" }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }]
+  },
+  "item": [
+    {
+      "name": "📋 Follow Up Config (Settings)",
+      "description": "Manage activity options that appear in the Follow Up modal. Admin use only.\n\nBase path: /api/followup-config",
+      "item": [
+        {
+          "name": "Get Config (all options for a module)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/followup-config/{{module}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "followup-config", "{{module}}"]
+            },
+            "description": "Fetch all follow-up activity options for a module (listing / lead / crm).\n\nOn first call, auto-seeds default options if none exist.\n\nUsed by FollowUpModal.jsx to load options dynamically."
+          },
+          "response": [
+            {
+              "name": "200 – Success (with seeded defaults)",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": true,\n  \"message\": \"Config fetched successfully\",\n  \"data\": {\n    \"_id\": \"64abc123\",\n    \"module\": \"listing\",\n    \"options\": [\n      {\n        \"_id\": \"opt001\",\n        \"label\": \"Call Back Later\",\n        \"hasRemark\": false,\n        \"remarkRequired\": false,\n        \"remarkPlaceholder\": \"Add a remark…\",\n        \"isActive\": true,\n        \"order\": 0\n      },\n      {\n        \"_id\": \"opt002\",\n        \"label\": \"Not Interested\",\n        \"hasRemark\": true,\n        \"remarkRequired\": true,\n        \"remarkPlaceholder\": \"Add a remark…\",\n        \"isActive\": true,\n        \"order\": 5\n      }\n    ],\n    \"createdAt\": \"2026-03-20T10:00:00.000Z\",\n    \"updatedAt\": \"2026-03-20T10:00:00.000Z\"\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Add New Option",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" },
+              { "key": "Content-Type",  "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"label\": \"Visited Office\",\n  \"hasRemark\": true,\n  \"remarkRequired\": false,\n  \"remarkPlaceholder\": \"Describe the office visit…\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/followup-config/{{module}}/option",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "followup-config", "{{module}}", "option"]
+            },
+            "description": "Add a new activity option to the follow-up modal.\n\nFields:\n- label (required): Display text shown in modal\n- hasRemark: Show remark textarea when this is selected\n- remarkRequired: Force agent to fill remark before submitting\n- remarkPlaceholder: Custom placeholder text in remark box"
+          },
+          "response": [
+            {
+              "name": "201 – Option Added",
+              "status": "Created",
+              "code": 201,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": true,\n  \"message\": \"Option added successfully\",\n  \"data\": {\n    \"_id\": \"64abc123\",\n    \"module\": \"listing\",\n    \"options\": [\n      {\n        \"_id\": \"opt_new\",\n        \"label\": \"Visited Office\",\n        \"hasRemark\": true,\n        \"remarkRequired\": false,\n        \"remarkPlaceholder\": \"Describe the office visit…\",\n        \"isActive\": true,\n        \"order\": 10\n      }\n    ]\n  }\n}"
+            },
+            {
+              "name": "400 – Label Missing",
+              "status": "Bad Request",
+              "code": 400,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Label is required\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Update Option",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" },
+              { "key": "Content-Type",  "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"label\": \"Call Back Later\",\n  \"hasRemark\": true,\n  \"remarkRequired\": false,\n  \"remarkPlaceholder\": \"When should we call back?\",\n  \"isActive\": true\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/followup-config/{{module}}/option/{{activityOptionId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "followup-config", "{{module}}", "option", "{{activityOptionId}}"]
+            },
+            "description": "Update any field of an existing option.\n\nAll fields are optional — send only what you want to change.\n\nNote: If you set hasRemark to false, remarkRequired is automatically set to false too."
+          },
+          "response": [
+            {
+              "name": "200 – Updated",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": true,\n  \"message\": \"Option updated successfully\",\n  \"data\": { \"...\" : \"...\" }\n}"
+            },
+            {
+              "name": "404 – Option Not Found",
+              "status": "Not Found",
+              "code": 404,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Option not found\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Toggle Option Active/Inactive",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" },
+              { "key": "Content-Type",  "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"isActive\": false\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/followup-config/{{module}}/option/{{activityOptionId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "followup-config", "{{module}}", "option", "{{activityOptionId}}"]
+            },
+            "description": "Disable or enable an option without deleting it.\n\nisActive: false → hidden from modal\nisActive: true  → visible in modal\n\nSame endpoint as Update Option, just send only isActive."
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Option",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/followup-config/{{module}}/option/{{activityOptionId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "followup-config", "{{module}}", "option", "{{activityOptionId}}"]
+            },
+            "description": "Permanently delete an activity option.\n\nWarning: This cannot be undone. Previously logged follow-ups that used this option will still show the label correctly because the label is snapshotted at log time."
+          },
+          "response": [
+            {
+              "name": "200 – Deleted",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": true,\n  \"message\": \"Option deleted successfully\",\n  \"data\": { \"...\" : \"...\" }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Reorder Options",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" },
+              { "key": "Content-Type",  "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"orderedIds\": [\n    \"opt003\",\n    \"opt001\",\n    \"opt005\",\n    \"opt002\",\n    \"opt004\"\n  ]\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/followup-config/{{module}}/reorder",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "followup-config", "{{module}}", "reorder"]
+            },
+            "description": "Reorder activity options by passing an array of option IDs in the desired order.\n\nThe index in the array becomes the new `order` value for each option.\n\nIMPORTANT: This route is registered BEFORE /:module/option/:optionId in the router to avoid Express matching 'reorder' as an optionId.\n\nUseful when you implement drag-and-drop in FollowUpSettings."
+          },
+          "response": [
+            {
+              "name": "200 – Reordered",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": true,\n  \"message\": \"Options reordered successfully\",\n  \"data\": { \"...\" : \"...\" }\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "📞 Follow Up Logs",
+      "description": "Create and retrieve follow-up log entries. These are created when an agent submits the FollowUpModal.\n\nBase path: /api/followups\n\nNOTE: GET /listing/:listingId is registered BEFORE GET /:id to avoid Express matching 'listing' as an ID.",
+      "item": [
+        {
+          "name": "Create Follow Up Log",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res.success && res.data._id) {",
+                  "  pm.collectionVariables.set('followUpId', res.data._id);",
+                  "  console.log('followUpId saved:', res.data._id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" },
+              { "key": "Content-Type",  "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"listingId\": \"{{listingId}}\",\n  \"activityOptionId\": \"{{activityOptionId}}\",\n  \"remark\": \"Client said they will discuss with partner and get back by Friday.\",\n  \"nextFollowUpDate\": \"2026-03-25T10:00:00.000Z\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/followups",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "followups"]
+            },
+            "description": "Log a new follow-up when agent submits the modal.\n\nFields:\n- listingId (required): The listing being followed up\n- activityOptionId (required): The _id of the option selected from FollowUpConfig\n- remark: Optional or required depending on the selected option's config\n- nextFollowUpDate: ISO date string for when to follow up next\n\nThe controller will:\n1. Validate the activityOptionId against FollowUpConfig\n2. Check if remark is required for that option\n3. Snapshot the label so history stays accurate even if option is renamed later\n4. Save and return the populated log\n\nRequires: auth middleware (verifyToken) — createdBy is taken from req.user._id"
+          },
+          "response": [
+            {
+              "name": "201 – Follow Up Created",
+              "status": "Created",
+              "code": 201,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": true,\n  \"message\": \"Follow-up logged successfully\",\n  \"data\": {\n    \"_id\": \"64fu001\",\n    \"listing\": \"69bd1aeba350f63562a43ed8\",\n    \"activityOptionId\": \"opt002\",\n    \"reason\": \"Talk With My Partner\",\n    \"remark\": \"Client said they will discuss with partner and get back by Friday.\",\n    \"nextFollowUpDate\": \"2026-03-25T10:00:00.000Z\",\n    \"module\": \"listing\",\n    \"isDeleted\": false,\n    \"createdBy\": {\n      \"_id\": \"user001\",\n      \"name\": \"Ayush Gupta\",\n      \"email\": \"ayush@addressguru.com\"\n    },\n    \"createdAt\": \"2026-03-20T12:30:00.000Z\",\n    \"updatedAt\": \"2026-03-20T12:30:00.000Z\"\n  }\n}"
+            },
+            {
+              "name": "400 – Remark Required",
+              "status": "Bad Request",
+              "code": 400,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Remark is required for \\\"Not Interested\\\"\"\n}"
+            },
+            {
+              "name": "400 – Missing Required Fields",
+              "status": "Bad Request",
+              "code": 400,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": false,\n  \"message\": \"listingId and activityOptionId are required\"\n}"
+            },
+            {
+              "name": "400 – Invalid or Inactive Option",
+              "status": "Bad Request",
+              "code": 400,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Invalid or inactive activity option\"\n}"
+            },
+            {
+              "name": "404 – Config Not Found",
+              "status": "Not Found",
+              "code": 404,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Follow-up config not found\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Get All Follow Ups for a Listing",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/followups/listing/{{listingId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "followups", "listing", "{{listingId}}"]
+            },
+            "description": "Get all follow-up logs for a specific listing.\n\nReturns newest first (createdAt: -1).\nOnly returns non-deleted logs (isDeleted: false).\n\nUsed by FollowUpModal.jsx to populate the Interaction History panel on the right side.\n\nNOTE: This route /listing/:listingId is registered BEFORE /:id in the router to avoid Express matching 'listing' as an ID param."
+          },
+          "response": [
+            {
+              "name": "200 – Logs Found",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": true,\n  \"message\": \"Follow-ups fetched successfully\",\n  \"count\": 2,\n  \"data\": [\n    {\n      \"_id\": \"64fu002\",\n      \"listing\": \"69bd1aeba350f63562a43ed8\",\n      \"reason\": \"Interested\",\n      \"remark\": \"Very interested, wants a demo next week.\",\n      \"nextFollowUpDate\": \"2026-03-27T09:00:00.000Z\",\n      \"isDeleted\": false,\n      \"createdBy\": { \"_id\": \"user001\", \"name\": \"Ayush Gupta\", \"email\": \"ayush@addressguru.com\" },\n      \"createdAt\": \"2026-03-21T08:00:00.000Z\"\n    },\n    {\n      \"_id\": \"64fu001\",\n      \"listing\": \"69bd1aeba350f63562a43ed8\",\n      \"reason\": \"Call Back Later\",\n      \"remark\": null,\n      \"nextFollowUpDate\": \"2026-03-22T10:00:00.000Z\",\n      \"isDeleted\": false,\n      \"createdBy\": { \"_id\": \"user001\", \"name\": \"Ayush Gupta\", \"email\": \"ayush@addressguru.com\" },\n      \"createdAt\": \"2026-03-20T12:30:00.000Z\"\n    }\n  ]\n}"
+            },
+            {
+              "name": "200 – No Logs Yet",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": true,\n  \"message\": \"Follow-ups fetched successfully\",\n  \"count\": 0,\n  \"data\": []\n}"
+            }
+          ]
+        },
+        {
+          "name": "Get Single Follow Up by ID",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/followups/{{followUpId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "followups", "{{followUpId}}"]
+            },
+            "description": "Get a single follow-up log by its MongoDB _id.\n\nIncludes populated createdBy (name, email) and listing (businessName).\n\nReturns 404 if not found."
+          },
+          "response": [
+            {
+              "name": "200 – Found",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": true,\n  \"data\": {\n    \"_id\": \"64fu001\",\n    \"listing\": { \"_id\": \"69bd1aeba350f63562a43ed8\", \"businessName\": \"Dubai Taxi Company\" },\n    \"reason\": \"Interested\",\n    \"remark\": \"Very interested in the premium plan.\",\n    \"nextFollowUpDate\": \"2026-03-25T10:00:00.000Z\",\n    \"isDeleted\": false,\n    \"createdBy\": { \"_id\": \"user001\", \"name\": \"Ayush Gupta\", \"email\": \"ayush@addressguru.com\" },\n    \"createdAt\": \"2026-03-20T12:30:00.000Z\"\n  }\n}"
+            },
+            {
+              "name": "404 – Not Found",
+              "status": "Not Found",
+              "code": 404,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Follow-up not found\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Delete Follow Up Log (Soft Delete)",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/followups/{{followUpId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "followups", "{{followUpId}}"]
+            },
+            "description": "Soft-delete a follow-up log by setting isDeleted: true.\n\nThe record is NOT removed from the database.\nIt will no longer appear in GET /listing/:listingId results.\n\nAdmin only."
+          },
+          "response": [
+            {
+              "name": "200 – Deleted",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": true,\n  \"message\": \"Follow-up deleted\"\n}"
+            },
+            {
+              "name": "404 – Not Found",
+              "status": "Not Found",
+              "code": 404,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Follow-up not found\"\n}"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
