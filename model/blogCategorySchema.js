@@ -14,13 +14,6 @@ const blogCategorySchema = new mongoose.Schema(
     description: {
       type: String,
     },
-    image: {
-      type: String,
-    },
-    parentCategory: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "BlogCategory",
-    },
   },
   { timestamps: true }
 );

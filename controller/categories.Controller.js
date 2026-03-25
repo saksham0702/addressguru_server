@@ -47,7 +47,7 @@ export const getCategories = async (req, res) => {
   try {
     const categories = await Category.find({
       isDeleted: false,
-    }).sort({ createdAt: -1 });
+    }).sort({ createdAt: -1 }); 
 
     if (!categories || categories.length === 0)
       return errorData(res, 404, false, "Category not found.");
@@ -57,7 +57,7 @@ export const getCategories = async (req, res) => {
       200,
       true,
       "Get all categories successfully",
-      categories.filter((category) => category.isDeleted === false)
+      categories // ✅ removed redundant .filter(), already queried isDeleted: false
     );
   } catch (error) {
     console.error(error);
@@ -70,9 +70,12 @@ export const getCategoryByType = async (req, res) => {
     const { type } = req.params;
     const category = await Category.find({
       type,
-      isDeleted: false,
-    });
-    if (!category) return errorData(res, 404, false, "Category not found.");
+      isDeleted: false, // ✅ already had this
+    }).sort({ createdAt: -1 }); // ✅ ADDED sort
+
+    if (!category || category.length === 0)
+      return errorData(res, 404, false, "Category not found.");
+
     return successData(res, 200, true, "Get category successfully", category);
   } catch (error) {
     console.error(error);

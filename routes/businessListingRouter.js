@@ -1,35 +1,80 @@
+// ─── routes/businessListing.routes.js ────────────────────────────────────────
 import express from "express";
-import { validateStep } from "../middleware/validateStep.js";
-import { businessStepSchemas } from "../validations/business.validator.js";
 import {
-  getFeaturesAndAdditionalFieldsByCategory,
   createListing,
   updateListingStep,
+  getAllListingsWithPaginationAndFilters,
+  getListingBySlug,
+  deleteListing,
+  getFeaturesAndAdditionalFieldsByCategory,
+  getListingByUser,
+  updateListingStatus,
+  getListingsByCategoryAndCity,
+  getApprovedListings,
 } from "../controller/businessListing.Controller.js";
 import { setUploadFolder } from "../middleware/setUploadFolder.js";
 import upload from "../middleware/multerConfig.js";
-
+import { validateBusinessStep } from "../middleware/validateBusiness.js";
+import { authenticate, optionalAuth } from "../middleware/userAuth.js";
 const router = express.Router();
 
+// Create — always step 1
 router.post(
-  "/create-listing",  
+  "/create-listing/step/:step",
+  // optionalAuth,
+  authenticate,
   setUploadFolder("business-listings"),
   upload.fields([
     { name: "logo", maxCount: 1 },
     { name: "images", maxCount: 10 },
   ]),
-  validateStep(businessStepSchemas),
+  validateBusinessStep,
   createListing,
 );
 
+// Update — uses slug, not id
 router.put(
-  "/update-listing/:id/step/:step",
-  validateStep(businessStepSchemas),
+  "/update-listing/:slug/step/:step",
+  authenticate,
+  // optionalAuth,
+  setUploadFolder("business-listings"),
+  upload.fields([
+    { name: "logo", maxCount: 1 },
+    { name: "images", maxCount: 10 },
+  ]),
+  validateBusinessStep,
   updateListingStep,
 );
+
+
+router.get("/", (req, res) => {
+  res.send(`
+    <h1 style="text-align:center;">
+      Welcome to AddressGuru UAE Backend Business Listing Router
+    </h1>
+  `);
+});
+
+router.get("/get-listing-by-user/",authenticate, getListingByUser);
+router.get("/get-listing-by-category-and-city/:category_slug/:city_slug", getListingsByCategoryAndCity);
+router.get("/get-all-listings", getAllListingsWithPaginationAndFilters);
+router.get("/get-listing-by-slug/:slug", getListingBySlug);
+router.delete("/delete-listing/:slug", deleteListing);
+
+router.get("/get-approved-listings", getApprovedListings);
+
+
+// in your listing routes file
+router.put("/:id/status", authenticate, updateListingStatus);
+
+// Features + additional fields by category (used to build step 1 form)
 router.get(
-  "/get-features-and-additional-fields/:category_id",
+  "/get-features/:category_id",
   getFeaturesAndAdditionalFieldsByCategory,
 );
 
 export default router;
+
+// {status: "approved", 
+//   rejectedReason: ""
+// }

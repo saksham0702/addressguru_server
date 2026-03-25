@@ -3,8 +3,11 @@ import MarketplaceListing from "../model/marketplaceListingSchema.js";
 import AdditionalField from "../model/additionalFieldSchema.js";
 import Category from "../model/categoriesSchema.js";
 import SubCategory from "../model/subCategoriesSchema.js";
+import User from "../model/userSchema.js";
 import slugify from "slugify";
 import { successData, errorData } from "../services/helper.js";
+import googleIndexingService from "../services/googleIndexing.service.js";
+import { APP_BASE_URL } from "../services/constant.js";
 
 // ─── Helper: validate additional fields ──────────────────────────────────────
 const validateAdditionalFields = async (additionalFields = []) => {
@@ -47,10 +50,9 @@ const validateAdditionalFields = async (additionalFields = []) => {
   return { errors, validated };
 };
 
-const toArray = (val) => (Array.isArray(val) ? val : [val].filter(Boolean));
-
 // ─── POST /marketplace-listings ───────────────────────────────────────────────
 export const createMarketplaceListing = async (req, res) => {
+  console.log("req.user in marketplace", req.user);
   try {
     const {
       category_id,
@@ -97,7 +99,7 @@ export const createMarketplaceListing = async (req, res) => {
     if (errors.length)
       return errorData(res, 400, false, "Validation failed", { errors });
 
-    const slug = `${slugify(title, { lower: true, strict: true })}-${Date.now()}`;
+    const slug = `${slugify(title, { lower: true, strict: true })}`;
 
     const listing = await MarketplaceListing.create({
       category: category_id,
@@ -118,8 +120,20 @@ export const createMarketplaceListing = async (req, res) => {
       isVerified: false,
       isPublished: false,
       isSold: false,
-      createdBy: req.user?._id || null,
+      createdBy: req.user?.id || null,
     });
+
+    // Update User statistics
+    if (req.user?.id) {
+      await User.findByIdAndUpdate(req.user.id, {
+        $inc: {
+          statistics_totalListings: 1,
+          statistics_ProductListings: 1,
+          statistics_marketPlaceListings: 1,
+          statistics_activeListings: 1,
+        },
+      });
+    }
 
     return successData(res, 201, true, "Listing created successfully", {
       id: listing._id,
@@ -131,16 +145,30 @@ export const createMarketplaceListing = async (req, res) => {
   }
 };
 
-// ─── PUT /marketplace-listings/:id/step/:step ─────────────────────────────────
+// ─── PUT /marketplace-listings/:slug/step/:step ───────────────────────────────
 export const updateMarketplaceListingStep = async (req, res) => {
   try {
-    const { slug , step } = req.params;
+    const { slug, step } = req.params;
 
     const listing = await MarketplaceListing.findOne({
-      slug: slug,
+      slug,
       isDeleted: false,
     });
     if (!listing) return errorData(res, 404, false, "Listing not found");
+
+    // ── Ownership check ──
+    if (
+      listing.createdBy &&
+      req.user?.id &&
+      listing.createdBy.toString() !== req.user.id.toString()
+    ) {
+      return errorData(
+        res,
+        403,
+        false,
+        "Forbidden: you do not own this listing",
+      );
+    }
 
     switch (Number(step)) {
       /* ── STEP 1 – PRODUCT INFO ── */
@@ -159,6 +187,25 @@ export const updateMarketplaceListingStep = async (req, res) => {
           additional_fields = [],
         } = req.body;
 
+        if (category_id) {
+          const category = await Category.findOne({
+            _id: category_id,
+            isDeleted: false,
+          });
+          if (!category)
+            return errorData(res, 404, false, "Category not found");
+        }
+
+        if (sub_category_id) {
+          const subCategory = await SubCategory.findOne({
+            _id: sub_category_id,
+            category: category_id || listing.category,
+            isDeleted: false,
+          });
+          if (!subCategory)
+            return errorData(res, 404, false, "Sub-category not found");
+        }
+
         let parsedAdditionalFields = additional_fields;
         if (typeof additional_fields === "string") {
           try {
@@ -176,13 +223,13 @@ export const updateMarketplaceListingStep = async (req, res) => {
 
         if (title && title !== listing.title) {
           listing.title = title;
-          listing.slug = `${slugify(title, { lower: true, strict: true })}-${Date.now()}`;
+          listing.slug = `${slugify(title, { lower: true, strict: true })}`;
         }
 
-        listing.category = category_id;
+        if (category_id) listing.category = category_id;
         listing.subCategory = sub_category_id || null;
-        listing.description = description || null;
-        listing.condition = condition;
+        if (description !== undefined) listing.description = description;
+        if (condition !== undefined) listing.condition = condition;
         listing.price = {
           amount: price_amount || null,
           currency: price_currency,
@@ -194,8 +241,19 @@ export const updateMarketplaceListingStep = async (req, res) => {
         break;
       }
 
-      /* ── STEP 2 – CONTACT DETAILS ── */
+      /* ── STEP 2 – MEDIA (IMAGES) ── */
       case 2: {
+        if (req.files?.images?.length > 0) {
+          const newImages = req.files.images.map((img) => img.path);
+          listing.images = [...(listing.images || []), ...newImages];
+        } else {
+          return errorData(res, 400, false, "No images provided");
+        }
+        break;
+      }
+
+      /* ── STEP 3 – CONTACT DETAILS ── */
+      case 3: {
         listing.contactPersonName = req.body.name || null;
         listing.email = req.body.email || null;
         listing.countryCode = req.body.country_code || null;
@@ -208,20 +266,6 @@ export const updateMarketplaceListingStep = async (req, res) => {
         break;
       }
 
-      /* ── STEP 3 – SOCIAL & LINKS ── */
-      case 3: {
-        listing.websiteLink = req.body.website_link || null;
-        listing.videoLink = req.body.video_link || null;
-        listing.socialLinks = {
-          facebook: req.body.facebook || null,
-          instagram: req.body.instagram || null,
-          twitter: req.body.twitter || null,
-          linkedin: req.body.linkedin || null,
-          youtube: req.body.youtube || null,
-        };
-        break;
-      }
-
       /* ── STEP 4 – SEO ── */
       case 4: {
         listing.seo = {
@@ -231,19 +275,20 @@ export const updateMarketplaceListingStep = async (req, res) => {
         break;
       }
 
-      /* ── STEP 5 – MEDIA ── */
+      /* ── STEP 5 – PLAN & PUBLISH ── */
       case 5: {
-        if (req.files?.images?.length > 0) {
-          const newImages = req.files.images.map((img) => img.path);
-          listing.images = [...(listing.images || []), ...newImages];
+        if (listing.stepCompleted < 4) {
+          return errorData(
+            res,
+            400,
+            false,
+            "Please complete all previous steps before publishing",
+          );
         }
-        break;
-      }
 
-      /* ── STEP 6 – PLAN & PUBLISH ── */
-      case 6: {
-        listing.plan = req.body.plan_id;
+        listing.plan = req.body.plan_id || null;
         listing.isPublished = true;
+        googleIndexingService.notify(`${APP_BASE_URL}/marketplace/${listing.slug}`, "URL_UPDATED");
         break;
       }
 
@@ -256,6 +301,7 @@ export const updateMarketplaceListingStep = async (req, res) => {
 
     return successData(res, 200, true, `Step ${step} saved successfully`, {
       id: listing._id,
+      slug: listing.slug,
       stepCompleted: listing.stepCompleted,
     });
   } catch (error) {
@@ -271,15 +317,23 @@ export const getAllMarketplaceListings = async (req, res) => {
     const limit = parseInt(req.query.limit) || 10;
     const skip = (page - 1) * limit;
 
-    const filter = { isDeleted: false, isPublished: true, isVerified: true };
+    // Base filter — only non-deleted listings
+    const filter = { isDeleted: false };
 
+    // Optional filters from query params
     if (req.query.condition) filter.condition = req.query.condition;
     if (req.query.city_id) filter.city = req.query.city_id;
     if (req.query.category_id) filter.category = req.query.category_id;
+    if (req.query.sub_category_id)
+      filter.subCategory = req.query.sub_category_id;
     if (req.query.is_sold !== undefined)
       filter.isSold = req.query.is_sold === "true";
+    if (req.query.is_published !== undefined)
+      filter.isPublished = req.query.is_published === "true";
+    if (req.query.is_verified !== undefined)
+      filter.isVerified = req.query.is_verified === "true";
 
-    // price range
+    // Price range
     if (req.query.min_price || req.query.max_price) {
       filter["price.amount"] = {};
       if (req.query.min_price)
@@ -288,7 +342,7 @@ export const getAllMarketplaceListings = async (req, res) => {
         filter["price.amount"].$lte = Number(req.query.max_price);
     }
 
-    // free items toggle
+    // Free items toggle
     if (req.query.is_free === "true") filter["price.isFree"] = true;
 
     const [listings, total] = await Promise.all([
@@ -318,15 +372,12 @@ export const getAllMarketplaceListings = async (req, res) => {
 /* ── GET SINGLE BY SLUG ── */
 export const getMarketplaceListingBySlug = async (req, res) => {
   try {
-
     const { slug } = req.params;
-    console.log(slug)
     if (!slug) return errorData(res, 400, false, "Slug is required");
 
     const listing = await MarketplaceListing.findOne({
       slug,
       isDeleted: false,
-      // isPublished: true,
     })
       .populate("category", "name")
       .populate("subCategory", "name")
@@ -343,18 +394,64 @@ export const getMarketplaceListingBySlug = async (req, res) => {
   }
 };
 
+//get listing by user
+export const getMarketplaceListingByUser = async (req, res) => {
+  console.log("req.user get listing by user", req.user);
+  try {
+    const id = req.user.id;
+    const listings = await MarketplaceListing.find({
+      createdBy: id,
+      isDeleted: false,
+    })
+      .populate("category", "name")
+      .populate("subCategory", "name")
+      .populate("city", "name")
+      .populate("additionalFields.field_id", "field_label field_type")
+      .lean();
+    if (!listings.length)
+      return errorData(res, 404, false, "No listings found");
+    return successData(res, 200, true, "Listings fetched successfully", listings);
+  } catch (error) {
+    console.error("Marketplace listing fetch error:", error);
+    return errorData(res, 500, false, "Internal server error");
+  }
+};
+
 /* ── MARK AS SOLD ── */
 export const markMarketplaceListingAsSold = async (req, res) => {
   try {
     const { id } = req.params;
     if (!id) return errorData(res, 400, false, "Listing id is required");
 
-    const listing = await MarketplaceListing.findOneAndUpdate(
-      { _id: id, isDeleted: false },
-      { isSold: true },
-      { new: true },
-    );
+    const listing = await MarketplaceListing.findOne({
+      _id: id,
+      isDeleted: false,
+    });
     if (!listing) return errorData(res, 404, false, "Listing not found");
+
+    // Ownership check
+    if (
+      listing.createdBy &&
+      req.user?._id &&
+      listing.createdBy.toString() !== req.user._id.toString()
+    ) {
+      return errorData(
+        res,
+        403,
+        false,
+        "Forbidden: you do not own this listing",
+      );
+    }
+
+    listing.isSold = true;
+    await listing.save();
+
+    // Update User statistics
+    if (listing.createdBy) {
+      await User.findByIdAndUpdate(listing.createdBy, {
+        $inc: { statistics_soldItems: 1 },
+      });
+    }
 
     return successData(res, 200, true, "Listing marked as sold", {
       id: listing._id,
@@ -371,12 +468,42 @@ export const deleteMarketplaceListing = async (req, res) => {
     const { id } = req.params;
     if (!id) return errorData(res, 400, false, "Listing id is required");
 
-    const listing = await MarketplaceListing.findByIdAndUpdate(
-      id,
-      { isDeleted: true },
-      { new: true },
-    );
+    const listing = await MarketplaceListing.findOne({
+      _id: id,
+      isDeleted: false,
+    });
     if (!listing) return errorData(res, 404, false, "Listing not found");
+
+    // Ownership check
+    if (
+      listing.createdBy &&
+      req.user?._id &&
+      listing.createdBy.toString() !== req.user._id.toString()
+    ) {
+      return errorData(
+        res,
+        403,
+        false,
+        "Forbidden: you do not own this listing",
+      );
+    }
+
+    listing.isDeleted = true;
+    await listing.save();
+
+    googleIndexingService.notify(`${APP_BASE_URL}/marketplace/${listing.slug}`, "URL_DELETED");
+
+    // Update User statistics
+    if (listing.createdBy) {
+      await User.findByIdAndUpdate(listing.createdBy, {
+        $inc: {
+          statistics_activeListings: -1,
+          statistics_totalListings: -1,
+          statistics_ProductListings: -1,
+          statistics_marketPlaceListings: -1
+        },
+      });
+    }
 
     return successData(res, 200, true, "Listing deleted successfully", {
       id: listing._id,

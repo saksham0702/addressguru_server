@@ -1,0 +1,480 @@
+{
+  "info": {
+    "name": "AddressGuru UAE - User API",
+    "_postman_id": "addressguru-uae-user-api",
+    "description": "Postman collection for AddressGuru UAE backend user routes including auth, OTP, profile management, and admin operations.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "BASE_URL",
+      "value": "http://localhost:5000",
+      "type": "string"
+    },
+    {
+      "key": "authToken",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "🔓 Public Routes",
+      "item": [
+        {
+          "name": "Health Check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{BASE_URL}}/api/user/",
+              "host": ["{{BASE_URL}}"],
+              "path": ["api", "user", ""]
+            },
+            "description": "Health check — returns welcome message."
+          },
+          "response": []
+        },
+        {
+          "name": "Register",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res.data && res.data.email) {",
+                  "  pm.collectionVariables.set('registeredEmail', res.data.email);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"John Doe\",\n  \"email\": \"john@example.com\",\n  \"password\": \"Password@123\",\n  \"phone\": \"971501234567\",\n  \"whatsapp_same\": true,\n  \"login_type\": \"email\"\n}"
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/api/user/register",
+              "host": ["{{BASE_URL}}"],
+              "path": ["api", "user", "register"]
+            },
+            "description": "Register a new user. On success, an OTP is sent to the provided email."
+          },
+          "response": []
+        },
+        {
+          "name": "Register Admin",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{BASE_URL}}/api/user/register-admin",
+              "host": ["{{BASE_URL}}"],
+              "path": ["api", "user", "register-admin"]
+            },
+            "description": "Creates the default system admin account (admin@admin.com / Admin@123456). Only works once — returns 400 if admin already exists."
+          },
+          "response": []
+        },
+        {
+          "name": "Verify OTP",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"john@example.com\",\n  \"otp\": \"123456\"\n}"
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/api/user/verify-otp",
+              "host": ["{{BASE_URL}}"],
+              "path": ["api", "user", "verify-otp"]
+            },
+            "description": "Verify the 6-digit OTP sent during registration or forgot-password. OTP expires after 10 minutes."
+          },
+          "response": []
+        },
+        {
+          "name": "Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res.data && res.data.authToken) {",
+                  "  pm.collectionVariables.set('authToken', res.data.authToken);",
+                  "  console.log('authToken saved:', res.data.authToken);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"john@example.com\",\n  \"password\": \"Password@123\"\n}"
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/api/user/login",
+              "host": ["{{BASE_URL}}"],
+              "path": ["api", "user", "login"]
+            },
+            "description": "Login with email and password. Returns a JWT authToken and sets an httpOnly cookie. The test script auto-saves authToken to collection variables."
+          },
+          "response": []
+        },
+        {
+          "name": "Forgot Password",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"john@example.com\"\n}"
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/api/user/forgot-password",
+              "host": ["{{BASE_URL}}"],
+              "path": ["api", "user", "forgot-password"]
+            },
+            "description": "Sends an OTP to the registered email for password reset."
+          },
+          "response": []
+        },
+        {
+          "name": "Resend OTP",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"john@example.com\"\n}"
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/api/user/resend-otp",
+              "host": ["{{BASE_URL}}"],
+              "path": ["api", "user", "resend-otp"]
+            },
+            "description": "Resends a fresh OTP to the provided email. Useful when the previous OTP has expired."
+          },
+          "response": []
+        },
+        {
+          "name": "Reset Password",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"john@example.com\",\n  \"newPassword\": \"NewPassword@456\"\n}"
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/api/user/reset-password",
+              "host": ["{{BASE_URL}}"],
+              "path": ["api", "user", "reset-password"]
+            },
+            "description": "Sets a new password after OTP verification. The new password must differ from the current one."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "🔐 Protected Routes",
+      "item": [
+        {
+          "name": "Get My Profile",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}/api/user/me",
+              "host": ["{{BASE_URL}}"],
+              "path": ["api", "user", "me"]
+            },
+            "description": "Fetch the authenticated user's profile. Excludes password, otp, and otpCreatedAt fields."
+          },
+          "response": []
+        },
+        {
+          "name": "Change Password",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"oldPassword\": \"Password@123\",\n  \"newPassword\": \"NewPassword@456\"\n}"
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/api/user/change-password",
+              "host": ["{{BASE_URL}}"],
+              "path": ["api", "user", "change-password"]
+            },
+            "description": "Change password for the currently authenticated user. Requires old password for verification."
+          },
+          "response": []
+        },
+        {
+          "name": "Update Profile (with Avatar)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "name",
+                  "value": "John Updated",
+                  "type": "text"
+                },
+                {
+                  "key": "email",
+                  "value": "john@example.com",
+                  "type": "text"
+                },
+                {
+                  "key": "phone",
+                  "value": "971509876543",
+                  "type": "text"
+                },
+                {
+                  "key": "image",
+                  "type": "file",
+                  "src": "",
+                  "description": "Upload profile image file"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/api/user/update-profile",
+              "host": ["{{BASE_URL}}"],
+              "path": ["api", "user", "update-profile"]
+            },
+            "description": "Update profile fields (name, email, phone, avatar). Requires a file upload with key `image` via multipart/form-data."
+          },
+          "response": []
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}/api/user/logout",
+              "host": ["{{BASE_URL}}"],
+              "path": ["api", "user", "logout"]
+            },
+            "description": "Clears the authToken cookie and logs the user out."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "🛡️ Admin Routes",
+      "item": [
+        {
+          "name": "Get All Users",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}/api/user/all?page=1&limit=10",
+              "host": ["{{BASE_URL}}"],
+              "path": ["api", "user", "all"],
+              "query": [
+                { "key": "page", "value": "1", "description": "Page number (default: 1)" },
+                { "key": "limit", "value": "10", "description": "Results per page (default: 10)" },
+                { "key": "role", "value": "", "description": "Filter by role number", "disabled": true },
+                { "key": "status", "value": "true", "description": "Filter by status (true/false)", "disabled": true },
+                { "key": "search", "value": "", "description": "Search by name, email, or phone", "disabled": true }
+              ]
+            },
+            "description": "Fetch all non-deleted users with pagination and optional filters. Admin only."
+          },
+          "response": []
+        },
+        {
+          "name": "Get User By ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}/api/user/:id",
+              "host": ["{{BASE_URL}}"],
+              "path": ["api", "user", ":id"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "USER_ID_HERE",
+                  "description": "MongoDB ObjectId of the user"
+                }
+              ]
+            },
+            "description": "Fetch a single user by their MongoDB ID. Admin only."
+          },
+          "response": []
+        },
+        {
+          "name": "Update User (Admin)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Updated Name\",\n  \"role\": 2,\n  \"status\": true,\n  \"membership_type\": \"premium\"\n}"
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/api/user/:id",
+              "host": ["{{BASE_URL}}"],
+              "path": ["api", "user", ":id"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "USER_ID_HERE",
+                  "description": "MongoDB ObjectId of the user"
+                }
+              ]
+            },
+            "description": "Admin update of any user. Allowed fields: name, email, phone, role, status, membership_type, city, permission."
+          },
+          "response": []
+        },
+        {
+          "name": "Soft Delete User",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}/api/user/:id",
+              "host": ["{{BASE_URL}}"],
+              "path": ["api", "user", ":id"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "USER_ID_HERE",
+                  "description": "MongoDB ObjectId of the user"
+                }
+              ]
+            },
+            "description": "Soft-deletes a user by setting deletedAt timestamp and status to false. Does not permanently remove the record."
+          },
+          "response": []
+        },
+        {
+          "name": "Restore User",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}/api/user/:id/restore",
+              "host": ["{{BASE_URL}}"],
+              "path": ["api", "user", ":id", "restore"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "USER_ID_HERE",
+                  "description": "MongoDB ObjectId of the user"
+                }
+              ]
+            },
+            "description": "Restores a soft-deleted user by clearing deletedAt and setting status to true."
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}

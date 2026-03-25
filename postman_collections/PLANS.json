@@ -1,0 +1,196 @@
+{
+  "info": {
+    "name": "AddressGuru UAE — Plans API",
+    "description": "Complete Postman collection for the Plans module (UAE / Dubai currency AED)",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:5000/api",
+      "type": "string"
+    },
+    {
+      "key": "auth_token",
+      "value": "YOUR_JWT_TOKEN_HERE",
+      "type": "string"
+    },
+    {
+      "key": "plan_id",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Public",
+      "item": [
+        {
+          "name": "Get All Plans",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/plans",
+              "host": ["{{base_url}}"],
+              "path": ["plans"]
+            },
+            "description": "Returns all active, non-deleted plans sorted by displayOrder. Used for the frontend pricing/plans page."
+          },
+          "response": [
+            {
+              "name": "200 — Success",
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"status\": true,\n  \"message\": \"Plans fetched successfully\",\n  \"data\": {\n    \"plans\": [\n      {\n        \"_id\": \"...\",\n        \"name\": \"Free Plan\",\n        \"slug\": \"free\",\n        \"tagline\": null,\n        \"displayOrder\": 1,\n        \"currency\": \"AED\",\n        \"price\": 0,\n        \"billingCycle\": \"year\",\n        \"features\": [\"Basic Listing\", \"100 Words Description\", \"No Website Link\", \"No Images Gallery\", \"Standard Ranking\"],\n        \"limits\": { \"descriptionWords\": 100, \"businessImages\": 0 },\n        \"flags\": { \"websiteLinkAllowed\": false, \"imagesGalleryAllowed\": false },\n        \"theme\": \"default\",\n        \"ctaLabel\": \"Get Started\",\n        \"isHighlighted\": false,\n        \"isActive\": true\n      }\n    ]\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Get Plan by Slug",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/plans/slug/growth",
+              "host": ["{{base_url}}"],
+              "path": ["plans", "slug", "growth"]
+            },
+            "description": "Fetch a single plan by its slug. Slugs: free | starter | growth | featured"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Plan by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/plans/{{plan_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["plans", "{{plan_id}}"]
+            },
+            "description": "Fetch a single plan by its MongoDB _id. Used internally when a listing references a plan."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Admin",
+      "item": [
+        {
+          "name": "Seed Default UAE Plans (One-Time)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/plans/seed",
+              "host": ["{{base_url}}"],
+              "path": ["plans", "seed"]
+            },
+            "description": "One-time endpoint to seed the 4 default UAE plans (Free, Starter, Growth, Featured) with AED pricing. Will error if plans already exist."
+          },
+          "response": [
+            {
+              "name": "201 — Seeded",
+              "status": "Created",
+              "code": 201,
+              "body": "{\n  \"status\": true,\n  \"message\": \"Default UAE plans seeded successfully\",\n  \"data\": { \"count\": 4 }\n}"
+            },
+            {
+              "name": "400 — Already Exists",
+              "status": "Bad Request",
+              "code": 400,
+              "body": "{\n  \"status\": false,\n  \"message\": \"Plans already exist. Use update endpoints to modify them.\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Create Plan",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Premium Plan\",\n  \"tagline\": \"New\",\n  \"displayOrder\": 5,\n  \"price\": 999,\n  \"billingCycle\": \"year\",\n  \"features\": [\n    \"Everything in Featured\",\n    \"Custom Banner\",\n    \"API Access\"\n  ],\n  \"limits\": {\n    \"descriptionWords\": 2000,\n    \"businessImages\": 20\n  },\n  \"flags\": {\n    \"websiteLinkAllowed\": true,\n    \"imagesGalleryAllowed\": true,\n    \"seoOptimised\": true,\n    \"socialMediaLinks\": true,\n    \"leadEnquiryForm\": true,\n    \"performanceInsights\": true,\n    \"verifiedBadge\": true,\n    \"highlightBadge\": true,\n    \"featuredInMainCities\": true,\n    \"topOfSearchResults\": true,\n    \"monthlyOptimisation\": true,\n    \"dedicatedSupport\": true,\n    \"priorityListing\": true,\n    \"videoLinkAllowed\": true\n  },\n  \"theme\": \"gold\",\n  \"ctaLabel\": \"Go Premium\",\n  \"isHighlighted\": false\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/plans",
+              "host": ["{{base_url}}"],
+              "path": ["plans"]
+            },
+            "description": "Create a new plan. Requires admin auth. `price` is in AED."
+          },
+          "response": []
+        },
+        {
+          "name": "Update Plan",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"price\": 599,\n  \"tagline\": \"Most Popular\",\n  \"isHighlighted\": true,\n  \"features\": [\n    \"SEO Optimised\",\n    \"6 Business Images\",\n    \"Social Media Links\",\n    \"Lead Enquiry Form\",\n    \"Performance Insights\"\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/plans/{{plan_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["plans", "{{plan_id}}"]
+            },
+            "description": "Update any fields of an existing plan. Only sends the fields you want to change."
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Plan (Soft)",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/plans/{{plan_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["plans", "{{plan_id}}"]
+            },
+            "description": "Soft-deletes a plan (sets isDeleted=true, isActive=false). Existing listings referencing this plan are unaffected."
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}

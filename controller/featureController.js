@@ -2,7 +2,7 @@
 import Feature from "../model/featureSchema.js";
 import CategoryFeature from "../model/categoryFeatures.js";
 import slugify from "slugify";
-
+import Category from "../model/categoriesSchema.js";
 // helper
 const normalizeFeatureName = (name) =>
   name.toLowerCase().replace(/[-\s_]+/g, "");
@@ -246,11 +246,24 @@ export const getCategoryFeatures = async (req, res) => {
       .populate("facilities services courses payment_modes");
 
     if (!categoryFeature) {
-      return res
-        .status(404)
-        .json({ message: "No features assigned to this category yet" });
-    }
+      const category = await Category.findById(categoryId).select(
+        "name slug iconSvg isActive",
+      );
 
+      if (!category) {
+        return res.status(404).json({ message: "Category not found" });
+      }
+      return res.status(200).json({
+        message: "Category fetched (no features assigned yet)",
+        data: {
+          category,
+          facilities: [],
+          services: [],
+          courses: [],
+          payment_modes: [],
+        },
+      });
+    }
     res
       .status(200)
       .json({ message: "Category features fetched", data: categoryFeature });

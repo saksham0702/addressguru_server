@@ -1,5 +1,6 @@
-// controllers/enquiryController.js
 import Enquiry        from "../model/listingEnquirySchema.js";
+import User           from "../model/userSchema.js";
+import ListingStats   from "../model/listingStatsSchema.js";
 import { resolveListing } from "../utils/resolveListing.js";
 
 // ─── POST /api/:type/:slug/enquiry ────────────────────────────────────────────
@@ -29,10 +30,29 @@ export const sendEnquiry = async (req, res) => {
       userAgent:    req.headers["user-agent"],
     });
 
-    // Increment enquiry counter on listing
-    await listing.constructor.findByIdAndUpdate(listing._id, {
-      $inc: { "stats.enquiries": 1 },
+    // Record the event in ListingStats
+    await ListingStats.create({
+      listingId: listing._id,
+      listingModel: modelName,
+      type: "lead",
+      userId: req.user?.id || null,
+      ipAddress: req.ip,
+      userAgent: req.headers["user-agent"],
     });
+
+    // Increment user stats
+    if (listing.createdBy) {
+      await User.findByIdAndUpdate(listing.createdBy, {
+        $inc: { statistics_totalLeads: 1 },
+      });
+    }
+
+    // Increment enquiry counter on listing (legacy support if field exists)
+    try {
+      await listing.constructor.findByIdAndUpdate(listing._id, {
+        $inc: { "stats.enquiries": 1 },
+      });
+    } catch (e) {}
 
     // TODO: send email / push notification to listing owner
 

@@ -1,8 +1,20 @@
+// ─── businessListingController.js ────────────────────────────────────────────
 import BusinessListing from "../model/businessListingSchema.js";
 import AdditionalField from "../model/additionalFieldSchema.js";
+import Category from "../model/categoriesSchema.js";
+import SubCategory from "../model/subCategoriesSchema.js";
+import categoryFeatures from "../model/categoryFeatures.js";
+import Feature from "../model/featureSchema.js";
+import User from "../model/userSchema.js";
 import slugify from "slugify";
 import { successData, errorData } from "../services/helper.js";
-import categoryFeatures from "../model/categoryFeatures.js";
+import googleIndexingService from "../services/googleIndexing.service.js";
+import { APP_BASE_URL } from "../services/constant.js";
+import CitiesSchema from "../model/CitiesSchema.js";
+import {
+  sendApprovedAndRejectedListingMail,
+  sendListingSubmittedMail,
+} from "../utils/sendMail.js";
 
 // ─── Helper: validate additional fields ───────────────────────────────────────
 const validateAdditionalFields = async (additionalFields = []) => {
@@ -37,8 +49,8 @@ const validateAdditionalFields = async (additionalFields = []) => {
 
     validated.push({
       field_id: doc._id,
-      field_label: doc.field_label, // snapshot
-      field_type: doc.field_type, // snapshot
+      field_label: doc.field_label,
+      field_type: doc.field_type,
       value: submitted.value ?? null,
     });
   }
@@ -46,8 +58,22 @@ const validateAdditionalFields = async (additionalFields = []) => {
   return { errors, validated };
 };
 
-// ─── POST /listings ───────────────────────────────────────────────────────────
+// ─── Helper: coerce value to array ────────────────────────────────────────────
+const toArray = (val) => (Array.isArray(val) ? val : [val].filter(Boolean));
+
+// ─── Helper: parse JSON string safely ─────────────────────────────────────────
+const parseJSON = (val, fallback = null) => {
+  if (typeof val !== "string") return val ?? fallback;
+  try {
+    return JSON.parse(val);
+  } catch {
+    return fallback;
+  }
+};
+
+// ─── POST /business-listings ──────────────────────────────────────────────────
 export const createListing = async (req, res) => {
+  console.log("req.user testing create listing", req.user);
   try {
     const {
       category_id,
@@ -65,38 +91,47 @@ export const createListing = async (req, res) => {
       additional_fields = [],
     } = req.body;
 
-    let parsedHours = hours;
-    if (typeof hours === "string") {
-      try {
-        parsedHours = JSON.parse(hours);
-      } catch {
-        parsedHours = null;
-      }
+    // Validate category
+    const category = await Category.findOne({
+      _id: category_id,
+      isDeleted: false,
+    });
+    if (!category) return errorData(res, 404, false, "Category not found");
+
+    // Validate sub-category if provided
+    if (sub_category_id) {
+      const subCategory = await SubCategory.findOne({
+        _id: sub_category_id,
+        category: category_id,
+        isDeleted: false,
+      });
+      if (!subCategory)
+        return errorData(res, 404, false, "Sub-category not found");
     }
 
-    let parsedAdditionalFields = additional_fields;
-    if (typeof additional_fields === "string") {
-      try {
-        parsedAdditionalFields = JSON.parse(additional_fields);
-      } catch {
-        parsedAdditionalFields = [];
-      }
-    }
-
-    const { errors, validated } = await validateAdditionalFields(
-      parsedAdditionalFields,
-    );
-    if (errors.length)
-      return errorData(res, 400, false, "Validation failed", { errors });
-
+    // Check duplicate business name (among non-deleted)
     const existingListing = await BusinessListing.findOne({
       businessName: business_name,
       isDeleted: false,
     });
     if (existingListing)
-      return errorData(res, 400, false, "Listing already exists");
+      return errorData(
+        res,
+        400,
+        false,
+        "A listing with this business name already exists",
+      );
 
-    const slug = `${slugify(business_name, { lower: true, strict: true })}-${Date.now()}`;
+    const parsedHours = parseJSON(hours, null);
+    const parsedAdditionalFields = parseJSON(additional_fields, []);
+
+    const { errors, validated } = await validateAdditionalFields(
+      Array.isArray(parsedAdditionalFields) ? parsedAdditionalFields : [],
+    );
+    if (errors.length)
+      return errorData(res, 400, false, "Validation failed", { errors });
+
+    const slug = `${slugify(business_name, { lower: true, strict: true })}`;
 
     const listing = await BusinessListing.create({
       category: category_id,
@@ -106,21 +141,25 @@ export const createListing = async (req, res) => {
       description: ad_description || null,
       establishedYear: establishment_year || null,
       taxNumber: uen_number || null,
-      facilities: Array.isArray(facilities)
-        ? facilities
-        : [facilities].filter(Boolean),
-      services: Array.isArray(services) ? services : [services].filter(Boolean),
-      courses: Array.isArray(courses) ? courses : [courses].filter(Boolean),
-      paymentModes: Array.isArray(payments)
-        ? payments
-        : [payments].filter(Boolean),
-      workingHours: parsedHours || null,
+      facilities: toArray(facilities),
+      services: toArray(services),
+      courses: toArray(courses),
+      paymentModes: toArray(payments),
+      workingHours: parsedHours,
       additionalFields: validated,
       slug,
       stepCompleted: 1,
       isVerified: false,
       isPublished: false,
-      createdBy: req.user?._id || null,
+      createdBy: req.user.id,
+    });
+
+    // Update User statistics
+    await User.findByIdAndUpdate(req.user.id, {
+      $inc: {
+        statistics_totalListings: 1,
+        statistics_activeListings: 1,
+      },
     });
 
     return successData(res, 201, true, "Listing created successfully", {
@@ -132,38 +171,261 @@ export const createListing = async (req, res) => {
     return errorData(res, 500, false, "Internal server error");
   }
 };
-// ─── PUT /listings/:id/step/:step ─────────────────────────────────────────────
+
+// ─── PUT /business-listings/:slug/step/:step ──────────────────────────────────
+// export const updateListingStep = async (req, res) => {
+//   // console.log("req.user update listing step", req.user);
+//   // console.log("req.params update listing step", req.params);
+//   // console.log("req body",req.body);
+//   try {
+//     const { slug, step } = req.params;
+
+//     const listing = await BusinessListing.findOne({ slug, isDeleted: false });
+//     if (!listing) return errorData(res, 404, false, "Listing not found");
+
+//     // ── Ownership check ──
+//     if (
+//       listing.createdBy &&
+//       req.user?.id &&
+//       listing.createdBy.toString() !== req.user.id.toString()
+//     ) {
+//       return errorData(
+//         res,
+//         403,
+//         false,
+//         "Forbidden: you do not own this listing",
+//       );
+//     }
+
+//     switch (Number(step)) {
+//       /* ── STEP 1 – BUSINESS INFO ── */
+//       case 1: {
+//         const {
+//           category_id,
+//           sub_category_id,
+//           business_name,
+//           business_address,
+//           ad_description,
+//           establishment_year,
+//           uen_number,
+//           facilities = [],
+//           services = [],
+//           courses = [],
+//           payments = [],
+//           hours,
+//           additional_fields = [],
+//         } = req.body;
+
+//         // Validate category if provided
+//         if (category_id) {
+//           const category = await Category.findOne({
+//             _id: category_id,
+//             isDeleted: false,
+//           });
+//           if (!category)
+//             return errorData(res, 404, false, "Category not found");
+//         }
+//         // Validate sub-category if provided
+//         if (sub_category_id) {
+//           const subCategory = await SubCategory.findOne({
+//             _id: sub_category_id,
+//             category: category_id || listing.category,
+//             isDeleted: false,
+//           });
+//           if (!subCategory)
+//             return errorData(res, 404, false, "Sub-category not found");
+//         }
+//         // Check name conflict — exclude current listing
+//         if (business_name && business_name !== listing.businessName) {
+//           const conflict = await BusinessListing.findOne({
+//             businessName: business_name,
+//             isDeleted: false,
+//             _id: { $ne: listing._id },
+//           });
+//           if (conflict)
+//             return errorData(
+//               res,
+//               400,
+//               false,
+//               "A listing with this business name already exists",
+//             );
+//           listing.businessName = business_name;
+//           listing.slug = `${slugify(business_name, { lower: true, strict: true })}}`;
+//         }
+
+//         const parsedHours = parseJSON(hours, null);
+//         const parsedAdditionalFields = parseJSON(additional_fields, []);
+
+//         const { errors, validated } = await validateAdditionalFields(
+//           Array.isArray(parsedAdditionalFields) ? parsedAdditionalFields : [],
+//         );
+//         if (errors.length)
+//           return errorData(res, 400, false, "Validation failed", { errors });
+
+//         if (category_id) listing.category = category_id;
+//         listing.subCategory = sub_category_id || null;
+//         if (business_address !== undefined)
+//           listing.businessAddress = business_address;
+//         if (ad_description !== undefined) listing.description = ad_description;
+//         listing.establishedYear = establishment_year || null;
+//         listing.taxNumber = uen_number || null;
+//         listing.facilities = toArray(facilities);
+//         listing.services = toArray(services);
+//         listing.courses = toArray(courses);
+//         listing.paymentModes = toArray(payments);
+//         listing.workingHours = parsedHours;
+//         listing.additionalFields = validated;
+//         break;
+//       }
+
+//       /* ── STEP 2 – SOCIAL LINKS ── */
+//       case 2: {
+//         listing.websiteLink = req.body.website_link || null;
+//         listing.videoLink = req.body.video_link || null;
+//         listing.socialLinks = {
+//           facebook: req.body.facebook || null,
+//           instagram: req.body.instagram || null,
+//           twitter: req.body.twitter || null,
+//           linkedin: req.body.linkedin || null,
+//           youtube: req.body.youtube || null,
+//         };
+//         break;
+//       }
+
+//       /* ── STEP 3 – CONTACT DETAILS ── */
+//       case 3: {
+//         listing.contactPersonName = req.body.name || null;
+//         listing.email = req.body.email || null;
+//         listing.countryCode = req.body.country_code || null;
+//         listing.mobileNumber = req.body.mobile_number || null;
+//         listing.altCountryCode = req.body.alt_country_code || null;
+//         listing.alternateMobileNumber = req.body.second_mobile_number || null;
+//         listing.locality = req.body.locality || null;
+//         listing.city = req.body.city_id || null; // fixed: was req.body.city
+//         break;
+//       }
+
+//       /* ── STEP 4 – SEO ── */
+//       case 4: {
+//         listing.seo = {
+//           title: req.body.seo_title || null,
+//           description: req.body.seo_description || null,
+//         };
+//         break;
+//       }
+
+//       /* ── STEP 5 – MEDIA ── */
+//       case 5: {
+//         if (!req.files?.logo?.[0] && !req.files?.images?.length) {
+//           return errorData(
+//             res,
+//             400,
+//             false,
+//             "Please upload at least a logo or one image",
+//           );
+//         }
+//         if (req.files?.logo?.[0]) {
+//           listing.logo = req.files.logo[0].path;
+//         }
+//         if (req.files?.images?.length > 0) {
+//           const newImages = req.files.images.map((img) => img.path);
+//           listing.images = [...(listing.images || []), ...newImages];
+//         }
+//         break;
+//       }
+
+//       /* ── STEP 6 – PLAN & PUBLISH ── */
+//       case 6: {
+//         if (listing.stepCompleted < 5) {
+//           return errorData(
+//             res,
+//             400,
+//             false,
+//             "Please complete all previous steps before publishing",
+//           );
+//         }
+//         listing.plan = req.body.plan_id || null;
+//         listing.isPublished = true;
+//         break;
+//       }
+
+//       default:
+//         return errorData(res, 400, false, "Invalid step");
+//     }
+
+//     listing.stepCompleted = Math.max(listing.stepCompleted, Number(step));
+//     await listing.save();
+
+//     return successData(res, 200, true, `Step ${step} saved successfully`, {
+//       id: listing._id,
+//       slug: listing.slug,
+//       stepCompleted: listing.stepCompleted,
+//     });
+//   } catch (error) {
+//     console.error("Update listing step error:", error);
+//     return errorData(res, 500, false, "Internal server error");
+//   }
+// };
+
 export const updateListingStep = async (req, res) => {
   try {
-    const { id, step } = req.params;
+    const { slug, step } = req.params;
 
-    const listing = await BusinessListing.findOne({ _id: id, isDeleted: false });
+    const listing = await BusinessListing.findOne({ slug, isDeleted: false });
     if (!listing) return errorData(res, 404, false, "Listing not found");
 
-    switch (Number(step)) {
+    // ── Ownership check ──
+    if (
+      listing.createdBy &&
+      req.user?.id &&
+      listing.createdBy.toString() !== req.user.id.toString()
+    ) {
+      return errorData(
+        res,
+        403,
+        false,
+        "Forbidden: you do not own this listing",
+      );
+    }
 
-      /* ── STEP 1 – BASIC INFO ── */
+    switch (Number(step)) {
+      /* ── STEP 1 – BUSINESS INFO ── */
       case 1: {
         const {
-          category_id, sub_category_id, business_name, business_address,
-          ad_description, establishment_year, uen_number,
-          facilities = [], services = [], courses = [], payments = [],
-          hours, additional_fields = [],
+          category_id,
+          sub_category_id,
+          business_name,
+          business_address,
+          ad_description,
+          establishment_year,
+          uen_number,
+          facilities = [],
+          services = [],
+          courses = [],
+          payments = [],
+          hours,
+          additional_fields = [],
         } = req.body;
 
-        let parsedHours = hours;
-        if (typeof hours === "string") {
-          try { parsedHours = JSON.parse(hours); } catch { parsedHours = null; }
+        // Validate category if provided
+        if (category_id) {
+          const category = await Category.findOne({
+            _id: category_id,
+            isDeleted: false,
+          });
+          if (!category)
+            return errorData(res, 404, false, "Category not found");
         }
-
-        let parsedAdditionalFields = additional_fields;
-        if (typeof additional_fields === "string") {
-          try { parsedAdditionalFields = JSON.parse(additional_fields); } catch { parsedAdditionalFields = []; }
+        // Validate sub-category if provided
+        if (sub_category_id) {
+          const subCategory = await SubCategory.findOne({
+            _id: sub_category_id,
+            category: category_id || listing.category,
+            isDeleted: false,
+          });
+          if (!subCategory)
+            return errorData(res, 404, false, "Sub-category not found");
         }
-
-        const { errors, validated } = await validateAdditionalFields(parsedAdditionalFields);
-        if (errors.length) return errorData(res, 400, false, "Validation failed", { errors });
-
         // Check name conflict — exclude current listing
         if (business_name && business_name !== listing.businessName) {
           const conflict = await BusinessListing.findOne({
@@ -171,23 +433,38 @@ export const updateListingStep = async (req, res) => {
             isDeleted: false,
             _id: { $ne: listing._id },
           });
-          if (conflict) return errorData(res, 400, false, "Listing already exists");
-
+          if (conflict)
+            return errorData(
+              res,
+              400,
+              false,
+              "A listing with this business name already exists",
+            );
           listing.businessName = business_name;
-          listing.slug = `${slugify(business_name, { lower: true, strict: true })}-${Date.now()}`;
+          listing.slug = `${slugify(business_name, { lower: true, strict: true })}`;
         }
 
-        listing.category = category_id;
+        const parsedHours = parseJSON(hours, null);
+        const parsedAdditionalFields = parseJSON(additional_fields, []);
+
+        const { errors, validated } = await validateAdditionalFields(
+          Array.isArray(parsedAdditionalFields) ? parsedAdditionalFields : [],
+        );
+        if (errors.length)
+          return errorData(res, 400, false, "Validation failed", { errors });
+
+        if (category_id) listing.category = category_id;
         listing.subCategory = sub_category_id || null;
-        listing.businessAddress = business_address;
-        listing.description = ad_description || null;
+        if (business_address !== undefined)
+          listing.businessAddress = business_address;
+        if (ad_description !== undefined) listing.description = ad_description;
         listing.establishedYear = establishment_year || null;
         listing.taxNumber = uen_number || null;
-        listing.facilities = Array.isArray(facilities) ? facilities : [facilities].filter(Boolean);
-        listing.services = Array.isArray(services) ? services : [services].filter(Boolean);
-        listing.courses = Array.isArray(courses) ? courses : [courses].filter(Boolean);
-        listing.paymentModes = Array.isArray(payments) ? payments : [payments].filter(Boolean);
-        listing.workingHours = parsedHours || null;
+        listing.facilities = toArray(facilities);
+        listing.services = toArray(services);
+        listing.courses = toArray(courses);
+        listing.paymentModes = toArray(payments);
+        listing.workingHours = parsedHours;
         listing.additionalFields = validated;
         break;
       }
@@ -197,32 +474,32 @@ export const updateListingStep = async (req, res) => {
         listing.websiteLink = req.body.website_link || null;
         listing.videoLink = req.body.video_link || null;
         listing.socialLinks = {
-          facebook:  req.body.facebook  || null,
+          facebook: req.body.facebook || null,
           instagram: req.body.instagram || null,
-          twitter:   req.body.twitter   || null,
-          linkedin:  req.body.linkedin  || null,
-          youtube:   req.body.youtube   || null,
+          twitter: req.body.twitter || null,
+          linkedin: req.body.linkedin || null,
+          youtube: req.body.youtube || null,
         };
         break;
       }
 
-      /* ── STEP 3 – CONTACT ── */
+      /* ── STEP 3 – CONTACT DETAILS ── */
       case 3: {
-        listing.contactPersonName    = req.body.name                || null;
-        listing.email                = req.body.email               || null;
-        listing.countryCode          = req.body.country_code        || null;
-        listing.mobileNumber         = req.body.mobile_number       || null;
-        listing.altCountryCode       = req.body.alt_country_code    || null;
-        listing.alternateMobileNumber= req.body.second_mobile_number|| null;
-        listing.locality             = req.body.locality            || null;
-        listing.city                 = req.body.city                || null;
+        listing.contactPersonName = req.body.name || null;
+        listing.email = req.body.email || null;
+        listing.countryCode = req.body.country_code || null;
+        listing.mobileNumber = req.body.mobile_number || null;
+        listing.altCountryCode = req.body.alt_country_code || null;
+        listing.alternateMobileNumber = req.body.second_mobile_number || null;
+        listing.locality = req.body.locality || null;
+        listing.city = req.body.city_id || null;
         break;
       }
 
       /* ── STEP 4 – SEO ── */
       case 4: {
         listing.seo = {
-          title:       req.body.seo_title       || null,
+          title: req.body.seo_title || null,
           description: req.body.seo_description || null,
         };
         break;
@@ -230,6 +507,14 @@ export const updateListingStep = async (req, res) => {
 
       /* ── STEP 5 – MEDIA ── */
       case 5: {
+        if (!req.files?.logo?.[0] && !req.files?.images?.length) {
+          return errorData(
+            res,
+            400,
+            false,
+            "Please upload at least a logo or one image",
+          );
+        }
         if (req.files?.logo?.[0]) {
           listing.logo = req.files.logo[0].path;
         }
@@ -242,8 +527,17 @@ export const updateListingStep = async (req, res) => {
 
       /* ── STEP 6 – PLAN & PUBLISH ── */
       case 6: {
-        listing.plan = req.body.plan_id;
+        if (listing.stepCompleted < 5) {
+          return errorData(
+            res,
+            400,
+            false,
+            "Please complete all previous steps before publishing",
+          );
+        }
+        listing.plan = req.body.plan_id || null;
         listing.isPublished = true;
+        googleIndexingService.notify(`${APP_BASE_URL}/business/${listing.slug}`, "URL_UPDATED");
         break;
       }
 
@@ -254,8 +548,36 @@ export const updateListingStep = async (req, res) => {
     listing.stepCompleted = Math.max(listing.stepCompleted, Number(step));
     await listing.save();
 
+    // ── Send submitted mail when step 6 is completed ──
+    if (Number(step) === 6) {
+      try {
+        // Populate category name if not already a string
+        const categoryName =
+          typeof listing.category === "object"
+            ? listing.category?.name || ""
+            : ""; // category is stored as ID — populate separately if needed
+
+        await sendListingSubmittedMail(
+          listing.email,
+          listing.contactPersonName || listing.businessName,
+          listing.businessName,
+          categoryName,
+          new Date().toLocaleDateString("en-AE", {
+            day: "numeric",
+            month: "long",
+            year: "numeric",
+          }),
+          `https://addressguru.ae/dashboard`,
+        );
+        console.log(`✅ Submitted mail sent to ${listing.email}`);
+      } catch (mailError) {
+        console.error("❌ Submitted mail failed:", mailError.message);
+      }
+    }
+
     return successData(res, 200, true, `Step ${step} saved successfully`, {
       id: listing._id,
+      slug: listing.slug,
       stepCompleted: listing.stepCompleted,
     });
   } catch (error) {
@@ -263,16 +585,15 @@ export const updateListingStep = async (req, res) => {
     return errorData(res, 500, false, "Internal server error");
   }
 };
+
+// ─── GET Features & Additional Fields by Category ─────────────────────────────
 export const getFeaturesAndAdditionalFieldsByCategory = async (req, res) => {
   try {
     const { category_id } = req.params;
     const { subcategory_id } = req.query;
 
     if (!category_id) {
-      return res.status(400).json({
-        success: false,
-        message: "Category id is required",
-      });
+      return errorData(res, 400, false, "Category id is required");
     }
 
     const featureFilter = {
@@ -281,84 +602,129 @@ export const getFeaturesAndAdditionalFieldsByCategory = async (req, res) => {
     };
 
     const additionalFieldFilter = {
-      category_id: category_id,
+      category_id,
       is_deleted: false,
-      ...(subcategory_id && { subcategory_id: subcategory_id }),
+      ...(subcategory_id && { subcategory_id }),
     };
 
-    const [features, additionalFields] = await Promise.all([
+    const [features, additionalFields, paymentModes] = await Promise.all([
       categoryFeatures
         .findOne(featureFilter)
         .populate("facilities", "name icon _id")
         .populate("services", "name icon _id")
-        .populate("courses", "name icon _id")
-        .populate("payment_modes", "name icon _id"),
+        .populate("courses", "name icon _id"),
+
       AdditionalField.find(additionalFieldFilter).sort({ display_order: 1 }),
+
+      // ✅ FIXED: isDeleted (camelCase) to match Feature schema
+      Feature.find({
+        type: "payment_mode",
+        isDeleted: false,
+      }).select("name icon _id"),
     ]);
 
-    // Destructure only the feature arrays from the document (or fallback to empty arrays)
-    const {
-      facilities = [],
-      services = [],
-      courses = [],
-      payment_modes = [],
-    } = features || {};
+    const { facilities = [], services = [], courses = [] } = features || {};
 
-    return res.status(200).json({
-      success: true,
-      message: "Features and additional fields fetched successfully",
-      features: {
-        facilities,
-        services,
-        courses,
-        payment_modes,
+    return successData(
+      res,
+      200,
+      true,
+      "Features and additional fields fetched successfully",
+      {
+        features: {
+          facilities,
+          services,
+          courses,
+        },
+        payment_modes: paymentModes,
+        additionalFields: additionalFields || [],
       },
-      additionalFields: additionalFields || [],
-    });
+    );
   } catch (error) {
     console.error("Features and additional fields fetch error:", error);
-    return res.status(500).json({
-      success: false,
-      message: "Internal server error",
-    });
+    return errorData(res, 500, false, "Internal server error");
   }
 };
 
+// ─── GET ALL (paginated + filtered) ───────────────────────────────────────────
 export const getAllListingsWithPaginationAndFilters = async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 10;
+    const limit = parseInt(req.query.limit) || 20;
     const skip = (page - 1) * limit;
 
-    const [listings, total] = await Promise.all([
-      BusinessListing.find({
-        isDeleted: false,
-        isPublished: true,
-        isVerified: true,
-      })
+    // ✅ DEBUG: Log what's actually coming in
+    console.log("Query Params Received:", req.query);
+
+    // Base filter — only non-deleted
+    const filter = { isDeleted: false };
+
+    // Optional filters from query params
+    if (req.query.category_id) filter.category = req.query.category_id;
+    if (req.query.sub_category_id)
+      filter.subCategory = req.query.sub_category_id;
+    if (req.query.city_id) filter.city = req.query.city_id;
+
+    if (req.query.is_published !== undefined)
+      filter.isPublished = req.query.is_published === "true";
+    if (req.query.is_verified !== undefined)
+      filter.isVerified = req.query.is_verified === "true";
+
+    if (req.query.provider) filter.provider = req.query.provider;
+
+    // ✅ Status filter with validation
+    const VALID_STATUSES = ["pending", "approved", "rejected"];
+    if (req.query.status) {
+      const statusValue = req.query.status.trim().toLowerCase();
+      if (VALID_STATUSES.includes(statusValue)) {
+        filter.status = statusValue;
+      } else {
+        return errorData(
+          res,
+          400,
+          false,
+          `Invalid status. Must be one of: ${VALID_STATUSES.join(", ")}`,
+        );
+      }
+    }
+
+    // ✅ DEBUG: Log the final filter being passed to MongoDB
+    console.log("Final MongoDB Filter:", JSON.stringify(filter));
+
+    const [
+      listings,
+      total,
+      totalAll,
+      totalPending,
+      totalApproved,
+      totalRejected,
+    ] = await Promise.all([
+      BusinessListing.find(filter)
         .populate("category", "name")
         .populate("subCategory", "name")
         .populate("city", "name")
+        .populate("plan", "name")
+        .populate("createdBy", "name")
+        .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit)
         .lean(),
-      BusinessListing.countDocuments({
-        isDeleted: false,
-        isPublished: true,
-        isVerified: true,
-      }),
+      BusinessListing.countDocuments(filter),
+      BusinessListing.countDocuments({ isDeleted: false }),
+      BusinessListing.countDocuments({ isDeleted: false, status: "pending" }), // ✅
+      BusinessListing.countDocuments({ isDeleted: false, status: "approved" }), // ✅
+      BusinessListing.countDocuments({ isDeleted: false, status: "rejected" }), // ✅
     ]);
 
-    if (!listings.length)
-      return errorData(res, 404, false, "No listings found");
-
+    // ✅ Return empty array instead of 404 — better UX for filtered results
     return successData(res, 200, true, "Listings fetched successfully", {
       listings,
-      pagination: {
-        total,
-        page,
-        limit,
-        totalPages: Math.ceil(total / limit),
+      pagination: { total, page, limit, totalPages: Math.ceil(total / limit) },
+      totalAll,
+      statusCounts: {
+        pending: totalPending,
+        approved: totalApproved,
+        rejected: totalRejected,
       },
     });
   } catch (error) {
@@ -367,55 +733,419 @@ export const getAllListingsWithPaginationAndFilters = async (req, res) => {
   }
 };
 
-/* =========================
-   GET SINGLE LISTING BY ID
-========================== */
+// get listings for website
+export const getListingsByCategoryAndCity = async (req, res) => {
+  console.log("req.params", req.params);
+  console.log("req.query", req.query);
+
+  try {
+    const { category_slug, city_slug } = req.params;
+    const { page = 1, limit = 10 } = req.query; // ✅ pagination from query, not params
+
+    // 🔴 1. Category is REQUIRED
+    if (!category_slug) {
+      return errorData(res, 400, false, "Category slug is required");
+    }
+
+    // 🔍 2. Find category by slug — debug log added
+    console.log("🔍 Looking for category with slug:", category_slug);
+
+    const category = await Category.findOne({
+      slug: category_slug,
+      isDeleted: false,
+    });
+
+    console.log("📦 Category found:", category); // will be null if not matched
+
+    if (!category) {
+      return errorData(res, 404, false, "Category not found");
+    }
+
+    // 🧩 3. Build filter
+    const filter = {
+      category: category._id,
+      isDeleted: false,
+    };
+
+    // 🏙️ 4. Optional city filter
+    if (city_slug) {
+      const city = await CitiesSchema.findOne({
+        slug: city_slug,
+        deletedAt: null,
+      });
+
+      if (!city) {
+        return errorData(res, 404, false, "City not found");
+      }
+
+      filter.city = city._id;
+    }
+
+    // 📄 5. Pagination logic
+    const skip = (Number(page) - 1) * Number(limit); // ✅ ensure Numbers
+
+    // 📊 6. Fetch data + count
+    const [listings, total] = await Promise.all([
+      BusinessListing.find(filter)
+        .populate("category", "name slug")
+        .populate("subCategory", "name slug")
+        .populate("city", "name slug")
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(Number(limit))
+        .lean(),
+
+      BusinessListing.countDocuments(filter),
+    ]);
+
+    if (!listings.length) {
+      return errorData(res, 404, false, "No listings found");
+    }
+
+    return successData(res, 200, true, "Listings fetched successfully", {
+      listings,
+      pagination: {
+        total,
+        page: Number(page),
+        limit: Number(limit),
+        totalPages: Math.ceil(total / Number(limit)),
+      },
+    });
+  } catch (error) {
+    console.error("Listing fetch error:", error);
+    return errorData(res, 500, false, "Internal server error");
+  }
+};
+
+// ─── GET SINGLE BY SLUG ───────────────────────────────────────────────────────
 export const getListingBySlug = async (req, res) => {
   try {
     const { slug } = req.params;
     if (!slug) return errorData(res, 400, false, "Listing slug is required");
-
     const listing = await BusinessListing.findOne({
       slug,
       isDeleted: false,
-      isPublished: true,
     })
       .populate("category", "name")
       .populate("subCategory", "name")
       .populate("city", "name")
       .populate("additionalFields.field_id", "field_label field_type")
+      .populate("facilities", "name")
+      .populate("services", "name")
+      .populate("paymentModes", "name")
       .lean();
-
     if (!listing) return errorData(res, 404, false, "Listing not found");
-
     return successData(res, 200, true, "Listing fetched successfully", listing);
   } catch (error) {
     console.error("Listing fetch error:", error);
     return errorData(res, 500, false, "Internal server error");
   }
 };
+// get listing by user
+export const getListingByUser = async (req, res) => {
+  console.log("req.user get listing by user", req.user);
+  try {
+    const id = req.user.id;
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 20;
+    const skip = (page - 1) * limit;
 
-/* =========================
-   SOFT DELETE LISTING
-========================== */
+    const [listings, total] = await Promise.all([
+      BusinessListing.find({
+        createdBy: id,
+        isDeleted: false,
+      })
+        .populate("category", "name")
+        .populate("subCategory", "name")
+        .populate("city", "name")
+        .populate("createdBy", "name email phone avatar") // optional: show owner info
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean(),
+      BusinessListing.countDocuments({
+        createdBy: id,
+        isDeleted: false,
+      }),
+    ]);
+
+    // Only return 404 if it's the first page and absolutely no listings exist.
+    // If it's page 2+ and empty, frontend pagination usually expects an empty array rather than a 404 error.
+    if (!listings.length && page === 1)
+      return errorData(res, 404, false, "No listings found for this user");
+
+    return successData(res, 200, true, "Listings fetched successfully", {
+      total,
+      listings,
+    });
+  } catch (error) {
+    console.error("Listing fetch error:", error);
+    return errorData(res, 500, false, "Internal server error");
+  }
+};
+
+// ─── SOFT DELETE ──────────────────────────────────────────────────────────────
 export const deleteListing = async (req, res) => {
   try {
-    const { id } = req.params;
-    if (!id) return errorData(res, 400, false, "Listing id is required");
+    const { slug } = req.params;
+    if (!slug) return errorData(res, 400, false, "Slug is required");
 
-    const listing = await BusinessListing.findByIdAndUpdate(
-      id,
-      { isDeleted: true },
-      { new: true },
-    );
-
+    const listing = await BusinessListing.findOne({
+      slug,
+      isDeleted: false,
+    });
     if (!listing) return errorData(res, 404, false, "Listing not found");
+
+    // Ownership check
+    if (
+      listing.createdBy &&
+      req.user?._id &&
+      listing.createdBy.toString() !== req.user._id.toString()
+    ) {
+      return errorData(
+        res,
+        403,
+        false,
+        "Forbidden: you do not own this listing",
+      );
+    }
+
+    listing.isDeleted = true;
+    await listing.save();
+
+    googleIndexingService.notify(`${APP_BASE_URL}/business/${listing.slug}`, "URL_DELETED");
+
+    // Update User statistics
+    if (listing.createdBy) {
+      await User.findByIdAndUpdate(listing.createdBy, {
+        $inc: {
+          statistics_activeListings: -1,
+          statistics_totalListings: -1
+        },
+      });
+    }
 
     return successData(res, 200, true, "Listing deleted successfully", {
       id: listing._id,
     });
   } catch (error) {
     console.error("Listing delete error:", error);
+    return errorData(res, 500, false, "Internal server error");
+  }
+};
+
+// aprove or reject
+// export const aproveReject = async (req,res) => {
+//   try {
+//     const { slug } = req.params;
+//     const { status, rejectionReason } = req.body;
+//     if (!slug) return errorData(res, 400, false, "Slug is required");
+//     if (!status) return errorData(res, 400, false, "Status is required");
+//     const listing = await BusinessListing.findOne({
+//       slug,
+//       isDeleted: false,
+//     });
+//     if (!listing) return errorData(res, 404, false, "Listing not found");
+//     listing.status = status;
+//     if (status === "rejected") {
+//       listing.rejectionReason = rejectionReason;
+//       sendApprovedAndRejectedListingMail(listing.email, listing.name, status, rejectionReason);
+//     }
+//     await listing.save();
+//     return successData(res, 200, true, "Listing status updated successfully", {
+//       id: listing._id,
+//     });
+//   } catch (error) {
+//     console.error("Listing status update error:", error);
+//     return errorData(res, 500, false, "Internal server error");
+//   }
+// }
+
+export const updateListingStatus = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status, rejectionReason } = req.body;
+    const adminId = req.user._id;
+
+    // ── Validate status value ───────────────────────────────────────────────
+    if (!["approved", "rejected","unapproved"].includes(status)) {
+      return res.status(400).json({
+        success: false,
+        message: "Status must be either 'approved' or 'rejected' or 'unapproved'",
+      });
+    }
+
+    // ── Rejection must have a reason ────────────────────────────────────────
+    if (status === "rejected" && !rejectionReason?.trim()) {
+      return res.status(400).json({
+        success: false,
+        message: "Rejection reason is required when rejecting a listing",
+      });
+    }
+
+    // ── Find the listing ────────────────────────────────────────────────────
+    const listing = await BusinessListing.findById(id);
+    if (!listing) {
+      return res.status(404).json({
+        success: false,
+        message: "Listing not found",
+      });
+    }
+
+    // ── Update fields based on status ───────────────────────────────────────
+    listing.status = status;
+
+    if (status === "approved") {
+      listing.approvedBy = adminId;
+      listing.rejectedBy = null;
+      listing.rejectionReason = null;
+    }
+
+    if (status === "rejected") {
+      listing.rejectedBy = adminId;
+      listing.rejectionReason = rejectionReason.trim();
+      listing.approvedBy = null;
+    }
+
+       if (status === "unapproved") {
+      listing.status = "pending";
+      listing.approvedBy = null;
+      listing.rejectedBy = null;
+      listing.rejectionReason = null;
+    }
+
+    await listing.save();
+
+    // ── Send mail ────────────────────────────────────────────────────────────
+    try {
+      await sendApprovedAndRejectedListingMail(
+        listing.email,
+        listing.contactPersonName || listing.businessName,
+        status,
+        status === "rejected" ? rejectionReason.trim() : null,
+      );
+      console.log(`✅ Mail sent to ${listing.email} for status: ${status}`);
+    } catch (mailError) {
+      console.error("❌ Mail send failed:", mailError.message);
+    }
+
+    // Populate for response
+    await listing.populate("approvedBy rejectedBy", "name email");
+
+    return res.status(200).json({
+      success: true,
+      message: `Listing ${status} successfully`,
+      data: {
+        _id: listing._id,
+        businessName: listing.businessName,
+        status: listing.status,
+        approvedBy: listing.approvedBy,
+        rejectedBy: listing.rejectedBy,
+        rejectionReason: listing.rejectionReason,
+      },
+    });
+  } catch (error) {
+    console.log("error",error);
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// export const aproveReject = async (req, res) => {
+//   try {
+//     const { slug } = req.params;
+//     const { status, rejectionReason } = req.body;
+
+//     // ── Validations ─────────────────────────────────────────────────────────
+//     if (!slug) return errorData(res, 400, false, "Slug is required");
+//     if (!status) return errorData(res, 400, false, "Status is required");
+
+//     if (!["approved", "rejected", "unApproved"].includes(status)) {
+//       return errorData(
+//         res,
+//         400,
+//         false,
+//         "Status must be 'approved' or 'rejected' or 'unApproved'",
+//       );
+//     }
+
+//     // ✅ Rejection must have a reason
+//     if (status === "rejected" && !rejectionReason?.trim()) {
+//       return errorData(res, 400, false, "Rejection reason is required");
+//     }
+
+//     // ── Find listing ─────────────────────────────────────────────────────────
+//     const listing = await BusinessListing.findOne({ slug, isDeleted: false });
+//     if (!listing) return errorData(res, 404, false, "Listing not found");
+
+//     // ── Update status fields ─────────────────────────────────────────────────
+//     listing.status = status;
+
+//     if (status === "approved") {
+//       listing.approvedBy = req.user._id;
+//       listing.rejectedBy = null;
+//       listing.rejectionReason = null;
+//     }
+
+//     if (status === "rejected") {
+//       listing.rejectedBy = req.user._id;
+//       listing.rejectionReason = rejectionReason.trim();
+//       listing.approvedBy = null;
+//     }
+
+//     if (status === "unApproved") {
+//       listing.status = "pending";
+//       listing.approvedBy = null;
+//       listing.rejectedBy = null;
+//       listing.rejectionReason = null;
+//     }
+
+//     await listing.save();
+
+//     // ── Send mail ────────────────────────────────────────────────────────────
+//     // ✅ Send on BOTH approved and rejected
+//     // ✅ Use contactPersonName not listing.name (that field doesn't exist)
+//     // ✅ For approved: message is null (your template handles it)
+//     //    For rejected: message is the rejection reason
+//     try {
+//       await sendApprovedAndRejectedListingMail(
+//         listing.email,
+//         listing.contactPersonName || listing.businessName,
+//         status,
+//         status === "rejected" ? rejectionReason.trim() : null,
+//       );
+//       console.log(`✅ Mail sent to ${listing.email} for status: ${status}`);
+//     } catch (mailError) {
+//       // ✅ Mail failure should NOT fail the whole request
+//       // Listing is already saved — just log the error
+//       console.error("❌ Mail send failed:", mailError.message);
+//     }
+
+//     return successData(res, 200, true, "Listing status updated successfully", {
+//       id: listing._id,
+//       status: listing.status,
+//     });
+//   } catch (error) {
+//     console.error("Listing status update error:", error);
+//     return errorData(res, 500, false, "Internal server error");
+//   }
+// };
+
+//get all approved listings
+export const getApprovedListings = async (req, res) => {
+  try {
+    const listings = await BusinessListing.find({
+      status: "approved",
+      isDeleted: false,
+    });
+    return successData(
+      res,
+      200,
+      true,
+      "Approved listings fetched successfully",
+      listings,
+    );
+  } catch (error) {
+    console.error("Approved listings fetch error:", error);
     return errorData(res, 500, false, "Internal server error");
   }
 };

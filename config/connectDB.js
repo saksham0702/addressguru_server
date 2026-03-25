@@ -6,6 +6,9 @@ import mongoose from "mongoose";
 import bcrypt from "bcrypt";
 
 const connectDB = async () => {
+  if (process.env.NODE_ENV === 'test') {
+    return;
+  }
   try {
     await mongoose.connect(MONGODB_URL, {
       useNewUrlParser: true,

@@ -1,0 +1,873 @@
+{
+  "info": {
+    "name": "Business Listing API",
+    "_postman_id": "business-listing-collection",
+    "description": "Complete API collection for Business Listing module including all 6 steps, filters, and error cases",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:5000/api",
+      "type": "string"
+    },
+    {
+      "key": "slug",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "token",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "📋 Setup",
+      "item": [
+        {
+          "name": "Get Features & Additional Fields by Category",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/business/get-features/665f1a2b3c4d5e6f7a8b9c0d?subcategory_id=665f1a2b3c4d5e6f7a8b9c0e",
+              "host": ["{{base_url}}"],
+              "path": ["business", "get-features", "665f1a2b3c4d5e6f7a8b9c0d"],
+              "query": [
+                {
+                  "key": "subcategory_id",
+                  "value": "665f1a2b3c4d5e6f7a8b9c0e",
+                  "disabled": true,
+                  "description": "Optional — filter features by subcategory"
+                }
+              ]
+            },
+            "description": "Call this first to get available facilities, services, courses, payment modes and additional fields for a category. Use returned IDs in Step 1."
+          }
+        }
+      ]
+    },
+    {
+      "name": "🏗️ Create & Update Steps",
+      "item": [
+        {
+          "name": "1️⃣ Create Listing — Step 1 (Business Info)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res.success && res.data && res.data.slug) {",
+                  "  pm.collectionVariables.set('slug', res.data.slug);",
+                  "  console.log('Slug saved:', res.data.slug);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "category_id",
+                  "value": "665f1a2b3c4d5e6f7a8b9c0d",
+                  "type": "text",
+                  "description": "Valid Category ObjectId"
+                },
+                {
+                  "key": "sub_category_id",
+                  "value": "665f1a2b3c4d5e6f7a8b9c0e",
+                  "type": "text",
+                  "description": "Optional — Valid SubCategory ObjectId"
+                },
+                {
+                  "key": "business_name",
+                  "value": "Al Noor Medical Center",
+                  "type": "text"
+                },
+                {
+                  "key": "business_address",
+                  "value": "Shop 12, Al Wasl Road, Jumeirah, Dubai",
+                  "type": "text"
+                },
+                {
+                  "key": "ad_description",
+                  "value": "Al Noor Medical Center is a leading healthcare provider in Dubai offering a wide range of medical services including general practice, specialist consultations, diagnostics, and preventive care. Our team of experienced doctors and nurses is committed to delivering quality healthcare.",
+                  "type": "text"
+                },
+                {
+                  "key": "establishment_year",
+                  "value": "2010",
+                  "type": "text"
+                },
+                {
+                  "key": "uen_number",
+                  "value": "TRN-123456789",
+                  "type": "text",
+                  "description": "Optional — tax/UEN number"
+                },
+                {
+                  "key": "facilities",
+                  "value": "[\"665f1a2b3c4d5e6f7a8b9c10\",\"665f1a2b3c4d5e6f7a8b9c11\"]",
+                  "type": "text",
+                  "description": "JSON stringified array of facility ObjectIds from get-features"
+                },
+                {
+                  "key": "services",
+                  "value": "[\"665f1a2b3c4d5e6f7a8b9c12\",\"665f1a2b3c4d5e6f7a8b9c13\"]",
+                  "type": "text",
+                  "description": "JSON stringified array of service ObjectIds"
+                },
+                {
+                  "key": "courses",
+                  "value": "[]",
+                  "type": "text",
+                  "description": "Optional — JSON stringified array of course ObjectIds"
+                },
+                {
+                  "key": "payments",
+                  "value": "[\"665f1a2b3c4d5e6f7a8b9c14\"]",
+                  "type": "text",
+                  "description": "JSON stringified array of payment mode ObjectIds"
+                },
+                {
+                  "key": "hours",
+                  "value": "{\"monday\":{\"open\":\"09:00\",\"close\":\"21:00\"},\"tuesday\":{\"open\":\"09:00\",\"close\":\"21:00\"},\"wednesday\":{\"open\":\"09:00\",\"close\":\"21:00\"},\"thursday\":{\"open\":\"09:00\",\"close\":\"21:00\"},\"friday\":{\"open\":\"09:00\",\"close\":\"21:00\"},\"saturday\":{\"open\":\"10:00\",\"close\":\"18:00\"},\"sunday\":{\"open\":\"closed\",\"close\":\"closed\"}}",
+                  "type": "text",
+                  "description": "JSON stringified working hours object"
+                },
+                {
+                  "key": "additional_fields",
+                  "value": "[{\"field_id\":\"665f1a2b3c4d5e6f7a8b9c15\",\"value\":\"General Practice\"},{\"field_id\":\"665f1a2b3c4d5e6f7a8b9c16\",\"value\":\"50\"}]",
+                  "type": "text",
+                  "description": "JSON stringified array — only field_id and value"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/business/create-listing/step/1",
+              "host": ["{{base_url}}"],
+              "path": ["business", "create-listing", "step", "1"]
+            },
+            "description": "Step 1 — Creates the business listing with core info. Auto-saves slug to collection variable."
+          }
+        },
+        {
+          "name": "2️⃣ Update Listing — Step 1 (Edit Business Info)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "category_id",
+                  "value": "665f1a2b3c4d5e6f7a8b9c0d",
+                  "type": "text"
+                },
+                {
+                  "key": "sub_category_id",
+                  "value": "665f1a2b3c4d5e6f7a8b9c0e",
+                  "type": "text"
+                },
+                {
+                  "key": "business_name",
+                  "value": "Al Noor Medical Center Updated",
+                  "type": "text"
+                },
+                {
+                  "key": "business_address",
+                  "value": "Shop 15, Al Wasl Road, Jumeirah, Dubai",
+                  "type": "text"
+                },
+                {
+                  "key": "ad_description",
+                  "value": "Updated description. Al Noor Medical Center is a leading healthcare provider in Dubai offering a wide range of medical services including general practice, specialist consultations and diagnostics.",
+                  "type": "text"
+                },
+                {
+                  "key": "establishment_year",
+                  "value": "2008",
+                  "type": "text"
+                },
+                {
+                  "key": "uen_number",
+                  "value": "TRN-987654321",
+                  "type": "text"
+                },
+                {
+                  "key": "facilities",
+                  "value": "[\"665f1a2b3c4d5e6f7a8b9c10\"]",
+                  "type": "text"
+                },
+                {
+                  "key": "services",
+                  "value": "[\"665f1a2b3c4d5e6f7a8b9c12\"]",
+                  "type": "text"
+                },
+                {
+                  "key": "courses",
+                  "value": "[]",
+                  "type": "text"
+                },
+                {
+                  "key": "payments",
+                  "value": "[\"665f1a2b3c4d5e6f7a8b9c14\"]",
+                  "type": "text"
+                },
+                {
+                  "key": "hours",
+                  "value": "{\"monday\":{\"open\":\"08:00\",\"close\":\"22:00\"},\"tuesday\":{\"open\":\"08:00\",\"close\":\"22:00\"}}",
+                  "type": "text"
+                },
+                {
+                  "key": "additional_fields",
+                  "value": "[{\"field_id\":\"665f1a2b3c4d5e6f7a8b9c15\",\"value\":\"Specialist Care\"}]",
+                  "type": "text"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/business/update-listing/{{slug}}/step/1",
+              "host": ["{{base_url}}"],
+              "path": ["business", "update-listing", "{{slug}}", "step", "1"]
+            },
+            "description": "Update Step 1 — Edit business info of an existing listing."
+          }
+        },
+        {
+          "name": "3️⃣ Update Listing — Step 2 (Social Links)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "website_link",
+                  "value": "https://www.alnoormedical.ae",
+                  "type": "text",
+                  "description": "Optional — must be valid URL"
+                },
+                {
+                  "key": "video_link",
+                  "value": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+                  "type": "text",
+                  "description": "Optional — must be valid URL"
+                },
+                {
+                  "key": "facebook",
+                  "value": "https://www.facebook.com/alnoormedical",
+                  "type": "text",
+                  "description": "Optional"
+                },
+                {
+                  "key": "instagram",
+                  "value": "https://www.instagram.com/alnoormedical",
+                  "type": "text",
+                  "description": "Optional"
+                },
+                {
+                  "key": "twitter",
+                  "value": "",
+                  "type": "text",
+                  "description": "Optional — empty string allowed"
+                },
+                {
+                  "key": "linkedin",
+                  "value": "https://www.linkedin.com/company/alnoormedical",
+                  "type": "text",
+                  "description": "Optional"
+                },
+                {
+                  "key": "youtube",
+                  "value": "",
+                  "type": "text",
+                  "description": "Optional"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/business/update-listing/{{slug}}/step/2",
+              "host": ["{{base_url}}"],
+              "path": ["business", "update-listing", "{{slug}}", "step", "2"]
+            },
+            "description": "Step 2 — Social links and website. All fields are optional but must be valid URLs if provided."
+          }
+        },
+        {
+          "name": "4️⃣ Update Listing — Step 3 (Contact Details)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "name",
+                  "value": "Dr. Ahmed Al Rashid",
+                  "type": "text"
+                },
+                {
+                  "key": "email",
+                  "value": "ahmed@alnoormedical.ae",
+                  "type": "text"
+                },
+                {
+                  "key": "country_code",
+                  "value": "+971",
+                  "type": "text",
+                  "description": "String — e.g. +971"
+                },
+                {
+                  "key": "mobile_number",
+                  "value": "501234567",
+                  "type": "text",
+                  "description": "String — preserves leading zeros"
+                },
+                {
+                  "key": "alt_country_code",
+                  "value": "+91",
+                  "type": "text",
+                  "description": "Optional"
+                },
+                {
+                  "key": "second_mobile_number",
+                  "value": "9876543210",
+                  "type": "text",
+                  "description": "Optional"
+                },
+                {
+                  "key": "locality",
+                  "value": "Jumeirah",
+                  "type": "text",
+                  "description": "Optional"
+                },
+                {
+                  "key": "city_id",
+                  "value": "665f1a2b3c4d5e6f7a8b9c20",
+                  "type": "text",
+                  "description": "Valid City ObjectId"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/business/update-listing/{{slug}}/step/3",
+              "host": ["{{base_url}}"],
+              "path": ["business", "update-listing", "{{slug}}", "step", "3"]
+            },
+            "description": "Step 3 — Contact person details and business location."
+          }
+        },
+        {
+          "name": "5️⃣ Update Listing — Step 4 (SEO)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "seo_title",
+                  "value": "Al Noor Medical Center Dubai — General Practice & Specialist Care",
+                  "type": "text"
+                },
+                {
+                  "key": "seo_description",
+                  "value": "Visit Al Noor Medical Center in Jumeirah, Dubai for general practice, specialist consultations, diagnostics and preventive healthcare services.",
+                  "type": "text"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/business/update-listing/{{slug}}/step/4",
+              "host": ["{{base_url}}"],
+              "path": ["business", "update-listing", "{{slug}}", "step", "4"]
+            },
+            "description": "Step 4 — SEO title and meta description for the listing."
+          }
+        },
+        {
+          "name": "6️⃣ Update Listing — Step 5 (Media — Logo & Images)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "logo",
+                  "type": "file",
+                  "src": [],
+                  "description": "Business logo — max 1 file (jpg, png, webp)"
+                },
+                {
+                  "key": "images",
+                  "type": "file",
+                  "src": [],
+                  "description": "Business images — max 10 files"
+                },
+                {
+                  "key": "images",
+                  "type": "file",
+                  "src": [],
+                  "description": "Second image (optional)"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/business/update-listing/{{slug}}/step/5",
+              "host": ["{{base_url}}"],
+              "path": ["business", "update-listing", "{{slug}}", "step", "5"]
+            },
+            "description": "Step 5 — Upload business logo (max 1) and gallery images (max 10). At least one must be provided."
+          }
+        },
+        {
+          "name": "7️⃣ Update Listing — Step 6 (Plan & Publish)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "plan_id",
+                  "value": "665f1a2b3c4d5e6f7a8b9c30",
+                  "type": "text",
+                  "description": "Valid Plan ObjectId"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/business/update-listing/{{slug}}/step/6",
+              "host": ["{{base_url}}"],
+              "path": ["business", "update-listing", "{{slug}}", "step", "6"]
+            },
+            "description": "Step 6 — Select a plan and publish the listing. Requires stepCompleted >= 5."
+          }
+        }
+      ]
+    },
+    {
+      "name": "📦 Fetch Listings",
+      "item": [
+        {
+          "name": "Get All Listings",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/business/get-all-listings?page=1&limit=10",
+              "host": ["{{base_url}}"],
+              "path": ["business", "get-all-listings"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                },
+                {
+                  "key": "category_id",
+                  "value": "665f1a2b3c4d5e6f7a8b9c0d",
+                  "disabled": true
+                },
+                {
+                  "key": "sub_category_id",
+                  "value": "665f1a2b3c4d5e6f7a8b9c0e",
+                  "disabled": true
+                },
+                {
+                  "key": "city_id",
+                  "value": "665f1a2b3c4d5e6f7a8b9c20",
+                  "disabled": true
+                },
+                {
+                  "key": "is_published",
+                  "value": "true",
+                  "disabled": true
+                },
+                {
+                  "key": "is_verified",
+                  "value": "true",
+                  "disabled": true
+                },
+                {
+                  "key": "provider",
+                  "value": "user",
+                  "disabled": true,
+                  "description": "user | google"
+                }
+              ]
+            },
+            "description": "Get all listings with optional filters. Toggle disabled params as needed."
+          }
+        },
+        {
+          "name": "Get Listing by Slug",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/business/get-listing-by-slug/{{slug}}",
+              "host": ["{{base_url}}"],
+              "path": ["business", "get-listing-by-slug", "{{slug}}"]
+            },
+            "description": "Get a single business listing by slug. Uses the slug auto-saved from Step 1."
+          }
+        }
+      ]
+    },
+    {
+      "name": "🗑️ Delete",
+      "item": [
+        {
+          "name": "Delete Listing (Soft Delete)",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/business/delete-listing/{{slug}}",
+              "host": ["{{base_url}}"],
+              "path": ["business", "delete-listing", "{{slug}}"]
+            },
+            "description": "Soft delete a listing. Sets isDeleted=true. Only the owner can do this."
+          }
+        }
+      ]
+    },
+    {
+      "name": "❌ Error Cases",
+      "item": [
+        {
+          "name": "Validation — Missing Required Fields (Step 1)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "business_name",
+                  "value": "Hi",
+                  "type": "text",
+                  "description": "Too short — min 3 chars"
+                },
+                {
+                  "key": "ad_description",
+                  "value": "Short",
+                  "type": "text",
+                  "description": "Too short — min 20 chars"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/business/create-listing/step/1",
+              "host": ["{{base_url}}"],
+              "path": ["business", "create-listing", "step", "1"]
+            },
+            "description": "Should return 400 with key-value errors — category_id missing, business_name too short, business_address missing, ad_description too short."
+          }
+        },
+        {
+          "name": "Validation — Invalid URLs (Step 2)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "website_link",
+                  "value": "not-a-valid-url",
+                  "type": "text",
+                  "description": "Invalid URL — should fail"
+                },
+                {
+                  "key": "facebook",
+                  "value": "facebook.com/test",
+                  "type": "text",
+                  "description": "Missing https:// — should fail"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/business/update-listing/{{slug}}/step/2",
+              "host": ["{{base_url}}"],
+              "path": ["business", "update-listing", "{{slug}}", "step", "2"]
+            },
+            "description": "Should return 400 — website_link and facebook must be valid URLs."
+          }
+        },
+        {
+          "name": "Validation — Invalid Establishment Year (Step 1)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "category_id",
+                  "value": "665f1a2b3c4d5e6f7a8b9c0d",
+                  "type": "text"
+                },
+                {
+                  "key": "business_name",
+                  "value": "Valid Business Name",
+                  "type": "text"
+                },
+                {
+                  "key": "business_address",
+                  "value": "123 Test Street, Dubai",
+                  "type": "text"
+                },
+                {
+                  "key": "ad_description",
+                  "value": "This is a valid description that is long enough to pass validation.",
+                  "type": "text"
+                },
+                {
+                  "key": "establishment_year",
+                  "value": "2099",
+                  "type": "text",
+                  "description": "Future year — should fail"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/business/create-listing/step/1",
+              "host": ["{{base_url}}"],
+              "path": ["business", "create-listing", "step", "1"]
+            },
+            "description": "Should return 400 — establishment_year cannot be in the future."
+          }
+        },
+        {
+          "name": "Validation — Duplicate Business Name",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "category_id",
+                  "value": "665f1a2b3c4d5e6f7a8b9c0d",
+                  "type": "text"
+                },
+                {
+                  "key": "business_name",
+                  "value": "Al Noor Medical Center",
+                  "type": "text",
+                  "description": "Same name as already created listing"
+                },
+                {
+                  "key": "business_address",
+                  "value": "Different address, Dubai",
+                  "type": "text"
+                },
+                {
+                  "key": "ad_description",
+                  "value": "This is a valid description that is long enough to pass the validation check for business listing.",
+                  "type": "text"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/business/create-listing/step/1",
+              "host": ["{{base_url}}"],
+              "path": ["business", "create-listing", "step", "1"]
+            },
+            "description": "Should return 400 — A listing with this business name already exists."
+          }
+        },
+        {
+          "name": "Validation — Invalid Step",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": []
+            },
+            "url": {
+              "raw": "{{base_url}}/business/update-listing/{{slug}}/step/99",
+              "host": ["{{base_url}}"],
+              "path": ["business", "update-listing", "{{slug}}", "step", "99"]
+            },
+            "description": "Should return 400 — Invalid step."
+          }
+        },
+        {
+          "name": "Validation — Publish Without Completing Steps",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "plan_id",
+                  "value": "665f1a2b3c4d5e6f7a8b9c30",
+                  "type": "text"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/business/update-listing/{{slug}}/step/6",
+              "host": ["{{base_url}}"],
+              "path": ["business", "update-listing", "{{slug}}", "step", "6"]
+            },
+            "description": "Should return 400 — Please complete all previous steps before publishing (if stepCompleted < 5)."
+          }
+        },
+        {
+          "name": "Validation — No Media Uploaded (Step 5)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": []
+            },
+            "url": {
+              "raw": "{{base_url}}/business/update-listing/{{slug}}/step/5",
+              "host": ["{{base_url}}"],
+              "path": ["business", "update-listing", "{{slug}}", "step", "5"]
+            },
+            "description": "Should return 400 — Please upload at least a logo or one image."
+          }
+        },
+        {
+          "name": "Auth — Unauthorized Access (No Token)",
+          "request": {
+            "method": "PUT",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "seo_title",
+                  "value": "Some SEO Title Here",
+                  "type": "text"
+                },
+                {
+                  "key": "seo_description",
+                  "value": "Some SEO description that is long enough to pass validation.",
+                  "type": "text"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/business/update-listing/{{slug}}/step/4",
+              "host": ["{{base_url}}"],
+              "path": ["business", "update-listing", "{{slug}}", "step", "4"]
+            },
+            "description": "Should return 401 or 403 depending on your auth middleware — no token provided."
+          }
+        }
+      ]
+    }
+  ]
+}

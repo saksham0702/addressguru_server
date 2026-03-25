@@ -33,6 +33,12 @@ import listingFeaturesRoutes from "./routes/listingFeatures.Router.js";
 import jobApplicationRoutes from "./routes/jobApplicationRoutes.js";
 import adminUserRouter from "./routes/adminUser.Router.js";
 import marketplaceListingRouter from "./routes/marketplaceRouter.js";
+import blogRouter from "./routes/blog.Router.js";
+import propertyRouter from "./routes/property.Router.js";
+import plansRouter from "./routes/plans.Router.js";
+import statisticsRouter from "./routes/statistics.Routes.js";
+import followUpRouter from "./routes/followUp.Router.js";
+import followUpConfigRouter from "./routes/followUpConfig.Router.js";
 
 var app = express();
 
@@ -45,7 +51,7 @@ const allowedOrigins = [
   "http://localhost:3002",
   "http://localhost:3001",
   "https://addressguru.ae",
-  "*"
+  "*",
   // Add any other frontend origins here
 ];
 
@@ -72,6 +78,7 @@ app.use(express.static(join(__dirname, "public")));
 
 // Serve uploaded images publicly
 // app.use("/uploads", express.static(path.join(process.cwd(), "public")));
+app.use("/uploads", express.static(join(process.cwd(), "uploads")));
 
 app.get("/api", async (req, res) => {
   const html = `
@@ -133,12 +140,18 @@ app.use(`/cities`, citiesRouter);
 app.use(`/jobs-listing`, jobsListingRouter);
 app.use(`/admin/users`, adminUserRouter);
 app.use(`/features`, featureRouter);
+app.use(`/blogs`, blogRouter);
+app.use(`/property-listings`, propertyRouter);
 
 app.use(`/google-listing`, googleListingRoutes);
 
 app.use(`/`, listingFeaturesRoutes);
-app.use(`/api/applications`, jobApplicationRoutes);
+app.use(`/applications`, jobApplicationRoutes);
+app.use(`/plans`, plansRouter);
+app.use(`/statistics`, statisticsRouter);
 
+app.use(`/follow-ups`, followUpRouter);
+app.use(`/followup-config`, followUpConfigRouter);
 app.get("/test-cookie", (req, res) => {
   console.log("cookies:", req.cookies);
   res.json({ message: "SERVER", cookies: req.cookies });
