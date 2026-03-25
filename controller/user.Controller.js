@@ -584,7 +584,6 @@ export const getUserDetails = async (req, res) => {
       true,
       "User details fetched successfully.",
       user,
-      authToken,
     );
   } catch (err) {
     console.error("Get user details error:", err);

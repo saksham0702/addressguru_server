@@ -1,6 +1,9 @@
 import Job from "../model/jobsListingSchema.js";
+import User from "../model/userSchema.js";
 import slugify from "slugify";
 import { successData, errorData } from "../services/helper.js";
+import googleIndexingService from "../services/googleIndexing.service.js";
+import { APP_BASE_URL } from "../services/constant.js";
 
 /* =========================
    SAVE JOB (2-STEP WIZARD)
@@ -241,6 +244,17 @@ export const saveJobStep = async (req, res) => {
           status: "pending",
         });
 
+        // Update User statistics
+        if (user?.id) {
+          await User.findByIdAndUpdate(user.id, {
+            $inc: {
+              statistics_totalListings: 1,
+              statistics_JobsListings: 1,
+              statistics_activeListings: 1,
+            },
+          });
+        }
+
         return successData(res, 200, true, "Job created successfully", {
           id: job._id,
           slug: job.slug,
@@ -342,6 +356,7 @@ export const saveJobStep = async (req, res) => {
 
       job.status = "active";
       job.isActive = true;
+      googleIndexingService.notify(`${APP_BASE_URL}/job/${job.slug}`, "URL_UPDATED");
     }
 
     await job.save();
@@ -520,6 +535,19 @@ export const deleteJob = async (req, res) => {
     );
 
     if (!job) return errorData(res, 404, false, "Job not found");
+
+    googleIndexingService.notify(`${APP_BASE_URL}/job/${job.slug}`, "URL_DELETED");
+
+    // Update User statistics
+    if (job.createdBy) {
+      await User.findByIdAndUpdate(job.createdBy, {
+        $inc: { 
+          statistics_activeListings: -1,
+          statistics_JobsListings: -1,
+          statistics_totalListings: -1
+        },
+      });
+    }
 
     return successData(res, 200, true, "Job deleted successfully", {
       slug: job.slug,

@@ -23,6 +23,7 @@
     "express-rate-limit": "^8.2.1",
     "geoip-lite": "^1.4.10",
     "google-auth-library": "^10.6.1",
+    "googleapis": "^171.4.0",
     "hogan.js": "^3.0.2",
     "http-errors": "^2.0.0",
     "jade": "^0.29.0",

@@ -5,10 +5,10 @@ import { errorData } from "../services/helper.js";
 // ─── Helper: extract token from cookie or Authorization header ────────────────
 const extractToken = (req) => {
   // 1. Cookie (web clients)
-  if (req.cookies?.authToken) return req.cookies.authToken;
+  if (req?.cookies?.authToken) return req?.cookies.authToken;
 
   // 2. Bearer token (mobile / Postman / API clients)
-  const authHeader = req.headers?.authorization;
+  const authHeader = req?.headers?.authorization;
   if (authHeader && authHeader.startsWith("Bearer ")) {
     return authHeader.split(" ")[1];
   }

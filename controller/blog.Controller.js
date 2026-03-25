@@ -4,6 +4,8 @@ import { successData, errorData } from "../services/helper.js";
 import BlogCategory from "../model/blogCategorySchema.js";
 import fs from "fs";
 import path from "path";
+import googleIndexingService from "../services/googleIndexing.service.js";
+import { APP_BASE_URL } from "../services/constant.js";
 
 // ── Helper: delete old image file ─────────────────────────────────────────────
 const deleteFile = (filePath) => {
@@ -20,10 +22,10 @@ const formatBlog = (blog) => {
     ...obj,
     date: dateSource
       ? new Date(dateSource).toLocaleDateString("en-SG", {
-          year: "numeric",
-          month: "long",
-          day: "numeric",
-        })
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      })
       : null,
   };
 };
@@ -219,7 +221,7 @@ export const createBlog = async (req, res) => {
     // Auto-generate unique slug
     let slug = slugify(title, { lower: true, strict: true });
     const existing = await Blog.findOne({ slug });
-    if (existing) slug = `${slug}-${Date.now()}`;
+    if (existing) slug = `${slug}`;
 
     // Images from multer .fields()
     const coverImage = req.files?.coverImage?.[0]?.path || null;
@@ -256,6 +258,10 @@ export const createBlog = async (req, res) => {
         ogImage: seoOgImage || coverImage,
       },
     });
+
+    if (blog.status === "published") {
+      googleIndexingService.notify(`${APP_BASE_URL}/blog/${blog.slug}`, "URL_UPDATED");
+    }
 
     return successData(res, 201, true, "Blog created successfully", blog);
   } catch (error) {
@@ -314,7 +320,7 @@ export const updateBlog = async (req, res) => {
         slug: newSlug,
         _id: { $ne: blog._id },
       });
-      if (conflict) newSlug = `${newSlug}-${Date.now()}`;
+      if (conflict) newSlug = `${newSlug}`;
       blog.slug = newSlug;
       blog.title = title;
     }
@@ -351,6 +357,10 @@ export const updateBlog = async (req, res) => {
 
     await blog.save();
 
+    if (blog.status === "published") {
+      googleIndexingService.notify(`${APP_BASE_URL}/blog/${blog.slug}`, "URL_UPDATED");
+    }
+
     return successData(res, 200, true, "Blog updated successfully", blog);
   } catch (error) {
     return errorData(res, 500, false, "Internal server error");
@@ -365,7 +375,10 @@ export const deleteBlog = async (req, res) => {
 
     deleteFile(blog.coverImage);
     deleteFile(blog.author?.avatar);
+    const blogUrl = `${APP_BASE_URL}/blog/${blog.slug}`;
     await blog.deleteOne();
+
+    googleIndexingService.notify(blogUrl, "URL_DELETED");
 
     return successData(res, 200, true, "Blog deleted successfully");
   } catch (error) {
