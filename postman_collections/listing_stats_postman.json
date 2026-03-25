@@ -1,0 +1,129 @@
+{
+	"info": {
+		"_postman_id": "8b5d3a5e-1234-4567-890a-1234567890ab",
+		"name": "Listing Statistics API",
+		"description": "Collection for testing the user and listing statistics endpoints.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Track Interaction",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"type\": \"view\"\n}"
+				},
+				"url": {
+					"raw": "{{BASE_URL}}/statistics/:type/:slug/track",
+					"host": [
+						"{{BASE_URL}}"
+					],
+					"path": [
+						"statistics",
+						":type",
+						":slug",
+						"track"
+					],
+					"variable": [
+						{
+							"key": "type",
+							"value": "business",
+							"description": "business | job | property | marketplace"
+						},
+						{
+							"key": "slug",
+							"value": "achievers-dream-chemistry",
+							"description": "listing slug or ObjectId"
+						}
+					]
+				},
+				"description": "Tracks a view, call, or website_visit event. Passes listing type and slug in URL."
+			},
+			"response": []
+		},
+		{
+			"name": "Get User Overview",
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "{{USER_TOKEN}}",
+							"type": "string"
+						}
+					]
+				},
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{BASE_URL}}/statistics/overview",
+					"host": [
+						"{{BASE_URL}}"
+					],
+					"path": [
+						"statistics",
+						"overview"
+					]
+				},
+				"description": "Returns aggregated counts of listings and overall interaction metrics for the logged-in user."
+			},
+			"response": []
+		},
+		{
+			"name": "Get Listing Stats (Analytics)",
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "{{USER_TOKEN}}",
+							"type": "string"
+						}
+					]
+				},
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{BASE_URL}}/statistics/listing/business/test-slug",
+					"host": [
+						"{{BASE_URL}}"
+					],
+					"path": [
+						"statistics",
+						"listing",
+						"business",
+						"test-slug"
+					]
+				},
+				"description": "Returns detailed stats and 7-day lead analytics for a specific listing by type and slug."
+			},
+			"response": []
+		}
+	],
+	"variable": [
+		{
+			"key": "BASE_URL",
+			"value": "http://localhost:5000/api/v1",
+			"type": "string"
+		},
+		{
+			"key": "USER_TOKEN",
+			"value": "your_auth_token_here",
+			"type": "string"
+		},
+		{
+			"key": "LISTING_ID",
+			"value": "mongodb_id_here",
+			"type": "string"
+		}
+	]
+}

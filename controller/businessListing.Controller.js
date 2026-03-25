@@ -5,8 +5,11 @@ import Category from "../model/categoriesSchema.js";
 import SubCategory from "../model/subCategoriesSchema.js";
 import categoryFeatures from "../model/categoryFeatures.js";
 import Feature from "../model/featureSchema.js";
+import User from "../model/userSchema.js";
 import slugify from "slugify";
 import { successData, errorData } from "../services/helper.js";
+import googleIndexingService from "../services/googleIndexing.service.js";
+import { APP_BASE_URL } from "../services/constant.js";
 import CitiesSchema from "../model/CitiesSchema.js";
 import {
   sendApprovedAndRejectedListingMail,
@@ -128,7 +131,7 @@ export const createListing = async (req, res) => {
     if (errors.length)
       return errorData(res, 400, false, "Validation failed", { errors });
 
-    const slug = `${slugify(business_name, { lower: true, strict: true })}}`;
+    const slug = `${slugify(business_name, { lower: true, strict: true })}`;
 
     const listing = await BusinessListing.create({
       category: category_id,
@@ -149,6 +152,14 @@ export const createListing = async (req, res) => {
       isVerified: false,
       isPublished: false,
       createdBy: req.user.id,
+    });
+
+    // Update User statistics
+    await User.findByIdAndUpdate(req.user.id, {
+      $inc: {
+        statistics_totalListings: 1,
+        statistics_activeListings: 1,
+      },
     });
 
     return successData(res, 201, true, "Listing created successfully", {
@@ -430,7 +441,7 @@ export const updateListingStep = async (req, res) => {
               "A listing with this business name already exists",
             );
           listing.businessName = business_name;
-          listing.slug = `${slugify(business_name, { lower: true, strict: true })}}`;
+          listing.slug = `${slugify(business_name, { lower: true, strict: true })}`;
         }
 
         const parsedHours = parseJSON(hours, null);
@@ -526,6 +537,7 @@ export const updateListingStep = async (req, res) => {
         }
         listing.plan = req.body.plan_id || null;
         listing.isPublished = true;
+        googleIndexingService.notify(`${APP_BASE_URL}/business/${listing.slug}`, "URL_UPDATED");
         break;
       }
 
@@ -834,21 +846,36 @@ export const getListingByUser = async (req, res) => {
   console.log("req.user get listing by user", req.user);
   try {
     const id = req.user.id;
-    const listings = await BusinessListing.find({
-      createdBy: id,
-      isDeleted: false,
-    })
-      .populate("category", "name")
-      .populate("subCategory", "name")
-      .populate("city", "name")
-      .populate("createdBy", "name email phone avatar") // optional: show owner info
-      .lean();
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 20;
+    const skip = (page - 1) * limit;
 
-    if (!listings.length)
+    const [listings, total] = await Promise.all([
+      BusinessListing.find({
+        createdBy: id,
+        isDeleted: false,
+      })
+        .populate("category", "name")
+        .populate("subCategory", "name")
+        .populate("city", "name")
+        .populate("createdBy", "name email phone avatar") // optional: show owner info
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean(),
+      BusinessListing.countDocuments({
+        createdBy: id,
+        isDeleted: false,
+      }),
+    ]);
+
+    // Only return 404 if it's the first page and absolutely no listings exist.
+    // If it's page 2+ and empty, frontend pagination usually expects an empty array rather than a 404 error.
+    if (!listings.length && page === 1)
       return errorData(res, 404, false, "No listings found for this user");
 
     return successData(res, 200, true, "Listings fetched successfully", {
-      total: listings.length,
+      total,
       listings,
     });
   } catch (error) {
@@ -885,6 +912,18 @@ export const deleteListing = async (req, res) => {
 
     listing.isDeleted = true;
     await listing.save();
+
+    googleIndexingService.notify(`${APP_BASE_URL}/business/${listing.slug}`, "URL_DELETED");
+
+    // Update User statistics
+    if (listing.createdBy) {
+      await User.findByIdAndUpdate(listing.createdBy, {
+        $inc: {
+          statistics_activeListings: -1,
+          statistics_totalListings: -1
+        },
+      });
+    }
 
     return successData(res, 200, true, "Listing deleted successfully", {
       id: listing._id,

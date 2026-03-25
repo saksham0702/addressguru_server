@@ -36,6 +36,7 @@ import marketplaceListingRouter from "./routes/marketplaceRouter.js";
 import blogRouter from "./routes/blog.Router.js";
 import propertyRouter from "./routes/property.Router.js";
 import plansRouter from "./routes/plans.Router.js";
+import statisticsRouter from "./routes/statistics.Routes.js";
 import followUpRouter from "./routes/followUp.Router.js";
 import followUpConfigRouter from "./routes/followUpConfig.Router.js";
 
@@ -145,8 +146,10 @@ app.use(`/property-listings`, propertyRouter);
 app.use(`/google-listing`, googleListingRoutes);
 
 app.use(`/`, listingFeaturesRoutes);
-app.use(`/api/applications`, jobApplicationRoutes);
+app.use(`/applications`, jobApplicationRoutes);
 app.use(`/plans`, plansRouter);
+app.use(`/statistics`, statisticsRouter);
+
 app.use(`/follow-ups`, followUpRouter);
 app.use(`/followup-config`, followUpConfigRouter);
 app.get("/test-cookie", (req, res) => {
@@ -175,8 +178,7 @@ app.use(function (err, req, res, next) {
   res.locals.error = req.app.get("env") === "development" ? err : {};
   // Log error with Winston
   logger.error(
-    `${err.status || 500} - ${err.message} - ${req.originalUrl} - ${
-      req.method
+    `${err.status || 500} - ${err.message} - ${req.originalUrl} - ${req.method
     } - ${req.ip}`,
   );
 
