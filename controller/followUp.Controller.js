@@ -7,7 +7,7 @@ import FollowUpConfig from "../model/followUpConfigSchema.js";
 export const createFollowUp = async (req, res) => {
   try {
     const { listingId, activityOptionId, remark, nextFollowUpDate } = req.body;
-    const createdBy = req.user._id; // comes from your auth middleware
+    const createdBy = req.user.id; // comes from your auth middleware
 
     // ── Validate required fields ────────────────────────────────────────────
     if (!listingId || !activityOptionId) {
@@ -304,3 +304,4 @@ export const reorderOptions = async (req, res) => {
     return res.status(500).json({ success: false, message: error.message });
   }
 };
+
