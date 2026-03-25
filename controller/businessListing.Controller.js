@@ -15,6 +15,8 @@ import {
   sendApprovedAndRejectedListingMail,
   sendListingSubmittedMail,
 } from "../utils/sendMail.js";
+import googleIndexingService from "../services/googleIndexing.service.js";
+import { APP_BASE_URL } from "../services/constant.js";
 
 // ─── Helper: validate additional fields ───────────────────────────────────────
 const validateAdditionalFields = async (additionalFields = []) => {
@@ -968,7 +970,7 @@ export const updateListingStatus = async (req, res) => {
     const adminId = req.user._id;
 
     // ── Validate status value ───────────────────────────────────────────────
-    if (!["approved", "rejected","unapproved"].includes(status)) {
+    if (!["approved", "rejected", "unapproved"].includes(status)) {
       return res.status(400).json({
         success: false,
         message: "Status must be either 'approved' or 'rejected' or 'unapproved'",
@@ -1007,7 +1009,7 @@ export const updateListingStatus = async (req, res) => {
       listing.approvedBy = null;
     }
 
-       if (status === "unapproved") {
+    if (status === "unapproved") {
       listing.status = "pending";
       listing.approvedBy = null;
       listing.rejectedBy = null;
@@ -1045,7 +1047,7 @@ export const updateListingStatus = async (req, res) => {
       },
     });
   } catch (error) {
-    console.log("error",error);
+    console.log("error", error);
     return res.status(500).json({ success: false, message: error.message });
   }
 };
