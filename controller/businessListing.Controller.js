@@ -11,6 +11,7 @@ import { successData, errorData } from "../services/helper.js";
 import googleIndexingService from "../services/googleIndexing.service.js";
 import { APP_BASE_URL } from "../services/constant.js";
 import CitiesSchema from "../model/CitiesSchema.js";
+import User from "../model/userSchema.js";
 import {
   sendApprovedAndRejectedListingMail,
   sendListingSubmittedMail,
@@ -375,12 +376,14 @@ export const updateListingStep = async (req, res) => {
 
     const listing = await BusinessListing.findOne({ slug, isDeleted: false });
     if (!listing) return errorData(res, 404, false, "Listing not found");
-
+    const user = await User.findById(req.user.id);
+    const userRole = user.roles.includes(1);
     // ── Ownership check ──
     if (
       listing.createdBy &&
       req.user?.id &&
       listing.createdBy.toString() !== req.user.id.toString()
+      && !userRole
     ) {
       return errorData(
         res,

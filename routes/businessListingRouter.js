@@ -63,7 +63,6 @@ router.delete("/delete-listing/:slug", deleteListing);
 
 router.get("/get-approved-listings", getApprovedListings);
 
-
 // in your listing routes file
 router.put("/:id/status", authenticate, updateListingStatus);
 

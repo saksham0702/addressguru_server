@@ -4,91 +4,80 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Listing Needs Updates — AddressGuru</title>
-  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     body {
-      background-color: #f0f2f8;
-      font-family: 'DM Sans', Arial, sans-serif;
+      background-color: #f4f4f6;
+      font-family: 'DM Sans', sans-serif;
       color: #2d2d2d;
       -webkit-font-smoothing: antialiased;
     }
 
     .wrapper {
       width: 100%;
-      padding: 48px 16px;
-      background-color: #f0f2f8;
+      padding: 40px 16px;
+      background-color: #f4f4f6;
     }
 
     .container {
-      max-width: 600px;
+      max-width: 580px;
       margin: 0 auto;
       background: #ffffff;
-      border-radius: 20px;
+      border-radius: 14px;
       overflow: hidden;
-      box-shadow: 0 8px 40px rgba(0,0,0,0.10);
+      box-shadow: 0 2px 20px rgba(0,0,0,0.07);
     }
 
     /* ── HEADER ── */
     .header {
-      background: linear-gradient(135deg, #f7941d 0%, #f5a623 50%, #ffb347 100%);
-      position: relative;
-      overflow: hidden;
-    }
-    .header-overlay {
-      position: absolute; inset: 0;
-      background-image:
-        radial-gradient(circle at 15% 50%, rgba(255,255,255,0.12) 0%, transparent 50%),
-        radial-gradient(circle at 85% 20%, rgba(255,255,255,0.08) 0%, transparent 40%);
-    }
-    .header-inner {
-      position: relative;
-      z-index: 1;
-      text-align: center;
-      padding: 40px 24px 36px;
+      background: #ffffff;
+      padding: 0 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 72px;
+      border-bottom: 1px solid #ebebeb;
     }
     .header-logo {
       display: block;
-      margin: 0 auto 20px;
       height: 40px;
       width: auto;
-    }
-    .header-icon {
-      width: 68px; height: 68px;
-      background: rgba(255,255,255,0.22);
-      border: 2px solid rgba(255,255,255,0.45);
-      border-radius: 50%;
-      display: flex; align-items: center; justify-content: center;
-      margin: 0 auto 18px;
-    }
-    .header-icon svg { width: 32px; height: 32px; fill: #fff; }
-    .header-title {
-      font-family: 'Playfair Display', Georgia, serif;
-      font-size: 27px;
-      font-weight: 700;
-      color: #ffffff;
-      letter-spacing: -0.3px;
-      line-height: 1.25;
-      margin-bottom: 8px;
-    }
-    .header-sub {
-      font-size: 14px;
-      color: rgba(255,255,255,0.85);
+      max-width: 100%;
+      object-fit: contain;
     }
 
-    /* ── AMBER ACCENT ── */
-    .accent-bar {
-      height: 4px;
-      background: linear-gradient(90deg, #ef4444, #f97316, #f7941d);
+    /* ── STATUS BAR ── */
+    .status-bar {
+      background: #fef2f2;
+      border-bottom: 2px solid #fca5a5;
+      padding: 12px 32px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #ef4444;
+      flex-shrink: 0;
+    }
+    .status-text {
+      font-size: 13px;
+      font-weight: 600;
+      color: #b91c1c;
+      letter-spacing: 0.2px;
     }
 
     /* ── CONTENT ── */
     .content {
-      padding: 36px 32px 28px;
+      padding: 30px 32px 32px;
     }
+
     .greeting {
-      font-size: 17px;
+      font-size: 15px;
       color: #2d2d2d;
       line-height: 1.7;
       margin-bottom: 6px;
@@ -96,164 +85,127 @@
     .greeting strong { color: #f7941d; }
 
     .intro-text {
-      font-size: 15px;
-      color: #555;
+      font-size: 14px;
+      color: #666;
       line-height: 1.75;
-      margin-bottom: 22px;
-    }
-
-    /* ── ALERT BANNER ── */
-    .alert-banner {
-      background: linear-gradient(135deg, #fff7ed, #ffedd5);
-      border: 1px solid #fdba74;
-      border-radius: 12px;
-      padding: 16px 20px;
-      margin-bottom: 22px;
-      display: flex;
-      align-items: flex-start;
-      gap: 13px;
-    }
-    .alert-icon {
-      width: 38px; height: 38px; flex-shrink: 0;
-      background: linear-gradient(135deg, #f97316, #ea580c);
-      border-radius: 50%;
-      display: flex; align-items: center; justify-content: center;
-      margin-top: 2px;
-    }
-    .alert-icon svg { width: 18px; height: 18px; fill: #fff; }
-    .alert-text strong { display: block; font-size: 15px; color: #c2410c; margin-bottom: 3px; }
-    .alert-text span { font-size: 13px; color: #9a3412; }
-
-    /* ── REASON BOX ── */
-    .reason-section {
       margin-bottom: 24px;
     }
-    .reason-title {
-      font-size: 11px;
-      font-weight: 600;
-      letter-spacing: 1.3px;
-      text-transform: uppercase;
-      color: #f7941d;
-      margin-bottom: 12px;
+
+    /* ── REJECTION BOX ── */
+    .rejection-box {
+      border: 1px solid #e5e7eb;
+      border-radius: 6px;
+      overflow: hidden;
+      margin-bottom: 24px;
+    }
+    .rejection-header {
+      background: #f9fafb;
+      border-bottom: 1px solid #e5e7eb;
+      padding: 10px 16px;
       display: flex;
       align-items: center;
       gap: 8px;
     }
-    .reason-title::after {
-      content: '';
-      flex: 1;
-      height: 1px;
-      background: #ffe4b5;
+    .rejection-header-label {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      color: #9ca3af;
     }
-    .reason-box {
-      background: #fff4f4;
-      border: 1.5px solid #fca5a5;
-      border-left: 4px solid #ef4444;
-      border-radius: 0 10px 10px 0;
-      padding: 18px 20px;
-      color: #7f1d1d;
+    .rejection-body {
+      padding: 16px;
+    }
+    .rejection-body p {
       font-size: 14px;
-      line-height: 1.7;
+      color: #374151;
+      line-height: 1.75;
     }
 
-    /* ── TIPS CARD ── */
-    .tips-card {
-      background: #fffbf5;
-      border: 1px solid #ffe4b5;
-      border-radius: 14px;
-      padding: 20px 22px;
-      margin-bottom: 24px;
+    /* ── TIPS ── */
+    .tips-section {
+      margin-bottom: 0;
     }
-    .tips-card-title {
-      font-size: 13px;
+    .tips-label {
+      font-size: 11px;
       font-weight: 600;
-      color: #f7941d;
-      margin-bottom: 14px;
-      display: flex;
-      align-items: center;
-      gap: 6px;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      color: #9ca3af;
+      margin-bottom: 12px;
     }
-    .tip-row {
-      display: flex;
-      align-items: flex-start;
-      gap: 10px;
-      margin-bottom: 10px;
-    }
-    .tip-row:last-child { margin-bottom: 0; }
-    .tip-dot {
-      width: 20px; height: 20px; flex-shrink: 0;
-      background: linear-gradient(135deg, #f7941d, #ffb347);
-      border-radius: 50%;
-      display: flex; align-items: center; justify-content: center;
-      margin-top: 1px;
-    }
-    .tip-dot svg { width: 10px; height: 10px; fill: #fff; }
-    .tip-text {
-      font-size: 13px;
+    .tip-item {
+      font-size: 13.5px;
       color: #555;
-      line-height: 1.6;
-    }
-
-    /* ── CTA ── */
-    .cta-wrap { text-align: center; margin-bottom: 24px; }
-    .btn-primary {
-      display: inline-block;
-      background: linear-gradient(135deg, #f7941d 0%, #ffb347 100%);
-      color: #ffffff !important;
-      text-decoration: none;
-      padding: 15px 40px;
-      border-radius: 50px;
-      font-weight: 600;
-      font-size: 15px;
-      letter-spacing: 0.2px;
-      box-shadow: 0 4px 18px rgba(247,148,29,0.35);
-    }
-
-    .support-note {
-      background: #f8f9fc;
-      border: 1px solid #e2e8f0;
-      border-radius: 10px;
-      padding: 14px 18px;
-      font-size: 13px;
-      color: #666;
-      text-align: center;
       line-height: 1.65;
+      padding: 9px 0 9px 16px;
+      position: relative;
+      border-bottom: 1px solid #f0f0f0;
     }
-    .support-note a {
+    .tip-item:last-child { border-bottom: none; }
+    .tip-item::before {
+      content: '→';
+      position: absolute;
+      left: 0;
       color: #f7941d;
-      text-decoration: none;
-      font-weight: 500;
+      font-size: 11px;
+      top: 11px;
     }
 
     /* ── FOOTER ── */
     .footer {
-      background: #1c1f2e;
-      padding: 28px 24px;
+      background: #f9fafb;
+      border-top: 1px solid #ebebeb;
+      padding: 18px 32px;
       text-align: center;
     }
-    .footer-logo { height: 30px; opacity: 0.9; margin-bottom: 12px; }
-    .footer-links { margin-bottom: 14px; }
+    .footer-links { margin-bottom: 6px; }
     .footer-links a {
       color: #f7941d;
       text-decoration: none;
-      font-size: 13px;
+      font-size: 12.5px;
       font-weight: 500;
-      margin: 0 10px;
+      margin: 0 8px;
     }
     .footer-copy {
-      font-size: 12px;
-      color: rgba(255,255,255,0.35);
+      font-size: 11.5px;
+      color: #aaa;
       line-height: 1.7;
     }
 
-    /* ── RESPONSIVE ── */
+    /* ── DARK MODE ── */
+    @media (prefers-color-scheme: dark) {
+      body, .wrapper { background-color: #111318; }
+      .container { background: #1c1f2e; box-shadow: 0 4px 24px rgba(0,0,0,0.4); }
+
+      /* Header: orange background in dark mode */
+      .header {
+        background: #f7941d;
+        border-bottom-color: #e07a0a;
+      }
+
+      .status-bar { background: #2a1010; border-bottom-color: #7f1d1d; }
+      .status-text { color: #fca5a5; }
+      .greeting { color: #e8e8e8; }
+      .intro-text { color: #9aa0b0; }
+      .rejection-box { border-color: #2d3148; }
+      .rejection-header { background: #13172a; border-bottom-color: #2d3148; }
+      .rejection-header-label { color: #6b7280; }
+      .rejection-body p { color: #c9d0e0; }
+      .tips-label { color: #6b7280; }
+      .tip-item { color: #9aa0b0; border-bottom-color: #252840; }
+      .footer { background: #13172a; border-top-color: #2d3148; }
+      .footer-copy { color: rgba(255,255,255,0.25); }
+    }
+
+    /* ── MOBILE ── */
     @media (max-width: 520px) {
-      .wrapper { padding: 24px 10px; }
-      .header-title { font-size: 22px; }
-      .content { padding: 24px 18px 20px; }
-      .reason-box { padding: 14px 16px; }
-      .btn-primary { width: 100%; text-align: center; padding: 14px 20px; }
-      .alert-banner { flex-direction: column; }
+      .wrapper { padding: 0; }
+      .container { border-radius: 0; box-shadow: none; }
+      .header { padding: 0 20px; height: 64px; }
+      .status-bar { padding: 11px 20px; }
+      .content { padding: 22px 20px 24px; }
+      .footer { padding: 16px 20px; }
     }
   </style>
 </head>
@@ -263,88 +215,52 @@
 
     <!-- HEADER -->
     <div class="header">
-      <div class="header-overlay"></div>
-      <div class="header-inner">
-        <img class="header-logo" src="https://www.addressguru.in/images/logopng.png" alt="AddressGuru" />
-        {{!-- <div class="header-icon">
-          <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
-        </div> --}}
-        <h1 class="header-title">Action Required</h1>
-        <p class="header-sub">Your listing needs a few updates before it can go live.</p>
-      </div>
+      <img class="header-logo" src="https://www.addressguru.in/images/logopng.png" alt="AddressGuru" />
     </div>
-    <div class="accent-bar"></div>
+
+    <!-- STATUS BAR -->
+    <div class="status-bar">
+      <div class="status-dot"></div>
+      <span class="status-text">Listing Not Approved</span>
+    </div>
 
     <!-- CONTENT -->
     <div class="content">
+
       <p class="greeting">Hello, <strong>{{name}}</strong>,</p>
       <p class="intro-text">
-        Thank you for submitting your listing on <strong>AddressGuru UAE</strong>. Our team has reviewed your submission, but we were unable to approve it at this time. Please see the details below and resubmit once updated.
+        Thank you for submitting your listing on AddressGuru UAE. Our team reviewed it but was unable to approve it at this time. Please see the reason below and resubmit once updated.
       </p>
 
-      <!-- Alert Banner -->
-      <div class="alert-banner">
-        <div class="alert-icon">
-          <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
+      <!-- REJECTION REASON -->
+      <div class="rejection-box">
+        <div class="rejection-header">
+          <span class="rejection-header-label">Reason for Rejection</span>
         </div>
-        <div class="alert-text">
-          <strong>Listing Not Approved</strong>
-          <span>Please review the reason below and update your listing to resubmit.</span>
-        </div>
-      </div>
-
-      <!-- Rejection Reason -->
-      <div class="reason-section">
-        <div class="reason-title">❌ Reason for Rejection</div>
-        <div class="reason-box">{{message}}</div>
-      </div>
-
-      <!-- Tips -->
-      <div class="tips-card">
-        <div class="tips-card-title">
-          <svg viewBox="0 0 24 24" width="16" height="16" style="fill:#f7941d;flex-shrink:0"><path d="M9 21c0 .55.45 1 1 1h4c.55 0 1-.45 1-1v-1H9v1zm3-19C8.14 2 5 5.14 5 9c0 2.38 1.19 4.47 3 5.74V17c0 .55.45 1 1 1h6c.55 0 1-.45 1-1v-2.26c1.81-1.27 3-3.36 3-5.74 0-3.86-3.14-7-7-7z"/></svg>
-          Common Issues to Check
-        </div>
-        <div class="tip-row">
-          <div class="tip-dot"><svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg></div>
-          <div class="tip-text">Ensure all required fields are filled in completely</div>
-        </div>
-        <div class="tip-row">
-          <div class="tip-dot"><svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg></div>
-          <div class="tip-text">Upload clear, high-quality photos (no blurry or watermarked images)</div>
-        </div>
-        <div class="tip-row">
-          <div class="tip-dot"><svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg></div>
-          <div class="tip-text">Verify your contact details and business category are correct</div>
-        </div>
-        <div class="tip-row">
-          <div class="tip-dot"><svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg></div>
-          <div class="tip-text">Make sure your listing is not a duplicate of an existing entry</div>
+        <div class="rejection-body">
+          <p>{{message}}</p>
         </div>
       </div>
 
-      <!-- CTA -->
-      <div class="cta-wrap">
-        <a href="{{dashboardUrl}}" class="btn-primary">Update My Listing →</a>
+      <!-- TIPS -->
+      <div class="tips-section">
+        <div class="tips-label">Common Issues to Check</div>
+        <div class="tip-item">Ensure all required fields are filled in completely</div>
+        <div class="tip-item">Upload clear, high-quality photos — no blurry or watermarked images</div>
+        <div class="tip-item">Verify your contact details and business category are correct</div>
+        <div class="tip-item">Make sure your listing is not a duplicate of an existing entry</div>
       </div>
 
-      <!-- Support Note -->
-      <div class="support-note">
-        Need help? Our team is here for you.<br>
-        Reach us at <a href="mailto:support@addressguru.ae">support@addressguru.ae</a> and we'll guide you through the process.
-      </div>
     </div>
 
     <!-- FOOTER -->
     <div class="footer">
-      <img class="footer-logo" src="https://www.addressguru.in/images/logopng.png" alt="AddressGuru" />
       <div class="footer-links">
         <a href="https://addressguru.ae">addressguru.ae</a>
         <a href="mailto:support@addressguru.ae">support@addressguru.ae</a>
       </div>
       <div class="footer-copy">
-        &copy; {{year}} AddressGuru UAE. All rights reserved.<br>
-        You're receiving this because your listing was reviewed on our platform.
+        &copy; {{year}} AddressGuru UAE. All rights reserved.
       </div>
     </div>
 

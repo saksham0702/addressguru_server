@@ -1,13 +1,43 @@
 // ─── validations/business.validator.js ───────────────────────────────────────
 import Joi from "joi";
+import mongoose from "mongoose";
 
-// ─── reusable: accepts both real array and JSON stringified array ─────────────
 const objectIdArray = () =>
   Joi.alternatives()
-    .try(
-      Joi.array().items(Joi.string()),
-      Joi.string(), // single value or JSON stringified array from formdata
-    )
+    .try(Joi.array().items(Joi.any()), Joi.string())
+    .custom((value, helpers) => {
+      let arr = value;
+
+      // parse stringified
+      if (typeof value === "string") {
+        try {
+          arr = JSON.parse(value);
+        } catch {
+          arr = [value];
+        }
+      }
+
+      if (!Array.isArray(arr)) {
+        return helpers.error("any.invalid");
+      }
+
+      for (const item of arr) {
+        // ❌ reject objects directly
+        if (typeof item === "object" && item !== null) {
+          return helpers.error("any.invalid");
+        }
+
+        // ❌ reject invalid ObjectId
+        if (!mongoose.Types.ObjectId.isValid(item)) {
+          return helpers.error("any.invalid");
+        }
+      }
+
+      return arr;
+    })
+    .messages({
+      "any.invalid": "Invalid ID",
+    })
     .optional()
     .default([]);
 
@@ -59,10 +89,18 @@ const businessStepSchema = {
     uen_number: Joi.string().allow("", null).optional(),
 
     // CategoryFeature-linked arrays — ObjectIds as strings
-    facilities: objectIdArray(),
-    services: objectIdArray(),
-    courses: objectIdArray(),
-    payments: objectIdArray(),
+    facilities: objectIdArray().messages({
+      "any.invalid": "Invalid facility",
+    }),
+    services: objectIdArray().messages({
+      "any.invalid": "Invalid service",
+    }),
+    courses: objectIdArray().messages({
+      "any.invalid": "Invalid course",
+    }),
+    payments: objectIdArray().messages({
+      "any.invalid": "Invalid payment",
+    }),
 
     // Working hours — object or JSON stringified object from formdata
     hours: Joi.alternatives()
