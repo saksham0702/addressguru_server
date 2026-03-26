@@ -4,91 +4,80 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Listing Approved — AddressGuru</title>
-  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     body {
-      background-color: #f0f2f8;
-      font-family: 'DM Sans', Arial, sans-serif;
+      background-color: #f4f4f6;
+      font-family: 'DM Sans', sans-serif;
       color: #2d2d2d;
       -webkit-font-smoothing: antialiased;
     }
 
     .wrapper {
       width: 100%;
-      padding: 48px 16px;
-      background-color: #f0f2f8;
+      padding: 40px 16px;
+      background-color: #f4f4f6;
     }
 
     .container {
-      max-width: 600px;
+      max-width: 580px;
       margin: 0 auto;
       background: #ffffff;
-      border-radius: 20px;
+      border-radius: 14px;
       overflow: hidden;
-      box-shadow: 0 8px 40px rgba(0,0,0,0.10);
+      box-shadow: 0 2px 20px rgba(0,0,0,0.07);
     }
 
     /* ── HEADER ── */
     .header {
-      background: linear-gradient(135deg, #f7941d 0%, #f5a623 50%, #ffb347 100%);
-      position: relative;
-      overflow: hidden;
-    }
-    .header-confetti {
-      position: absolute; inset: 0;
-      background-image:
-        radial-gradient(circle at 20% 30%, rgba(255,255,255,0.15) 0%, transparent 40%),
-        radial-gradient(circle at 80% 70%, rgba(255,255,255,0.10) 0%, transparent 40%);
-    }
-    .header-inner {
-      position: relative;
-      z-index: 1;
-      text-align: center;
-      padding: 44px 24px 38px;
+      background: #ffffff;
+      padding: 0 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 72px;
+      border-bottom: 1px solid #ebebeb;
     }
     .header-logo {
       display: block;
-      margin: 0 auto 20px;
       height: 40px;
       width: auto;
-    }
-    .header-icon {
-      width: 72px; height: 72px;
-      background: rgba(255,255,255,0.25);
-      border: 2px solid rgba(255,255,255,0.5);
-      border-radius: 50%;
-      display: flex; align-items: center; justify-content: center;
-      margin: 0 auto 18px;
-    }
-    .header-icon svg { width: 34px; height: 34px; fill: #fff; }
-    .header-title {
-      font-family: 'Playfair Display', Georgia, serif;
-      font-size: 30px;
-      font-weight: 700;
-      color: #ffffff;
-      letter-spacing: -0.3px;
-      line-height: 1.2;
-      margin-bottom: 8px;
-    }
-    .header-sub {
-      font-size: 15px;
-      color: rgba(255,255,255,0.88);
+      max-width: 100%;
+      object-fit: contain;
     }
 
-    /* ── GREEN ACCENT ── */
-    .accent-bar {
-      height: 4px;
-      background: linear-gradient(90deg, #22c55e, #86efac, #f7941d);
+    /* ── STATUS BAR ── */
+    .status-bar {
+      background: #f0fdf4;
+      border-bottom: 2px solid #86efac;
+      padding: 12px 32px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #22c55e;
+      flex-shrink: 0;
+    }
+    .status-text {
+      font-size: 13px;
+      font-weight: 600;
+      color: #15803d;
+      letter-spacing: 0.2px;
     }
 
     /* ── CONTENT ── */
     .content {
-      padding: 36px 32px 28px;
+      padding: 30px 32px 32px;
     }
+
     .greeting {
-      font-size: 17px;
+      font-size: 15px;
       color: #2d2d2d;
       line-height: 1.7;
       margin-bottom: 6px;
@@ -96,173 +85,143 @@
     .greeting strong { color: #f7941d; }
 
     .intro-text {
-      font-size: 15px;
-      color: #555;
+      font-size: 14px;
+      color: #666;
       line-height: 1.75;
       margin-bottom: 24px;
     }
 
-    /* ── SUCCESS BANNER ── */
-    .success-banner {
-      background: linear-gradient(135deg, #f0fdf4, #dcfce7);
-      border: 1px solid #86efac;
-      border-radius: 12px;
-      padding: 18px 20px;
-      margin-bottom: 24px;
-      display: flex;
-      align-items: center;
-      gap: 14px;
-    }
-    .success-icon {
-      width: 44px; height: 44px; flex-shrink: 0;
-      background: linear-gradient(135deg, #22c55e, #16a34a);
-      border-radius: 50%;
-      display: flex; align-items: center; justify-content: center;
-    }
-    .success-icon svg { width: 22px; height: 22px; fill: #fff; }
-    .success-text { flex: 1; }
-    .success-text strong { display: block; font-size: 15px; color: #15803d; margin-bottom: 3px; }
-    .success-text span { font-size: 13px; color: #4ade80; color: #16a34a; }
-
-    /* ── INFO CARD ── */
-    .info-card {
-      background: #fffbf5;
-      border: 1px solid #ffe4b5;
-      border-radius: 14px;
-      padding: 22px 22px 18px;
+    /* ── INFO BOX ── */
+    .info-box {
+      border: 1px solid #e5e7eb;
+      border-radius: 6px;
+      overflow: hidden;
       margin-bottom: 24px;
     }
-    .info-card-title {
+    .info-header {
+      background: #f9fafb;
+      border-bottom: 1px solid #e5e7eb;
+      padding: 10px 16px;
+    }
+    .info-header-label {
       font-size: 11px;
       font-weight: 600;
-      letter-spacing: 1.3px;
+      letter-spacing: 1px;
       text-transform: uppercase;
-      color: #f7941d;
-      margin-bottom: 14px;
+      color: #9ca3af;
+    }
+    .info-body {
+      padding: 0;
     }
     .info-row {
       display: flex;
       align-items: flex-start;
-      gap: 10px;
-      padding: 9px 0;
-      border-bottom: 1px solid #ffecc8;
+      gap: 8px;
+      padding: 11px 16px;
+      border-bottom: 1px solid #f0f0f0;
     }
     .info-row:last-child { border-bottom: none; }
-    .info-icon {
-      width: 28px; height: 28px; flex-shrink: 0;
-      background: linear-gradient(135deg, #f7941d, #ffb347);
-      border-radius: 7px;
-      display: inline-flex; align-items: center; justify-content: center;
-    }
-    .info-icon svg { width: 13px; height: 13px; fill: #fff; }
     .info-label {
       font-size: 11px;
       font-weight: 600;
-      color: #888;
+      color: #9ca3af;
       text-transform: uppercase;
       letter-spacing: 0.6px;
-      margin-bottom: 1px;
+      min-width: 90px;
+      padding-top: 1px;
     }
     .info-value {
-      font-size: 14px;
-      color: #2d2d2d;
-      font-weight: 500;
+      font-size: 13.5px;
+      color: #374151;
+      line-height: 1.5;
+      flex: 1;
     }
     .info-value a {
       color: #f7941d;
       text-decoration: none;
       word-break: break-all;
     }
-    .info-value a:hover { text-decoration: underline; }
 
-    /* ── CTA ── */
-    .cta-wrap { text-align: center; margin-bottom: 24px; }
-    .btn-primary {
-      display: inline-block;
-      background: linear-gradient(135deg, #f7941d 0%, #ffb347 100%);
-      color: #ffffff !important;
-      text-decoration: none;
-      padding: 15px 40px;
-      border-radius: 50px;
-      font-weight: 600;
-      font-size: 15px;
-      letter-spacing: 0.2px;
-      box-shadow: 0 4px 18px rgba(247,148,29,0.35);
-      margin-bottom: 12px;
-      margin-right: 8px;
+    /* ── TIPS ── */
+    .tips-section {
+      margin-bottom: 0;
     }
-    .btn-secondary {
-      display: inline-block;
-      background: #f8f9fc;
-      border: 1.5px solid #e2e8f0;
-      color: #555 !important;
-      text-decoration: none;
-      padding: 14px 32px;
-      border-radius: 50px;
-      font-weight: 500;
-      font-size: 14px;
+    .tips-label {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      color: #9ca3af;
       margin-bottom: 12px;
     }
-
-    /* ── UPGRADE CARD ── */
-    .upgrade-card {
-      background: linear-gradient(135deg, #1c1f2e 0%, #2d3250 100%);
-      border-radius: 14px;
-      padding: 24px 22px;
-      margin-bottom: 24px;
-      text-align: center;
+    .tip-item {
+      font-size: 13.5px;
+      color: #555;
+      line-height: 1.65;
+      padding: 9px 0 9px 16px;
+      position: relative;
+      border-bottom: 1px solid #f0f0f0;
     }
-    .upgrade-card h3 {
-      font-size: 16px;
-      color: #fff;
-      margin-bottom: 8px;
-    }
-    .upgrade-card p {
-      font-size: 13px;
-      color: rgba(255,255,255,0.6);
-      margin-bottom: 16px;
-      line-height: 1.6;
-    }
-    .btn-upgrade {
-      display: inline-block;
-      background: linear-gradient(135deg, #f7941d, #ffb347);
-      color: #fff !important;
-      text-decoration: none;
-      padding: 12px 28px;
-      border-radius: 50px;
-      font-weight: 600;
-      font-size: 14px;
+    .tip-item:last-child { border-bottom: none; }
+    .tip-item::before {
+      content: '→';
+      position: absolute;
+      left: 0;
+      color: #f7941d;
+      font-size: 11px;
+      top: 11px;
     }
 
     /* ── FOOTER ── */
     .footer {
-      background: #1c1f2e;
-      padding: 28px 24px;
+      background: #f9fafb;
+      border-top: 1px solid #ebebeb;
+      padding: 18px 32px;
       text-align: center;
     }
-    .footer-logo { height: 30px; opacity: 0.9; margin-bottom: 12px; }
-    .footer-links { margin-bottom: 14px; }
+    .footer-links { margin-bottom: 6px; }
     .footer-links a {
       color: #f7941d;
       text-decoration: none;
-      font-size: 13px;
+      font-size: 12.5px;
       font-weight: 500;
-      margin: 0 10px;
+      margin: 0 8px;
     }
     .footer-copy {
-      font-size: 12px;
-      color: rgba(255,255,255,0.35);
+      font-size: 11.5px;
+      color: #aaa;
       line-height: 1.7;
     }
 
-    /* ── RESPONSIVE ── */
+    /* ── DARK MODE ── */
+    @media (prefers-color-scheme: dark) {
+      body, .wrapper { background-color: #111318; }
+      .container { background: #1c1f2e; box-shadow: 0 4px 24px rgba(0,0,0,0.4); }
+      .header { background: #f7941d; border-bottom-color: #e07a0a; }
+      .status-bar { background: #052e16; border-bottom-color: #166534; }
+      .status-text { color: #86efac; }
+      .greeting { color: #e8e8e8; }
+      .intro-text { color: #9aa0b0; }
+      .info-box { border-color: #2d3148; }
+      .info-header { background: #13172a; border-bottom-color: #2d3148; }
+      .info-header-label { color: #6b7280; }
+      .info-label { color: #6b7280; }
+      .info-value { color: #c9d0e0; }
+      .info-row { border-bottom-color: #252840; }
+      .tips-label { color: #6b7280; }
+      .tip-item { color: #9aa0b0; border-bottom-color: #252840; }
+      .footer { background: #13172a; border-top-color: #2d3148; }
+      .footer-copy { color: rgba(255,255,255,0.25); }
+    }
+
+    /* ── MOBILE ── */
     @media (max-width: 520px) {
-      .wrapper { padding: 24px 10px; }
-      .header-title { font-size: 24px; }
-      .content { padding: 24px 18px 20px; }
-      .info-card { padding: 16px 14px; }
-      .btn-primary, .btn-secondary { width: 100%; text-align: center; margin-right: 0; padding: 14px 20px; }
-      .success-banner { flex-direction: column; text-align: center; }
+      .wrapper { padding: 0; }
+      .container { border-radius: 0; box-shadow: none; }
+      .header { padding: 0 20px; height: 64px; }
+      .status-bar { padding: 11px 20px; }
+      .content { padding: 22px 20px 24px; }
+      .footer { padding: 16px 20px; }
     }
   </style>
 </head>
@@ -272,107 +231,63 @@
 
     <!-- HEADER -->
     <div class="header">
-      <div class="header-confetti"></div>
-      <div class="header-inner">
-        <img class="header-logo" src="https://www.addressguru.in/images/logopng.png" alt="AddressGuru" />
-        {{!-- <div class="header-icon">
-          <svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
-        </div> --}}
-        <h1 class="header-title">You're Live! 🎉</h1>
-        <p class="header-sub">Your listing has been approved and is now visible to customers.</p>
-      </div>
+      <img class="header-logo" src="https://www.addressguru.in/images/logopng.png" alt="AddressGuru" />
     </div>
-    <div class="accent-bar"></div>
+
+    <!-- STATUS BAR -->
+    <div class="status-bar">
+      <div class="status-dot"></div>
+      <span class="status-text">Listing Approved & Live</span>
+    </div>
 
     <!-- CONTENT -->
     <div class="content">
-      <p class="greeting">Congratulations, <strong>{{name}}</strong>!</p>
+
+      <p class="greeting">Hello, <strong>{{name}}</strong>,</p>
       <p class="intro-text">
-        We're thrilled to let you know that your listing has been <strong>approved</strong> and is now live on AddressGuru UAE. Customers across the UAE can now find and contact your business directly.
+        Great news! Your listing on AddressGuru UAE has been reviewed and approved. It is now live and visible to customers across the UAE.
       </p>
 
-      <!-- Success Banner -->
-      <div class="success-banner">
-        <div class="success-icon">
-          <svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
+      <!-- LISTING DETAILS -->
+      <div class="info-box">
+        <div class="info-header">
+          <span class="info-header-label">Your Listing Details</span>
         </div>
-        <div class="success-text">
-          <strong>Listing Approved & Published</strong>
-          <span>Your business is now discoverable on AddressGuru UAE</span>
+        <div class="info-body">
+          <div class="info-row">
+            <span class="info-label">Business</span>
+            <span class="info-value">{{businessName}}</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">Category</span>
+            <span class="info-value">{{category}}</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">Live URL</span>
+            <span class="info-value"><a href="{{listingUrl}}">{{listingUrl}}</a></span>
+          </div>
         </div>
       </div>
 
-      <!-- Listing Details Card -->
-      <div class="info-card">
-        <div class="info-card-title">📌 Your Listing Details</div>
-
-        <div class="info-row">
-          <div class="info-icon">
-            <svg viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 3c1.93 0 3.5 1.57 3.5 3.5S13.93 13 12 13s-3.5-1.57-3.5-3.5S10.07 6 12 6zm7 13H5v-.23c0-.62.28-1.2.76-1.58C7.47 15.82 9.64 15 12 15s4.53.82 6.24 2.19c.48.38.76.97.76 1.58V19z"/></svg>
-          </div>
-          <div>
-            <div class="info-label">Business Name</div>
-            <div class="info-value">{{businessName}}</div>
-          </div>
-        </div>
-
-        <div class="info-row">
-          <div class="info-icon">
-            <svg viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
-          </div>
-          <div>
-            <div class="info-label">Category</div>
-            <div class="info-value">{{category}}</div>
-          </div>
-        </div>
-
-        <div class="info-row">
-          <div class="info-icon">
-            <svg viewBox="0 0 24 24"><path d="M3.9 12c0-1.71 1.39-3.1 3.1-3.1h4V7H7c-2.76 0-5 2.24-5 5s2.24 5 5 5h4v-1.9H7c-1.71 0-3.1-1.39-3.1-3.1zM8 13h8v-2H8v2zm9-6h-4v1.9h4c1.71 0 3.1 1.39 3.1 3.1s-1.39 3.1-3.1 3.1h-4V17h4c2.76 0 5-2.24 5-5s-2.24-5-5-5z"/></svg>
-          </div>
-          <div>
-            <div class="info-label">Live Listing URL</div>
-            <div class="info-value"><a href="{{listingUrl}}">{{listingUrl}}</a></div>
-          </div>
-        </div>
-
-        <div class="info-row">
-          <div class="info-icon">
-            <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z"/></svg>
-          </div>
-          <div>
-            <div class="info-label">Preview</div>
-            <div class="info-value"><a href="{{previewLink}}">Click to preview</a></div>
-          </div>
-        </div>
-
-      </div>
-
-      <!-- CTA Buttons -->
-      <div class="cta-wrap">
-        <a href="{{listingUrl}}" class="btn-primary">View My Live Listing →</a>
-        <a href="{{dashboardUrl}}" class="btn-secondary">Go to Dashboard</a>
-      </div>
-
-      <!-- Upgrade Card -->
-      <div class="upgrade-card">
-        <h3>🚀 Boost Your Visibility 2x</h3>
-        <p>Upgrade to a premium listing plan to get priority placement, enhanced reach, and up to 2× more customer inquiries.</p>
-        <a href="{{plansUrl}}" class="btn-upgrade">View Premium Plans</a>
+      <!-- NEXT STEPS -->
+      <div class="tips-section">
+        <div class="tips-label">What You Can Do Now</div>
+        <div class="tip-item">Share your listing URL with customers and on social media</div>
+        <div class="tip-item">Log in to your dashboard to update details anytime</div>
+        <div class="tip-item">Add more photos to make your listing stand out</div>
+        <div class="tip-item">Upgrade to a premium plan for priority placement and more visibility</div>
       </div>
 
     </div>
 
     <!-- FOOTER -->
     <div class="footer">
-      <img class="footer-logo" src="https://www.addressguru.in/images/logopng.png" alt="AddressGuru" />
       <div class="footer-links">
         <a href="https://addressguru.ae">addressguru.ae</a>
         <a href="mailto:support@addressguru.ae">support@addressguru.ae</a>
       </div>
       <div class="footer-copy">
-        &copy; {{year}} AddressGuru UAE. All rights reserved.<br>
-        You're receiving this because your listing was reviewed on our platform.
+        &copy; {{year}} AddressGuru UAE. All rights reserved.
       </div>
     </div>
 

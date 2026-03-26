@@ -83,7 +83,7 @@ export const jobStepSchemas = {
     salary: Joi.object({
       from: Joi.number().optional().allow(null, ""),
       to: Joi.number().optional().allow(null, ""),
-      currency: Joi.string().optional().default("PKR"),
+      currency: Joi.string().optional().default("AED"),
       period: Joi.string()
         .valid("monthly", "yearly", "weekly", "daily", "hourly")
         .optional()
@@ -96,7 +96,7 @@ export const jobStepSchemas = {
 
     // Location (JSON object parsed by middleware)
     location: Joi.object({
-      country: Joi.string().optional().default("Pakistan"),
+      country: Joi.string().optional().default("UAE"),
       city: Joi.string().optional().allow("", null),
       area: Joi.string().optional().allow("", null),
       address: Joi.string().optional().allow("", null),

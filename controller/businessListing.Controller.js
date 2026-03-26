@@ -8,7 +8,10 @@ import Feature from "../model/featureSchema.js";
 import User from "../model/userSchema.js";
 import slugify from "slugify";
 import { successData, errorData } from "../services/helper.js";
+import googleIndexingService from "../services/googleIndexing.service.js";
+import { APP_BASE_URL } from "../services/constant.js";
 import CitiesSchema from "../model/CitiesSchema.js";
+import User from "../model/userSchema.js";
 import {
   sendApprovedAndRejectedListingMail,
   sendListingSubmittedMail,
@@ -131,7 +134,7 @@ export const createListing = async (req, res) => {
     if (errors.length)
       return errorData(res, 400, false, "Validation failed", { errors });
 
-    const slug = `${slugify(business_name, { lower: true, strict: true })}}`;
+    const slug = `${slugify(business_name, { lower: true, strict: true })}`;
 
     const listing = await BusinessListing.create({
       category: category_id,
@@ -373,12 +376,14 @@ export const updateListingStep = async (req, res) => {
 
     const listing = await BusinessListing.findOne({ slug, isDeleted: false });
     if (!listing) return errorData(res, 404, false, "Listing not found");
-
+    const user = await User.findById(req.user.id);
+    const userRole = user.roles.includes(1);
     // ── Ownership check ──
     if (
       listing.createdBy &&
       req.user?.id &&
       listing.createdBy.toString() !== req.user.id.toString()
+      && !userRole
     ) {
       return errorData(
         res,
@@ -441,7 +446,7 @@ export const updateListingStep = async (req, res) => {
               "A listing with this business name already exists",
             );
           listing.businessName = business_name;
-          listing.slug = `${slugify(business_name, { lower: true, strict: true })}}`;
+          listing.slug = `${slugify(business_name, { lower: true, strict: true })}`;
         }
 
         const parsedHours = parseJSON(hours, null);
