@@ -5,7 +5,7 @@ import { successData, errorData } from "../services/helper.js";
 // CREATE
 // ============================================
 export const createField = async (req, res) => {
-console.log("req.body",req.body);
+  console.log("req.body", req.body);
   try {
     const {
       category_id,
@@ -89,7 +89,7 @@ console.log("req.body",req.body);
       return errorData(res, 400, false, message, null, error.message);
     }
 
-    console.error("Create field error:", error);
+    console.warn("Create field error:", error);
     return errorData(
       res,
       500,
@@ -134,7 +134,7 @@ export const getFields = async (req, res) => {
       return errorData(res, 404, false, "No fields found", null, null);
     }
   } catch (error) {
-    console.error("Get fields error:", error);
+    console.warn("Get fields error:", error);
     return errorData(
       res,
       500,
@@ -165,7 +165,7 @@ export const getField = async (req, res) => {
       return errorData(res, 404, false, "Field not found", null, null);
     }
   } catch (error) {
-    console.error("Get field error:", error);
+    console.warn("Get field error:", error);
     return errorData(
       res,
       500,
@@ -241,7 +241,7 @@ export const updateField = async (req, res) => {
       return errorData(res, 400, false, message, null, error.message);
     }
 
-    console.error("Update field error:", error);
+    console.warn("Update field error:", error);
     return errorData(
       res,
       500,
@@ -278,7 +278,7 @@ export const deleteField = async (req, res) => {
 
     return successData(res, 200, true, "Field deleted successfully", null);
   } catch (error) {
-    console.error("Delete field error:", error);
+    console.warn("Delete field error:", error);
     return errorData(
       res,
       500,

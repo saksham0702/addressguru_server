@@ -1,5 +1,5 @@
 import ListingStats from "../model/listingStatsSchema.js";
-import User         from "../model/userSchema.js";
+import User from "../model/userSchema.js";
 import { resolveListing, MODEL_MAP } from "../utils/resolveListing.js";
 import { successData, errorData } from "../services/helper.js";
 import mongoose from "mongoose";
@@ -34,10 +34,10 @@ export const trackEvent = async (req, res) => {
     });
 
     // Increment user stats
-    const updateField = 
+    const updateField =
       eventType === "view" ? "statistics_totalViews" :
-      eventType === "call" ? "statistics_totalCalls" :
-      eventType === "website_visit" ? "statistics_totalWebsiteVisits" : null;
+        eventType === "call" ? "statistics_totalCalls" :
+          eventType === "website_visit" ? "statistics_totalWebsiteVisits" : null;
 
     if (updateField && ownerId) {
       await User.findByIdAndUpdate(ownerId, { $inc: { [updateField]: 1 } });
@@ -46,7 +46,7 @@ export const trackEvent = async (req, res) => {
     return successData(res, 200, true, "Event tracked successfully");
   } catch (err) {
     if (err.status) return res.status(err.status).json({ success: false, message: err.message });
-    console.error("trackEvent error:", err);
+    console.warn("trackEvent error:", err);
     return errorData(res, 500, false, "Server Error", null, err.message);
   }
 };
@@ -74,7 +74,7 @@ export const getUserOverview = async (req, res) => {
     // Global Leads Analytics (Current Week vs Previous Week)
     const today = new Date();
     today.setHours(23, 59, 59, 999);
-    
+
     const startOfCurrentWeek = new Date(today);
     startOfCurrentWeek.setDate(today.getDate() - 7);
     startOfCurrentWeek.setHours(0, 0, 0, 0);
@@ -143,7 +143,7 @@ export const getUserOverview = async (req, res) => {
 
     return successData(res, 200, true, "User overview fetched successfully", stats);
   } catch (err) {
-    console.error("getUserOverview error:", err);
+    console.warn("getUserOverview error:", err);
     return errorData(res, 500, false, "Server Error", null, err.message);
   }
 };
@@ -175,7 +175,7 @@ export const getListingStats = async (req, res) => {
     // Time-series data for Leads Analytics (Current Week vs Previous Week)
     const today = new Date();
     today.setHours(23, 59, 59, 999);
-    
+
     const startOfCurrentWeek = new Date(today);
     startOfCurrentWeek.setDate(today.getDate() - 7);
     startOfCurrentWeek.setHours(0, 0, 0, 0);
@@ -237,7 +237,7 @@ export const getListingStats = async (req, res) => {
     });
   } catch (err) {
     if (err.status) return res.status(err.status).json({ status: false, message: err.message });
-    console.error("getListingStats error:", err);
+    console.warn("getListingStats error:", err);
     return errorData(res, 500, false, "Server Error", null, err.message);
   }
 };

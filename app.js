@@ -40,6 +40,7 @@ import statisticsRouter from "./routes/statistics.Routes.js";
 import followUpRouter from "./routes/followUp.Router.js";
 import followUpConfigRouter from "./routes/followUpConfig.Router.js";
 
+
 var app = express();
 
 // view engine setup
@@ -80,7 +81,9 @@ app.use(express.static(join(__dirname, "public")));
 // app.use("/uploads", express.static(path.join(process.cwd(), "public")));
 app.use("/uploads", express.static(join(process.cwd(), "uploads")));
 
-app.get("/api", async (req, res) => {
+app.get("/test-me", (req, res) => res.json({ message: "routing works" }));
+
+app.get("/", async (req, res) => {
   const html = `
     <!DOCTYPE html>
     <html lang="en">

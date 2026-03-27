@@ -9,14 +9,25 @@ import {
   getAllJobsByUser,
 } from "../controller/jobsListing.Controller.js";
 import upload from "../middleware/multerConfig.js";
-import {authenticate} from "../middleware/userAuth.js";
+import { authenticate } from "../middleware/userAuth.js";
+import { getEducationLevels, getExperienceLevels, getJobTypes, getWorkModes } from "../controller/jobMetadata.Controller.js";
 
 const router = express.Router();
 
 const jobUpload = upload.fields([
   { name: "logo", maxCount: 1 },
-  { name: "images", maxCount: 10 },
+  // { name: "images", maxCount: 10 },
 ]);
+
+
+router.get("/", (req, res) => {
+  res.send(`
+    <h1 style="text-align:center;">
+      Welcome to AddressGuru UAE Backend JOB LISTING Router
+    </h1>
+  `);
+});
+
 
 router
   .route("/save-job/:step")
@@ -24,8 +35,15 @@ router
   .put(jobUpload, validateStep(jobStepSchemas), saveJobStep);
 
 router.get("/get-all-jobs", getAllJobsWithPaginationAndFilters);
-router.get("/get-user-jobs", authenticate, getAllJobsByUser);
+router.get("/get-jobs-by-user", authenticate, getAllJobsByUser);
 router.get("/get-job/:slug", getJobById);
 router.delete("/delete-job/:slug", deleteJob);
+
+// Meta Data Routes
+router.get("/job-type", getJobTypes);
+router.get("/work-mode", getWorkModes);
+router.get("/experience-level", getExperienceLevels);
+router.get("/education-level", getEducationLevels);
+
 
 export default router;

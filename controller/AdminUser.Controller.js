@@ -108,7 +108,7 @@ export const adminCreateUser = async (req, res) => {
       sanitizeUser(newUser)
     );
   } catch (err) {
-    console.error("adminCreateUser error:", err);
+    console.warn("adminCreateUser error:", err);
     return errorData(res, 500, false, "Server Error", null, err?.message);
   }
 };
@@ -129,7 +129,7 @@ export const adminGetAllUsers = async (req, res) => {
   try {
     let { page = 1, limit = 10, role, status, deleted = "false", search } = req.query;
 
-    page  = Math.max(1, parseInt(page, 10));
+    page = Math.max(1, parseInt(page, 10));
     limit = Math.min(100, Math.max(1, parseInt(limit, 10)));
 
     const query = {};
@@ -189,7 +189,7 @@ export const adminGetAllUsers = async (req, res) => {
       users: mapped,
     });
   } catch (err) {
-    console.error("adminGetAllUsers error:", err);
+    console.warn("adminGetAllUsers error:", err);
     return errorData(res, 500, false, "Server Error", null, err?.message);
   }
 };
@@ -208,7 +208,7 @@ export const adminGetUserById = async (req, res) => {
 
     return successData(res, 200, true, "User fetched successfully.", obj);
   } catch (err) {
-    console.error("adminGetUserById error:", err);
+    console.warn("adminGetUserById error:", err);
     return errorData(res, 500, false, "Server Error", null, err?.message);
   }
 };
@@ -289,7 +289,7 @@ export const adminUpdateUser = async (req, res) => {
 
     return successData(res, 200, true, "User updated successfully.", obj);
   } catch (err) {
-    console.error("adminUpdateUser error:", err);
+    console.warn("adminUpdateUser error:", err);
     return errorData(res, 500, false, "Server Error", null, err?.message);
   }
 };
@@ -306,13 +306,13 @@ export const adminDeleteUser = async (req, res) => {
       return errorData(res, 400, false, "User is already deleted.");
 
     user.isDeleted = true;
-    user.status    = false;
+    user.status = false;
     user.deletedAt = new Date();
     await user.save();
 
     return successData(res, 200, true, "User deleted successfully.");
   } catch (err) {
-    console.error("adminDeleteUser error:", err);
+    console.warn("adminDeleteUser error:", err);
     return errorData(res, 500, false, "Server Error", null, err?.message);
   }
 };
@@ -329,13 +329,13 @@ export const adminRestoreUser = async (req, res) => {
       return errorData(res, 400, false, "User is not deleted.");
 
     user.isDeleted = false;
-    user.status    = true;
+    user.status = true;
     user.deletedAt = null;
     await user.save();
 
     return successData(res, 200, true, "User restored successfully.", sanitizeUser(user));
   } catch (err) {
-    console.error("adminRestoreUser error:", err);
+    console.warn("adminRestoreUser error:", err);
     return errorData(res, 500, false, "Server Error", null, err?.message);
   }
 };

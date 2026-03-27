@@ -35,7 +35,7 @@ export const getSubCategoriesByCategorySlug = async (req, res) => {
       subs,
     );
   } catch (error) {
-    console.error(error);
+    console.warn(error);
     return errorData(res, 500, false, "Internal server error");
   }
 };
@@ -100,7 +100,7 @@ export const createSubCategoryBySlug = async (req, res) => {
       newSubCategory,
     );
   } catch (error) {
-    console.error(error);
+    console.warn(error);
     return errorData(res, 500, false, "Internal server error");
   }
 };
@@ -151,7 +151,7 @@ export const createSubCategory = async (req, res) => {
       newSubCategory,
     );
   } catch (error) {
-    console.error(error);
+    console.warn(error);
     return errorData(res, 500, false, "Internal server error");
   }
 };
@@ -175,7 +175,7 @@ export const getSubCategories = async (req, res) => {
       subCategories,
     );
   } catch (error) {
-    console.error(error);
+    console.warn(error);
     return errorData(res, 500, false, "Internal server error");
   }
 };
@@ -197,7 +197,7 @@ export const getSubCategoriesByCategory = async (req, res) => {
 
     return successData(res, 200, true, "Get subcategories successfully", subs);
   } catch (error) {
-    console.error(error);
+    console.warn(error);
     return errorData(res, 500, false, "Internal server error");
   }
 };
@@ -232,7 +232,7 @@ export const updateSubCategory = async (req, res) => {
       updated,
     );
   } catch (error) {
-    console.error(error);
+    console.warn(error);
     return errorData(res, 500, false, "Internal server error");
   }
 };
@@ -258,7 +258,7 @@ export const deleteSubCategory = async (req, res) => {
 
     return successData(res, 200, true, "SubCategory deleted successfully", sub);
   } catch (error) {
-    console.error(error);
+    console.warn(error);
     return errorData(res, 500, false, "Internal server error");
   }
 };
@@ -276,7 +276,7 @@ export const getSingleSubCategory = async (req, res) => {
 
     return successData(res, 200, true, "Get subcategory successfully", sub);
   } catch (error) {
-    console.error(error);
+    console.warn(error);
     return errorData(res, 500, false, "Internal server error");
   }
 };

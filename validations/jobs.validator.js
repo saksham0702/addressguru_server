@@ -17,12 +17,9 @@ export const jobStepSchemas = {
   1: Joi.object({
     step: Joi.number().valid(1).required(),
 
-    slug: Joi.string()
-      .optional()
-      .messages({
-        "string.empty": "Slug cannot be empty",
-      }),
-
+    slug: Joi.string().optional().messages({
+      "string.empty": "Slug cannot be empty",
+    }),
 
     category_id: commonRules.mongoId.optional().allow("", null),
     sub_category_id: commonRules.mongoId.optional().allow("", null),
@@ -33,6 +30,7 @@ export const jobStepSchemas = {
     requirements: stringArray(),
     responsibilities: stringArray(),
     benefits: stringArray(),
+    skills: stringArray(),
 
     sector: Joi.string()
       .valid(
@@ -49,7 +47,7 @@ export const jobStepSchemas = {
         "media",
         "ngo",
         "government",
-        "other"
+        "other",
       )
       .optional()
       .messages({ "any.only": "Invalid sector" }),
@@ -61,7 +59,7 @@ export const jobStepSchemas = {
         "contract",
         "freelance",
         "internship",
-        "temporary"
+        "temporary",
       )
       .optional()
       .messages({ "any.only": "Invalid job type" }),
@@ -96,29 +94,40 @@ export const jobStepSchemas = {
 
     // Location (JSON object parsed by middleware)
     location: Joi.object({
-      country: Joi.string().optional().default("UAE"),
-      city: Joi.string().optional().allow("", null),
+      country: Joi.string().optional().default("Pakistan"),
+
+      city: Joi.object({
+        _id: Joi.string().required(),
+        name: Joi.string().required(),
+        slug: Joi.string().required(),
+      })
+        .optional()
+        .allow(null),
+
       area: Joi.string().optional().allow("", null),
       address: Joi.string().optional().allow("", null),
       isRemote: Joi.boolean().optional().default(false),
-    })
-      .optional()
-      .allow(null, ""),
+    }),
 
     education: Joi.string()
-      .valid("none", "matric", "intermediate", "bachelor", "master", "phd", "any")
+      .valid(
+        "none",
+        "matric",
+        "intermediate",
+        "bachelor",
+        "master",
+        "phd",
+        "any",
+      )
       .optional()
       .default("any"),
 
-    // Experience Years (JSON object parsed by middleware)
-    experienceYears: Joi.object({
-      from: Joi.number().min(0).optional().default(0),
-      to: Joi.number().min(0).optional().allow(null, ""),
-    })
-      .optional()
-      .allow(null, ""),
+    noOfExperience: Joi.string().optional().allow("", null),
 
-    gender: Joi.string().valid("male", "female", "any").optional().default("any"),
+    gender: Joi.string()
+      .valid("male", "female", "any")
+      .optional()
+      .default("any"),
 
     // Age Range (JSON object parsed by middleware)
     ageRange: Joi.object({
@@ -139,11 +148,9 @@ export const jobStepSchemas = {
     //   .required()
     //   .messages({ "any.required": "Job ID is required" }),
 
-    slug: Joi.string()
-      .optional()
-      .messages({
-        "string.empty": "Slug cannot be empty",
-      }),
+    slug: Joi.string().optional().messages({
+      "string.empty": "Slug cannot be empty",
+    }),
 
     job_id: commonRules.mongoId
       .optional()
@@ -165,6 +172,7 @@ export const jobStepSchemas = {
     company: Joi.object({
       name: Joi.string().optional().allow("", null),
       website: Joi.string().uri().optional().allow("", null),
+      description: Joi.string().optional().allow("", null),
       size: Joi.string()
         .valid("1-10", "11-50", "51-200", "201-500", "500+")
         .optional()

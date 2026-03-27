@@ -36,7 +36,7 @@ const connectDB = async () => {
     console.log(`${dim("✅ MongoDB connected successfully")}`);
     logger.info("✅ MongoDB connected successfully");
   } catch (err) {
-    console.error("❌ MongoDB connection error:", err.message);
+    console.warn("❌ MongoDB connection error:", err.message);
     logger.error("❌ MongoDB connection error:", err.message);
     process.exit(1);
   }
@@ -69,7 +69,7 @@ const createMasterAdmin = async () => {
     await newAdmin.save();
     console.log("Master admin created successfully!");
   } catch (error) {
-    console.error("Error creating master admin:", error);
+    console.warn("Error creating master admin:", error);
   }
   //  finally {
   //   mongoose.connection.close();

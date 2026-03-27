@@ -195,7 +195,7 @@ router.get("/google/callback", async (req, res) => {
     // Redirect to frontend app
     res.redirect(`${APP_BASE_URL}/auth/success`);
   } catch (err) {
-    console.error(err.response?.data || err);
+    console.warn(err.response?.data || err);
     res.redirect(`${APP_BASE_URL}/auth/error`);
   }
 });
@@ -280,7 +280,7 @@ router.post(
       setSessionCookie(res, sessionToken);
       res.redirect(`${APP_BASE_URL}/auth/success`);
     } catch (err) {
-      console.error(err.response?.data || err);
+      console.warn(err.response?.data || err);
       res.redirect(`${APP_BASE_URL}/auth/error`);
     }
   }
@@ -369,7 +369,7 @@ router.post("/auth/exchange", async (req, res) => {
       data: { user: userData, accessToken },
     });
   } catch (err) {
-    console.error(err.response?.data || err.message);
+    console.warn(err.response?.data || err.message);
     return res.status(500).json({ error: "auth_exchange_failed" });
   }
 });

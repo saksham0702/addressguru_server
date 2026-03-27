@@ -130,12 +130,14 @@ import { APP_BASE_URL } from "../services/constant.js";
 //       id: job._id,
 //     });
 //   } catch (error) {
-//     console.error("Job step error:", error);
+//     console.warn("Job step error:", error);
 //     return errorData(res, 500, false, "Internal server error");
 //   }
 // };
 
 export const saveJobStep = async (req, res) => {
+  console.log("REQQ BODYY :", req?.body);
+
   try {
     const { job_id, slug } = req?.body;
     const step = Number(req?.params?.step);
@@ -202,7 +204,7 @@ export const saveJobStep = async (req, res) => {
         salary,
         location,
         education,
-        experienceYears,
+        noOfExperience,
         gender,
         ageRange,
       } = req.body;
@@ -236,7 +238,7 @@ export const saveJobStep = async (req, res) => {
           salary,
           location,
           education,
-          experienceYears,
+          noOfExperience,
           gender,
           ageRange,
           slug: baseSlug,
@@ -298,7 +300,7 @@ export const saveJobStep = async (req, res) => {
         if (salary) job.salary = salary;
         if (location) job.location = location;
         if (education) job.education = education;
-        if (experienceYears) job.experienceYears = experienceYears;
+        if (noOfExperience) job.noOfExperience = noOfExperience;
         if (gender) job.gender = gender;
         if (ageRange) job.ageRange = ageRange;
       }
@@ -349,10 +351,10 @@ export const saveJobStep = async (req, res) => {
         job.company.logo = req.files.logo[0].path;
       }
 
-      if (req.files?.images?.length) {
-        const imgs = req.files.images.map((i) => i.path);
-        job.images = [...(job.images || []), ...imgs];
-      }
+      // if (req.files?.images?.length) {
+      //   const imgs = req.files.images.map((i) => i.path);
+      //   job.images = [...(job.images || []), ...imgs];
+      // }
 
       job.status = "active";
       job.isActive = true;
@@ -366,7 +368,7 @@ export const saveJobStep = async (req, res) => {
       slug: job.slug,
     });
   } catch (error) {
-    console.error("Job step error:", error);
+    console.warn("Job step error:", error);
     return errorData(res, 500, false, "Internal server error");
   }
 };
@@ -433,7 +435,7 @@ export const getAllJobsWithPaginationAndFilters = async (req, res) => {
       },
     });
   } catch (error) {
-    console.error("Job fetch error:", error);
+    console.warn("Job fetch error:", error);
     return errorData(res, 500, false, "Internal server error");
   }
 };
@@ -486,7 +488,7 @@ export const getAllJobsByUser = async (req, res) => {
       },
     });
   } catch (error) {
-    console.error("User job fetch error:", error);
+    console.warn("User job fetch error:", error);
     return errorData(res, 500, false, "Internal server error");
   }
 };
@@ -514,7 +516,7 @@ export const getJobById = async (req, res) => {
 
     return successData(res, 200, true, "Job fetched successfully", job);
   } catch (error) {
-    console.error("Job fetch err:", error);
+    console.warn("Job fetch err:", error);
     return errorData(res, 500, false, "Internal server error");
   }
 };
@@ -541,7 +543,7 @@ export const deleteJob = async (req, res) => {
     // Update User statistics
     if (job.createdBy) {
       await User.findByIdAndUpdate(job.createdBy, {
-        $inc: { 
+        $inc: {
           statistics_activeListings: -1,
           statistics_JobsListings: -1,
           statistics_totalListings: -1
@@ -553,7 +555,7 @@ export const deleteJob = async (req, res) => {
       slug: job.slug,
     });
   } catch (error) {
-    console.error("Job delete error:", error);
+    console.warn("Job delete error:", error);
     return errorData(res, 500, false, "Internal server error");
   }
 };

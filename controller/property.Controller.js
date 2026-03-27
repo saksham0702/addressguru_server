@@ -156,7 +156,7 @@ export const createPropertyListing = async (req, res) => {
       },
     );
   } catch (error) {
-    console.error("Create property listing error:", error);
+    console.warn("Create property listing error:", error);
     return errorData(res, 500, false, "Internal server error");
   }
 };
@@ -330,7 +330,7 @@ export const updatePropertyListingStep = async (req, res) => {
       stepCompleted: listing.stepCompleted,
     });
   } catch (error) {
-    console.error("Update property listing step error:", error);
+    console.warn("Update property listing step error:", error);
     return errorData(res, 500, false, "Internal server error");
   }
 };
@@ -396,7 +396,7 @@ export const getAllPropertyListings = async (req, res) => {
       pagination: { total, page, limit, totalPages: Math.ceil(total / limit) },
     });
   } catch (error) {
-    console.error("Property listing fetch error:", error);
+    console.warn("Property listing fetch error:", error);
     return errorData(res, 500, false, "Internal server error");
   }
 };
@@ -421,7 +421,7 @@ export const getPropertyListingBySlug = async (req, res) => {
 
     return successData(res, 200, true, "Listing fetched successfully", listing);
   } catch (error) {
-    console.error("Property listing fetch error:", error);
+    console.warn("Property listing fetch error:", error);
     return errorData(res, 500, false, "Internal server error");
   }
 };
@@ -448,7 +448,7 @@ export const getPropertyListingByUser = async (req, res) => {
 
     return successData(res, 200, true, "Listings fetched successfully", listing);
   } catch (error) {
-    console.error("Property listing fetch error:", error);
+    console.warn("Property listing fetch error:", error);
     return errorData(res, 500, false, "Internal server error");
   }
 };
@@ -486,7 +486,7 @@ export const markPropertyListingAsSold = async (req, res) => {
       id: listing._id,
     });
   } catch (error) {
-    console.error("Mark as sold error:", error);
+    console.warn("Mark as sold error:", error);
     return errorData(res, 500, false, "Internal server error");
   }
 };
@@ -537,7 +537,7 @@ export const deletePropertyListing = async (req, res) => {
       id: listing._id,
     });
   } catch (error) {
-    console.error("Property listing delete error:", error);
+    console.warn("Property listing delete error:", error);
     return errorData(res, 500, false, "Internal server error");
   }
 };

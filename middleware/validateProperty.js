@@ -44,7 +44,7 @@ export const validatePropertyStep = (req, res, next) => {
 
     next();
   } catch (err) {
-    console.error("Property validation middleware error:", err);
+    console.warn("Property validation middleware error:", err);
     return res.status(500).json({
       success: false,
       message: "Internal validation error",

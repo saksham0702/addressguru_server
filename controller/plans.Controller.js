@@ -14,7 +14,7 @@ export const getAllPlans = async (req, res) => {
 
     return successData(res, 200, true, "Plans fetched successfully", { plans });
   } catch (error) {
-    console.error("Get all plans error:", error);
+    console.warn("Get all plans error:", error);
     return errorData(res, 500, false, "Internal server error");
   }
 };
@@ -35,7 +35,7 @@ export const getPlanBySlug = async (req, res) => {
 
     return successData(res, 200, true, "Plan fetched successfully", { plan });
   } catch (error) {
-    console.error("Get plan by slug error:", error);
+    console.warn("Get plan by slug error:", error);
     return errorData(res, 500, false, "Internal server error");
   }
 };
@@ -55,7 +55,7 @@ export const getPlanById = async (req, res) => {
 
     return successData(res, 200, true, "Plan fetched successfully", { plan });
   } catch (error) {
-    console.error("Get plan by id error:", error);
+    console.warn("Get plan by id error:", error);
     return errorData(res, 500, false, "Internal server error");
   }
 };
@@ -111,7 +111,7 @@ export const createPlan = async (req, res) => {
       slug: plan.slug,
     });
   } catch (error) {
-    console.error("Create plan error:", error);
+    console.warn("Create plan error:", error);
     return errorData(res, 500, false, "Internal server error");
   }
 };
@@ -157,7 +157,7 @@ export const updatePlan = async (req, res) => {
       slug: plan.slug,
     });
   } catch (error) {
-    console.error("Update plan error:", error);
+    console.warn("Update plan error:", error);
     return errorData(res, 500, false, "Internal server error");
   }
 };
@@ -178,7 +178,7 @@ export const deletePlan = async (req, res) => {
       id: plan._id,
     });
   } catch (error) {
-    console.error("Delete plan error:", error);
+    console.warn("Delete plan error:", error);
     return errorData(res, 500, false, "Internal server error");
   }
 };
@@ -348,7 +348,7 @@ export const seedDefaultPlans = async (req, res) => {
       { count: defaultPlans.length },
     );
   } catch (error) {
-    console.error("Seed plans error:", error);
+    console.warn("Seed plans error:", error);
     return errorData(res, 500, false, "Internal server error");
   }
 };

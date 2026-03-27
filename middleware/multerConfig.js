@@ -25,6 +25,14 @@ const getUploadPath = (type, slug) => {
 // ─── Dynamic storage configuration ───────────────────────────────────────────
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
+    // console.log("file", file);
+    // console.log("req", req);
+    // console.log("req.body", req.body);
+    // console.log("req.params", req.params);
+    // console.log("req.files", req.files);
+    // console.log("req._uploadFolder", req._uploadFolder);
+
+
     const type = req._uploadFolder || req.body.folder;
     if (!type) return cb(new Error("Upload folder type is required"), null);
 

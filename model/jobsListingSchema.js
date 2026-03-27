@@ -90,13 +90,14 @@ const jobSchema = new mongoose.Schema(
     // ─── Location (for filter) ───────────────────────────────
     location: {
       country: { type: String, default: "" },
-      // city: {
-      //   type: mongoose.Schema.Types.ObjectId,
-      //   ref: "City",
-      //   // required: true,
-      // },
-      city: { type: String }, // neighborhood / zone
-      area: { type: String }, // neighborhood / zone
+
+      city: {
+        _id: { type: mongoose.Schema.Types.ObjectId },
+        name: { type: String },
+        slug: { type: String }
+      },
+
+      area: { type: String },
       address: { type: String },
       isRemote: { type: Boolean, default: false },
     },
@@ -116,10 +117,7 @@ const jobSchema = new mongoose.Schema(
       default: "any",
     },
 
-    experienceYears: {
-      from: { type: Number, default: 0 }, // min years
-      to: { type: Number, default: null }, // max years (null = open)
-    },
+    noOfExperience: { type: String, default: "" }, // e.g., "2 years", "1-3 years"
 
     // ─── Gender & Age Preference (for filter) ────────────────
     gender: {
@@ -148,6 +146,7 @@ const jobSchema = new mongoose.Schema(
       name: { type: String },
       logo: { type: String }, // image URL
       website: { type: String },
+      description: { type: String },
       size: {
         type: String,
         enum: ["1-10", "11-50", "51-200", "201-500", "500+"],
