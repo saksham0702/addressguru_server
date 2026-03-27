@@ -635,20 +635,25 @@ export const updatePropertyListingStatus = async (req, res) => {
   }
 };
 
-// get approved listings
+// get approved listings with pagination
 export const getApprovedListings = async (req, res) => {
   try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
     const listings = await PropertyListing.find({ status: "approved" })
       .populate("category", "name")
       .populate("subCategory", "name")
       .populate("city", "name")
       .populate("additionalFields.field_id", "field_label field_type")
+      .skip(skip)
+      .limit(limit)
       .lean();
 
     if (!listings.length)
       return errorData(res, 404, false, "No listings found");
 
-    return successData(res, 200, true, "Listings fetched successfully", listings);
+    return successData(res, 200, true, "Listings fetched successfully", { listings, page, limit, total: listings.length });
   } catch (error) {
     console.error("Property listing fetch error:", error);
     return errorData(res, 500, false, "Internal server error");
