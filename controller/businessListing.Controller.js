@@ -857,4 +857,3 @@ export const getApprovedListings = async (req, res) => {
   }
 };
 
-  
