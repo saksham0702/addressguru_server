@@ -8,16 +8,13 @@ import Feature from "../model/featureSchema.js";
 import User from "../model/userSchema.js";
 import slugify from "slugify";
 import { successData, errorData } from "../services/helper.js";
-import googleIndexingService from "../services/googleIndexing.service.js";
 import { APP_BASE_URL } from "../services/constant.js";
 import CitiesSchema from "../model/CitiesSchema.js";
-import User from "../model/userSchema.js";
 import {
   sendApprovedAndRejectedListingMail,
   sendListingSubmittedMail,
 } from "../utils/sendMail.js";
 import googleIndexingService from "../services/googleIndexing.service.js";
-import { APP_BASE_URL } from "../services/constant.js";
 
 // ─── Helper: validate additional fields ───────────────────────────────────────
 const validateAdditionalFields = async (additionalFields = []) => {
@@ -174,201 +171,6 @@ export const createListing = async (req, res) => {
     return errorData(res, 500, false, "Internal server error");
   }
 };
-
-// ─── PUT /business-listings/:slug/step/:step ──────────────────────────────────
-// export const updateListingStep = async (req, res) => {
-//   // console.log("req.user update listing step", req.user);
-//   // console.log("req.params update listing step", req.params);
-//   // console.log("req body",req.body);
-//   try {
-//     const { slug, step } = req.params;
-
-//     const listing = await BusinessListing.findOne({ slug, isDeleted: false });
-//     if (!listing) return errorData(res, 404, false, "Listing not found");
-
-//     // ── Ownership check ──
-//     if (
-//       listing.createdBy &&
-//       req.user?.id &&
-//       listing.createdBy.toString() !== req.user.id.toString()
-//     ) {
-//       return errorData(
-//         res,
-//         403,
-//         false,
-//         "Forbidden: you do not own this listing",
-//       );
-//     }
-
-//     switch (Number(step)) {
-//       /* ── STEP 1 – BUSINESS INFO ── */
-//       case 1: {
-//         const {
-//           category_id,
-//           sub_category_id,
-//           business_name,
-//           business_address,
-//           ad_description,
-//           establishment_year,
-//           uen_number,
-//           facilities = [],
-//           services = [],
-//           courses = [],
-//           payments = [],
-//           hours,
-//           additional_fields = [],
-//         } = req.body;
-
-//         // Validate category if provided
-//         if (category_id) {
-//           const category = await Category.findOne({
-//             _id: category_id,
-//             isDeleted: false,
-//           });
-//           if (!category)
-//             return errorData(res, 404, false, "Category not found");
-//         }
-//         // Validate sub-category if provided
-//         if (sub_category_id) {
-//           const subCategory = await SubCategory.findOne({
-//             _id: sub_category_id,
-//             category: category_id || listing.category,
-//             isDeleted: false,
-//           });
-//           if (!subCategory)
-//             return errorData(res, 404, false, "Sub-category not found");
-//         }
-//         // Check name conflict — exclude current listing
-//         if (business_name && business_name !== listing.businessName) {
-//           const conflict = await BusinessListing.findOne({
-//             businessName: business_name,
-//             isDeleted: false,
-//             _id: { $ne: listing._id },
-//           });
-//           if (conflict)
-//             return errorData(
-//               res,
-//               400,
-//               false,
-//               "A listing with this business name already exists",
-//             );
-//           listing.businessName = business_name;
-//           listing.slug = `${slugify(business_name, { lower: true, strict: true })}}`;
-//         }
-
-//         const parsedHours = parseJSON(hours, null);
-//         const parsedAdditionalFields = parseJSON(additional_fields, []);
-
-//         const { errors, validated } = await validateAdditionalFields(
-//           Array.isArray(parsedAdditionalFields) ? parsedAdditionalFields : [],
-//         );
-//         if (errors.length)
-//           return errorData(res, 400, false, "Validation failed", { errors });
-
-//         if (category_id) listing.category = category_id;
-//         listing.subCategory = sub_category_id || null;
-//         if (business_address !== undefined)
-//           listing.businessAddress = business_address;
-//         if (ad_description !== undefined) listing.description = ad_description;
-//         listing.establishedYear = establishment_year || null;
-//         listing.taxNumber = uen_number || null;
-//         listing.facilities = toArray(facilities);
-//         listing.services = toArray(services);
-//         listing.courses = toArray(courses);
-//         listing.paymentModes = toArray(payments);
-//         listing.workingHours = parsedHours;
-//         listing.additionalFields = validated;
-//         break;
-//       }
-
-//       /* ── STEP 2 – SOCIAL LINKS ── */
-//       case 2: {
-//         listing.websiteLink = req.body.website_link || null;
-//         listing.videoLink = req.body.video_link || null;
-//         listing.socialLinks = {
-//           facebook: req.body.facebook || null,
-//           instagram: req.body.instagram || null,
-//           twitter: req.body.twitter || null,
-//           linkedin: req.body.linkedin || null,
-//           youtube: req.body.youtube || null,
-//         };
-//         break;
-//       }
-
-//       /* ── STEP 3 – CONTACT DETAILS ── */
-//       case 3: {
-//         listing.contactPersonName = req.body.name || null;
-//         listing.email = req.body.email || null;
-//         listing.countryCode = req.body.country_code || null;
-//         listing.mobileNumber = req.body.mobile_number || null;
-//         listing.altCountryCode = req.body.alt_country_code || null;
-//         listing.alternateMobileNumber = req.body.second_mobile_number || null;
-//         listing.locality = req.body.locality || null;
-//         listing.city = req.body.city_id || null; // fixed: was req.body.city
-//         break;
-//       }
-
-//       /* ── STEP 4 – SEO ── */
-//       case 4: {
-//         listing.seo = {
-//           title: req.body.seo_title || null,
-//           description: req.body.seo_description || null,
-//         };
-//         break;
-//       }
-
-//       /* ── STEP 5 – MEDIA ── */
-//       case 5: {
-//         if (!req.files?.logo?.[0] && !req.files?.images?.length) {
-//           return errorData(
-//             res,
-//             400,
-//             false,
-//             "Please upload at least a logo or one image",
-//           );
-//         }
-//         if (req.files?.logo?.[0]) {
-//           listing.logo = req.files.logo[0].path;
-//         }
-//         if (req.files?.images?.length > 0) {
-//           const newImages = req.files.images.map((img) => img.path);
-//           listing.images = [...(listing.images || []), ...newImages];
-//         }
-//         break;
-//       }
-
-//       /* ── STEP 6 – PLAN & PUBLISH ── */
-//       case 6: {
-//         if (listing.stepCompleted < 5) {
-//           return errorData(
-//             res,
-//             400,
-//             false,
-//             "Please complete all previous steps before publishing",
-//           );
-//         }
-//         listing.plan = req.body.plan_id || null;
-//         listing.isPublished = true;
-//         break;
-//       }
-
-//       default:
-//         return errorData(res, 400, false, "Invalid step");
-//     }
-
-//     listing.stepCompleted = Math.max(listing.stepCompleted, Number(step));
-//     await listing.save();
-
-//     return successData(res, 200, true, `Step ${step} saved successfully`, {
-//       id: listing._id,
-//       slug: listing.slug,
-//       stepCompleted: listing.stepCompleted,
-//     });
-//   } catch (error) {
-//     console.error("Update listing step error:", error);
-//     return errorData(res, 500, false, "Internal server error");
-//   }
-// };
 
 export const updateListingStep = async (req, res) => {
   try {
@@ -742,36 +544,28 @@ export const getAllListingsWithPaginationAndFilters = async (req, res) => {
 export const getListingsByCategoryAndCity = async (req, res) => {
   console.log("req.params", req.params);
   console.log("req.query", req.query);
-
   try {
     const { category_slug, city_slug } = req.params;
     const { page = 1, limit = 10 } = req.query; // ✅ pagination from query, not params
-
     // 🔴 1. Category is REQUIRED
     if (!category_slug) {
       return errorData(res, 400, false, "Category slug is required");
     }
-
     // 🔍 2. Find category by slug — debug log added
     console.log("🔍 Looking for category with slug:", category_slug);
-
     const category = await Category.findOne({
       slug: category_slug,
       isDeleted: false,
     });
-
     console.log("📦 Category found:", category); // will be null if not matched
-
     if (!category) {
       return errorData(res, 404, false, "Category not found");
     }
-
     // 🧩 3. Build filter
     const filter = {
       category: category._id,
       isDeleted: false,
     };
-
     // 🏙️ 4. Optional city filter
     if (city_slug) {
       const city = await CitiesSchema.findOne({
@@ -791,7 +585,7 @@ export const getListingsByCategoryAndCity = async (req, res) => {
 
     // 📊 6. Fetch data + count
     const [listings, total] = await Promise.all([
-      BusinessListing.find(filter)
+      BusinessListing.find({...filter, status: "approved"})
         .populate("category", "name slug")
         .populate("subCategory", "name slug")
         .populate("city", "name slug")

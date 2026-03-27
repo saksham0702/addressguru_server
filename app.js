@@ -39,7 +39,6 @@ import plansRouter from "./routes/plans.Router.js";
 import statisticsRouter from "./routes/statistics.Routes.js";
 import followUpRouter from "./routes/followUp.Router.js";
 import followUpConfigRouter from "./routes/followUpConfig.Router.js";
-import statisticsRouter from "./routes/statistics.Routes.js";
 
 var app = express();
 
