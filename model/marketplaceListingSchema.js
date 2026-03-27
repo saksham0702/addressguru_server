@@ -67,6 +67,26 @@ const marketplaceListingSchema = new mongoose.Schema(
     // ── Step 5 – Plan & Publish ───────────────────────────────────────────
     plan: { type: mongoose.Schema.Types.ObjectId, ref: "Plan" },
 
+    status: {
+      type: String,
+      enum: ["pending", "approved", "rejected"],
+      default: "pending",
+    },
+    approvedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      default: null,
+    },
+    rejectedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      default: null,
+    },
+    rejectionReason: {
+      type: String,
+      default: null,
+    },
+
     // ── Status & Flow ─────────────────────────────────────────────────────
     stepCompleted: { type: Number, default: 1 },
     isVerified: { type: Boolean, default: false },

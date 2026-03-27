@@ -8,6 +8,8 @@ import {
   markPropertyListingAsSold,
   deletePropertyListing,
   getPropertyListingByUser,
+  updatePropertyListingStatus,
+  getApprovedListings
 } from "../controller/property.Controller.js";
 import { setUploadFolder } from "../middleware/setUploadFolder.js";
 import upload from "../middleware/multerConfig.js";
@@ -41,5 +43,13 @@ router.get("/get-property-by-user", authenticate, getPropertyListingByUser);
 router.get("/get-listing-by-slug/:slug", getPropertyListingBySlug);
 router.patch("/mark-as-sold/:slug", authenticate, markPropertyListingAsSold);
 router.delete("/delete-listing/:slug", authenticate, deletePropertyListing);
+
+router.patch(
+  "/update-listing-status/:id",
+  authenticate,
+  updatePropertyListingStatus
+);
+
+router.get("/get-approved-listings", getApprovedListings);
 
 export default router;

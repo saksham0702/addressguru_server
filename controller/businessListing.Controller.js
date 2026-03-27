@@ -733,33 +733,6 @@ export const deleteListing = async (req, res) => {
   }
 };
 
-// aprove or reject
-// export const aproveReject = async (req,res) => {
-//   try {
-//     const { slug } = req.params;
-//     const { status, rejectionReason } = req.body;
-//     if (!slug) return errorData(res, 400, false, "Slug is required");
-//     if (!status) return errorData(res, 400, false, "Status is required");
-//     const listing = await BusinessListing.findOne({
-//       slug,
-//       isDeleted: false,
-//     });
-//     if (!listing) return errorData(res, 404, false, "Listing not found");
-//     listing.status = status;
-//     if (status === "rejected") {
-//       listing.rejectionReason = rejectionReason;
-//       sendApprovedAndRejectedListingMail(listing.email, listing.name, status, rejectionReason);
-//     }
-//     await listing.save();
-//     return successData(res, 200, true, "Listing status updated successfully", {
-//       id: listing._id,
-//     });
-//   } catch (error) {
-//     console.error("Listing status update error:", error);
-//     return errorData(res, 500, false, "Internal server error");
-//   }
-// }
-
 export const updateListingStatus = async (req, res) => {
   try {
     const { id } = req.params;
@@ -848,86 +821,6 @@ export const updateListingStatus = async (req, res) => {
     return res.status(500).json({ success: false, message: error.message });
   }
 };
-
-// export const aproveReject = async (req, res) => {
-//   try {
-//     const { slug } = req.params;
-//     const { status, rejectionReason } = req.body;
-
-//     // ── Validations ─────────────────────────────────────────────────────────
-//     if (!slug) return errorData(res, 400, false, "Slug is required");
-//     if (!status) return errorData(res, 400, false, "Status is required");
-
-//     if (!["approved", "rejected", "unApproved"].includes(status)) {
-//       return errorData(
-//         res,
-//         400,
-//         false,
-//         "Status must be 'approved' or 'rejected' or 'unApproved'",
-//       );
-//     }
-
-//     // ✅ Rejection must have a reason
-//     if (status === "rejected" && !rejectionReason?.trim()) {
-//       return errorData(res, 400, false, "Rejection reason is required");
-//     }
-
-//     // ── Find listing ─────────────────────────────────────────────────────────
-//     const listing = await BusinessListing.findOne({ slug, isDeleted: false });
-//     if (!listing) return errorData(res, 404, false, "Listing not found");
-
-//     // ── Update status fields ─────────────────────────────────────────────────
-//     listing.status = status;
-
-//     if (status === "approved") {
-//       listing.approvedBy = req.user._id;
-//       listing.rejectedBy = null;
-//       listing.rejectionReason = null;
-//     }
-
-//     if (status === "rejected") {
-//       listing.rejectedBy = req.user._id;
-//       listing.rejectionReason = rejectionReason.trim();
-//       listing.approvedBy = null;
-//     }
-
-//     if (status === "unApproved") {
-//       listing.status = "pending";
-//       listing.approvedBy = null;
-//       listing.rejectedBy = null;
-//       listing.rejectionReason = null;
-//     }
-
-//     await listing.save();
-
-//     // ── Send mail ────────────────────────────────────────────────────────────
-//     // ✅ Send on BOTH approved and rejected
-//     // ✅ Use contactPersonName not listing.name (that field doesn't exist)
-//     // ✅ For approved: message is null (your template handles it)
-//     //    For rejected: message is the rejection reason
-//     try {
-//       await sendApprovedAndRejectedListingMail(
-//         listing.email,
-//         listing.contactPersonName || listing.businessName,
-//         status,
-//         status === "rejected" ? rejectionReason.trim() : null,
-//       );
-//       console.log(`✅ Mail sent to ${listing.email} for status: ${status}`);
-//     } catch (mailError) {
-//       // ✅ Mail failure should NOT fail the whole request
-//       // Listing is already saved — just log the error
-//       console.error("❌ Mail send failed:", mailError.message);
-//     }
-
-//     return successData(res, 200, true, "Listing status updated successfully", {
-//       id: listing._id,
-//       status: listing.status,
-//     });
-//   } catch (error) {
-//     console.error("Listing status update error:", error);
-//     return errorData(res, 500, false, "Internal server error");
-//   }
-// };
 
 //get all approved listings
 export const getApprovedListings = async (req, res) => {
