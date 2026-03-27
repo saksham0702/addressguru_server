@@ -288,7 +288,10 @@ export const updateMarketplaceListingStep = async (req, res) => {
 
         listing.plan = req.body.plan_id || null;
         listing.isPublished = true;
-        googleIndexingService.notify(`${APP_BASE_URL}/marketplace/${listing.slug}`, "URL_UPDATED");
+        googleIndexingService.notify(
+          `${APP_BASE_URL}/marketplace/${listing.slug}`,
+          "URL_UPDATED",
+        );
         break;
       }
 
@@ -410,7 +413,13 @@ export const getMarketplaceListingByUser = async (req, res) => {
       .lean();
     if (!listings.length)
       return errorData(res, 404, false, "No listings found");
-    return successData(res, 200, true, "Listings fetched successfully", listings);
+    return successData(
+      res,
+      200,
+      true,
+      "Listings fetched successfully",
+      listings,
+    );
   } catch (error) {
     console.error("Marketplace listing fetch error:", error);
     return errorData(res, 500, false, "Internal server error");
@@ -491,7 +500,10 @@ export const deleteMarketplaceListing = async (req, res) => {
     listing.isDeleted = true;
     await listing.save();
 
-    googleIndexingService.notify(`${APP_BASE_URL}/marketplace/${listing.slug}`, "URL_DELETED");
+    googleIndexingService.notify(
+      `${APP_BASE_URL}/marketplace/${listing.slug}`,
+      "URL_DELETED",
+    );
 
     // Update User statistics
     if (listing.createdBy) {
@@ -500,7 +512,7 @@ export const deleteMarketplaceListing = async (req, res) => {
           statistics_activeListings: -1,
           statistics_totalListings: -1,
           statistics_ProductListings: -1,
-          statistics_marketPlaceListings: -1
+          statistics_marketPlaceListings: -1,
         },
       });
     }
@@ -510,6 +522,118 @@ export const deleteMarketplaceListing = async (req, res) => {
     });
   } catch (error) {
     console.error("Marketplace listing delete error:", error);
+    return errorData(res, 500, false, "Internal server error");
+  }
+};
+
+// update status
+export const updateMarketplaceListingStatus = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status, rejectionReason } = req.body;
+    const adminId = req.user._id;
+
+    // ── Validate status value ─────────────────────────────────────────────
+    const allowedStatuses = ["approved", "rejected", "unapproved"];
+    if (!allowedStatuses.includes(status)) {
+      return res.status(400).json({
+        success: false,
+        message: "Status must be 'approved', 'rejected', or 'unapproved'",
+      });
+    }
+
+    // ── Rejection must have a reason ──────────────────────────────────────
+    if (status === "rejected" && !rejectionReason?.trim()) {
+      return res.status(400).json({
+        success: false,
+        message: "Rejection reason is required when rejecting a listing",
+      });
+    }
+
+    // ── Find the listing ──────────────────────────────────────────────────
+    const listing = await MarketplaceListing.findById(id);
+    if (!listing) {
+      return res.status(404).json({
+        success: false,
+        message: "Listing not found",
+      });
+    }
+
+    // ── Update fields based on status ─────────────────────────────────────
+    // "unapproved" is a UI concept — it maps back to "pending" in the schema
+    if (status === "approved") {
+      listing.status = "approved";
+      listing.approvedBy = adminId;
+      listing.rejectedBy = null;
+      listing.rejectionReason = null;
+    } else if (status === "rejected") {
+      listing.status = "rejected";
+      listing.rejectedBy = adminId;
+      listing.rejectionReason = rejectionReason.trim();
+      listing.approvedBy = null;
+    } else if (status === "unapproved") {
+      // Reset back to pending — clears any prior approval/rejection
+      listing.status = "pending";
+      listing.approvedBy = null;
+      listing.rejectedBy = null;
+      listing.rejectionReason = null;
+    }
+
+    await listing.save();
+
+    // ── Send notification mail ────────────────────────────────────────────
+    // Skip mail for "unapproved" (admin internal action, no user-facing change)
+    if (status !== "unapproved") {
+      try {
+        await sendApprovedAndRejectedListingMail(
+          listing.email,
+          listing.title, // 👈 product title instead of contactPersonName
+          status,
+          status === "rejected" ? rejectionReason.trim() : null,
+        );
+        console.log(`✅ Mail sent to ${listing.email} for status: ${status}`);
+      } catch (mailError) {
+        console.error(" Mail send failed:", mailError.message);
+      }
+    }
+
+    // ── Populate & respond ────────────────────────────────────────────────
+    await listing.populate("approvedBy rejectedBy", "name email");
+
+    return res.status(200).json({
+      success: true,
+      message: `Listing ${status === "unapproved" ? "moved back to pending" : status} successfully`,
+      data: {
+        _id: listing._id,
+        title: listing.title, // correct field for MarketplaceListing
+        status: listing.status,
+        approvedBy: listing.approvedBy,
+        rejectedBy: listing.rejectedBy,
+        rejectionReason: listing.rejectionReason,
+      },
+    });
+  } catch (error) {
+    console.error("updateListingStatus error:", error);
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// get approved listings
+export const getApprovedListings = async (req, res) => {
+  try {
+    const listings = await MarketplaceListing.find({ status: "approved" })
+      .populate("category", "name")
+      .populate("subCategory", "name")
+      .populate("city", "name")
+      .populate("additionalFields.field_id", "field_label field_type")
+      .lean();
+
+    if (!listings.length)
+      return errorData(res, 404, false, "No listings found");
+
+    return successData(res, 200, true, "Listings fetched successfully", listings);
+  } catch (error) {
+    console.error("Marketplace listing fetch error:", error);
     return errorData(res, 500, false, "Internal server error");
   }
 };

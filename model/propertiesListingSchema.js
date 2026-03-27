@@ -109,6 +109,26 @@ const propertyListingSchema = new mongoose.Schema(
     ========================== */
     plan: { type: mongoose.Schema.Types.ObjectId, ref: "Plan" },
 
+    status: {
+      type: String,
+      enum: ["pending", "approved", "rejected"],
+      default: "pending",
+    },
+    approvedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      default: null,
+    },
+    rejectedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      default: null,
+    },
+    rejectionReason: {
+      type: String,
+      default: null,
+    },
+
     /* =========================
        STATUS & FLOW
     ========================== */
