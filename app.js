@@ -155,7 +155,6 @@ app.use(`/statistics`, statisticsRouter);
 
 app.use(`/follow-ups`, followUpRouter);
 app.use(`/followup-config`, followUpConfigRouter);
-app.use(`/statistics`, statisticsRouter);
 
 app.get("/test-cookie", (req, res) => {
   console.log("cookies:", req.cookies);
