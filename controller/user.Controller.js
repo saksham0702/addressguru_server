@@ -135,27 +135,25 @@ export const registerAdmin = async (req, res) => {
   try {
     // Check if admin already exists
     const existingAdmin = await User.findOne({
-      email: "admin@admin.com",
+      email: "agent@agent.com",
     });
-
     if (existingAdmin) {
       return res.status(400).json({
         success: false,
         message: "Admin already exists",
-        email: "admin@example.com",
+        email: "agent@agent.com",
       });
     }
-
     // Default admin credentials
-    const defaultPassword = "Admin@123456";
+    const defaultPassword = "agent@123456";
     const hashedPassword = await bcrypt.hash(defaultPassword, 10);
 
     // Create admin user
     const admin = await User.create({
-      email: "admin@admin.com",
+      email: "agent@agent.com",
       password: hashedPassword,
       name: "System Admin",
-      roles: [1], // Make sure this matches your ROLES.ADMIN value
+      roles: [5], // Make sure this matches your ROLES.ADMIN value
       verified_email: true,
       verified_phone: false,
       login_type: "email",
@@ -166,7 +164,7 @@ export const registerAdmin = async (req, res) => {
       success: true,
       message: "Admin created successfully",
       credentials: {
-        email: "admin@example.com",
+        email: "agent@agent.com",
         password: defaultPassword,
         note: "Please change this password after first login",
       },
