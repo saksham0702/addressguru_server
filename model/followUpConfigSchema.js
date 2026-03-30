@@ -32,18 +32,15 @@ const activityOptionSchema = new mongoose.Schema(
   { _id: true },
 );
 
-// ── Top-level config (one doc per "type" — listings, leads, etc.) ─────────────
+// ── Top-level config (one doc per module — one shared config across all listings of that type) ──
 const followUpConfigSchema = new mongoose.Schema(
   {
-    // e.g. "listing", "lead", "crm" — lets you reuse this for other modules
     module: {
       type: String,
       required: true,
       unique: true,
       trim: true,
-      lowercase: true,
-      enum: ["listing", "lead", "crm"],
-      default: "listing",
+      enum: ["BusinessListing", "MarketplaceListing", "PropertyListing", "JobListing"],
     },
     options: [activityOptionSchema],
   },

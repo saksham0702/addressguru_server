@@ -39,8 +39,8 @@ router.get("/get-marketplace-by-user", authenticate, getMarketplaceListingByUser
 router.get("/get-listing-by-slug/:slug", getMarketplaceListingBySlug);
 router.patch("/mark-as-sold/:slug", authenticate, markMarketplaceListingAsSold);
 router.delete("/delete-listing/:slug", authenticate, deleteMarketplaceListing);
-router.patch(
-  "/update-listing-status/:id",
+router.put(
+  "/:id/status",
   authenticate,
   updateMarketplaceListingStatus
 );
