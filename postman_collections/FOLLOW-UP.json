@@ -6,12 +6,12 @@
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
-    { "key": "baseUrl",          "value": "http://localhost:5000", "type": "string" },
-    { "key": "token",            "value": "your_jwt_token_here",   "type": "string" },
+    { "key": "baseUrl",          "value": "http://localhost:5000",    "type": "string" },
+    { "key": "token",            "value": "your_jwt_token_here",      "type": "string" },
     { "key": "listingId",        "value": "69bd1aeba350f63562a43ed8", "type": "string" },
-    { "key": "followUpId",       "value": "", "type": "string" },
-    { "key": "activityOptionId", "value": "", "type": "string" },
-    { "key": "module",           "value": "listing", "type": "string" }
+    { "key": "followUpId",       "value": "",                         "type": "string" },
+    { "key": "activityOptionId", "value": "",                         "type": "string" },
+    { "key": "module",           "value": "BusinessListing",          "type": "string" }
   ],
   "auth": {
     "type": "bearer",
@@ -20,19 +20,19 @@
   "item": [
     {
       "name": "📋 Follow Up Config (Settings)",
-      "description": "Manage activity options that appear in the Follow Up modal. Admin use only.\n\nBase path: /api/followup-config",
+      "description": "Manage activity options that appear in the Follow Up modal. Admin use only.\n\nBase path: /api/followup-config\n\nValid module values: BusinessListing | MarketplaceListing | PropertyListing | JobListing",
       "item": [
         {
-          "name": "Get Config (all options for a module)",
+          "name": "Get Config (BusinessListing)",
           "request": {
             "method": "GET",
             "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
             "url": {
-              "raw": "{{baseUrl}}/api/followup-config/{{module}}",
+              "raw": "{{baseUrl}}/api/followup-config/BusinessListing",
               "host": ["{{baseUrl}}"],
-              "path": ["api", "followup-config", "{{module}}"]
+              "path": ["api", "followup-config", "BusinessListing"]
             },
-            "description": "Fetch all follow-up activity options for a module (listing / lead / crm).\n\nOn first call, auto-seeds default options if none exist.\n\nUsed by FollowUpModal.jsx to load options dynamically."
+            "description": "Fetch all follow-up activity options for BusinessListing module.\n\nOn first call, auto-seeds default options if none exist.\n\nUsed by FollowUpModal.jsx to load options dynamically."
           },
           "response": [
             {
@@ -40,9 +40,51 @@
               "status": "OK",
               "code": 200,
               "header": [{ "key": "Content-Type", "value": "application/json" }],
-              "body": "{\n  \"success\": true,\n  \"message\": \"Config fetched successfully\",\n  \"data\": {\n    \"_id\": \"64abc123\",\n    \"module\": \"listing\",\n    \"options\": [\n      {\n        \"_id\": \"opt001\",\n        \"label\": \"Call Back Later\",\n        \"hasRemark\": false,\n        \"remarkRequired\": false,\n        \"remarkPlaceholder\": \"Add a remark…\",\n        \"isActive\": true,\n        \"order\": 0\n      },\n      {\n        \"_id\": \"opt002\",\n        \"label\": \"Not Interested\",\n        \"hasRemark\": true,\n        \"remarkRequired\": true,\n        \"remarkPlaceholder\": \"Add a remark…\",\n        \"isActive\": true,\n        \"order\": 5\n      }\n    ],\n    \"createdAt\": \"2026-03-20T10:00:00.000Z\",\n    \"updatedAt\": \"2026-03-20T10:00:00.000Z\"\n  }\n}"
+              "body": "{\n  \"success\": true,\n  \"message\": \"Config fetched successfully\",\n  \"data\": {\n    \"_id\": \"64abc123\",\n    \"module\": \"BusinessListing\",\n    \"options\": [\n      {\n        \"_id\": \"opt001\",\n        \"label\": \"Call Back Later\",\n        \"hasRemark\": false,\n        \"remarkRequired\": false,\n        \"remarkPlaceholder\": \"Add a remark…\",\n        \"isActive\": true,\n        \"order\": 0\n      },\n      {\n        \"_id\": \"opt002\",\n        \"label\": \"Not Interested\",\n        \"hasRemark\": true,\n        \"remarkRequired\": true,\n        \"remarkPlaceholder\": \"Add a remark…\",\n        \"isActive\": true,\n        \"order\": 5\n      }\n    ],\n    \"createdAt\": \"2026-03-20T10:00:00.000Z\",\n    \"updatedAt\": \"2026-03-20T10:00:00.000Z\"\n  }\n}"
             }
           ]
+        },
+        {
+          "name": "Get Config (MarketplaceListing)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/followup-config/MarketplaceListing",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "followup-config", "MarketplaceListing"]
+            },
+            "description": "Fetch all follow-up activity options for MarketplaceListing module."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Config (PropertyListing)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/followup-config/PropertyListing",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "followup-config", "PropertyListing"]
+            },
+            "description": "Fetch all follow-up activity options for PropertyListing module."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Config (JobListing)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/followup-config/JobListing",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "followup-config", "JobListing"]
+            },
+            "description": "Fetch all follow-up activity options for JobListing module."
+          },
+          "response": []
         },
         {
           "name": "Add New Option",
@@ -62,7 +104,7 @@
               "host": ["{{baseUrl}}"],
               "path": ["api", "followup-config", "{{module}}", "option"]
             },
-            "description": "Add a new activity option to the follow-up modal.\n\nFields:\n- label (required): Display text shown in modal\n- hasRemark: Show remark textarea when this is selected\n- remarkRequired: Force agent to fill remark before submitting\n- remarkPlaceholder: Custom placeholder text in remark box"
+            "description": "Add a new activity option to the follow-up modal.\n\nReplace {{module}} with: BusinessListing | MarketplaceListing | PropertyListing | JobListing\n\nFields:\n- label (required): Display text shown in modal\n- hasRemark: Show remark textarea when this is selected\n- remarkRequired: Force agent to fill remark before submitting\n- remarkPlaceholder: Custom placeholder text in remark box"
           },
           "response": [
             {
@@ -70,7 +112,7 @@
               "status": "Created",
               "code": 201,
               "header": [{ "key": "Content-Type", "value": "application/json" }],
-              "body": "{\n  \"success\": true,\n  \"message\": \"Option added successfully\",\n  \"data\": {\n    \"_id\": \"64abc123\",\n    \"module\": \"listing\",\n    \"options\": [\n      {\n        \"_id\": \"opt_new\",\n        \"label\": \"Visited Office\",\n        \"hasRemark\": true,\n        \"remarkRequired\": false,\n        \"remarkPlaceholder\": \"Describe the office visit…\",\n        \"isActive\": true,\n        \"order\": 10\n      }\n    ]\n  }\n}"
+              "body": "{\n  \"success\": true,\n  \"message\": \"Option added successfully\",\n  \"data\": {\n    \"_id\": \"64abc123\",\n    \"module\": \"BusinessListing\",\n    \"options\": [\n      {\n        \"_id\": \"opt_new\",\n        \"label\": \"Visited Office\",\n        \"hasRemark\": true,\n        \"remarkRequired\": false,\n        \"remarkPlaceholder\": \"Describe the office visit…\",\n        \"isActive\": true,\n        \"order\": 10\n      }\n    ]\n  }\n}"
             },
             {
               "name": "400 – Label Missing",
@@ -78,6 +120,13 @@
               "code": 400,
               "header": [{ "key": "Content-Type", "value": "application/json" }],
               "body": "{\n  \"success\": false,\n  \"message\": \"Label is required\"\n}"
+            },
+            {
+              "name": "400 – Invalid Module",
+              "status": "Bad Request",
+              "code": 400,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Invalid module. Must be one of: BusinessListing, MarketplaceListing, PropertyListing, JobListing\"\n}"
             }
           ]
         },
@@ -196,10 +245,10 @@
     },
     {
       "name": "📞 Follow Up Logs",
-      "description": "Create and retrieve follow-up log entries. These are created when an agent submits the FollowUpModal.\n\nBase path: /api/followups\n\nNOTE: GET /listing/:listingId is registered BEFORE GET /:id to avoid Express matching 'listing' as an ID.",
+      "description": "Create and retrieve follow-up log entries. These are created when an agent submits the FollowUpModal.\n\nBase path: /api/followups\n\nNOTE: All routes require ?module= query param.\nValid values: BusinessListing | MarketplaceListing | PropertyListing | JobListing\n\nNOTE: GET /listing/:listingId is registered BEFORE GET /:id to avoid Express matching 'listing' as an ID.",
       "item": [
         {
-          "name": "Create Follow Up Log",
+          "name": "Create Follow Up Log (BusinessListing)",
           "event": [
             {
               "listen": "test",
@@ -227,11 +276,12 @@
               "options": { "raw": { "language": "json" } }
             },
             "url": {
-              "raw": "{{baseUrl}}/api/followups",
+              "raw": "{{baseUrl}}/api/followups?module=BusinessListing",
               "host": ["{{baseUrl}}"],
-              "path": ["api", "followups"]
+              "path": ["api", "followups"],
+              "query": [{ "key": "module", "value": "BusinessListing" }]
             },
-            "description": "Log a new follow-up when agent submits the modal.\n\nFields:\n- listingId (required): The listing being followed up\n- activityOptionId (required): The _id of the option selected from FollowUpConfig\n- remark: Optional or required depending on the selected option's config\n- nextFollowUpDate: ISO date string for when to follow up next\n\nThe controller will:\n1. Validate the activityOptionId against FollowUpConfig\n2. Check if remark is required for that option\n3. Snapshot the label so history stays accurate even if option is renamed later\n4. Save and return the populated log\n\nRequires: auth middleware (verifyToken) — createdBy is taken from req.user._id"
+            "description": "Log a new follow-up for a Business Listing.\n\nThe ?module= query param is required and tells the controller:\n1. Which FollowUpConfig to validate the activityOptionId against\n2. Which module value to store on the follow-up log\n\nThe controller will:\n1. Validate module is one of the 4 valid values\n2. Validate listingId and activityOptionId are present\n3. Fetch FollowUpConfig for this module and validate the option\n4. Check if remark is required for that option\n5. Snapshot the label so history stays accurate even if option is renamed later\n6. Save and return the populated log\n\nRequires: auth middleware — createdBy is taken from req.user.id"
           },
           "response": [
             {
@@ -239,7 +289,14 @@
               "status": "Created",
               "code": 201,
               "header": [{ "key": "Content-Type", "value": "application/json" }],
-              "body": "{\n  \"success\": true,\n  \"message\": \"Follow-up logged successfully\",\n  \"data\": {\n    \"_id\": \"64fu001\",\n    \"listing\": \"69bd1aeba350f63562a43ed8\",\n    \"activityOptionId\": \"opt002\",\n    \"reason\": \"Talk With My Partner\",\n    \"remark\": \"Client said they will discuss with partner and get back by Friday.\",\n    \"nextFollowUpDate\": \"2026-03-25T10:00:00.000Z\",\n    \"module\": \"listing\",\n    \"isDeleted\": false,\n    \"createdBy\": {\n      \"_id\": \"user001\",\n      \"name\": \"Ayush Gupta\",\n      \"email\": \"ayush@addressguru.com\"\n    },\n    \"createdAt\": \"2026-03-20T12:30:00.000Z\",\n    \"updatedAt\": \"2026-03-20T12:30:00.000Z\"\n  }\n}"
+              "body": "{\n  \"success\": true,\n  \"message\": \"Follow-up logged successfully\",\n  \"data\": {\n    \"_id\": \"64fu001\",\n    \"listing\": \"69bd1aeba350f63562a43ed8\",\n    \"module\": \"BusinessListing\",\n    \"activityOptionId\": \"opt002\",\n    \"reason\": \"Talk With My Partner\",\n    \"remark\": \"Client said they will discuss with partner and get back by Friday.\",\n    \"nextFollowUpDate\": \"2026-03-25T10:00:00.000Z\",\n    \"isDeleted\": false,\n    \"createdBy\": {\n      \"_id\": \"user001\",\n      \"name\": \"Ayush Gupta\",\n      \"email\": \"ayush@addressguru.com\"\n    },\n    \"createdAt\": \"2026-03-20T12:30:00.000Z\",\n    \"updatedAt\": \"2026-03-20T12:30:00.000Z\"\n  }\n}"
+            },
+            {
+              "name": "400 – Missing or Invalid Module",
+              "status": "Bad Request",
+              "code": 400,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": false,\n  \"message\": \"module is required. Must be one of: BusinessListing, MarketplaceListing, PropertyListing, JobListing\"\n}"
             },
             {
               "name": "400 – Remark Required",
@@ -267,21 +324,91 @@
               "status": "Not Found",
               "code": 404,
               "header": [{ "key": "Content-Type", "value": "application/json" }],
-              "body": "{\n  \"success\": false,\n  \"message\": \"Follow-up config not found\"\n}"
+              "body": "{\n  \"success\": false,\n  \"message\": \"Follow-up config not found for module: BusinessListing\"\n}"
             }
           ]
         },
         {
-          "name": "Get All Follow Ups for a Listing",
+          "name": "Create Follow Up Log (MarketplaceListing)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" },
+              { "key": "Content-Type",  "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"listingId\": \"{{listingId}}\",\n  \"activityOptionId\": \"{{activityOptionId}}\",\n  \"remark\": \"Buyer interested in negotiating price.\",\n  \"nextFollowUpDate\": \"2026-03-26T10:00:00.000Z\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/followups?module=MarketplaceListing",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "followups"],
+              "query": [{ "key": "module", "value": "MarketplaceListing" }]
+            },
+            "description": "Log a new follow-up for a Marketplace Listing."
+          },
+          "response": []
+        },
+        {
+          "name": "Create Follow Up Log (PropertyListing)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" },
+              { "key": "Content-Type",  "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"listingId\": \"{{listingId}}\",\n  \"activityOptionId\": \"{{activityOptionId}}\",\n  \"remark\": \"Tenant wants to visit the property this weekend.\",\n  \"nextFollowUpDate\": \"2026-03-29T11:00:00.000Z\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/followups?module=PropertyListing",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "followups"],
+              "query": [{ "key": "module", "value": "PropertyListing" }]
+            },
+            "description": "Log a new follow-up for a Property Listing."
+          },
+          "response": []
+        },
+        {
+          "name": "Create Follow Up Log (JobListing)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" },
+              { "key": "Content-Type",  "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"listingId\": \"{{listingId}}\",\n  \"activityOptionId\": \"{{activityOptionId}}\",\n  \"remark\": \"Candidate requested interview reschedule.\",\n  \"nextFollowUpDate\": \"2026-04-01T09:00:00.000Z\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/followups?module=JobListing",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "followups"],
+              "query": [{ "key": "module", "value": "JobListing" }]
+            },
+            "description": "Log a new follow-up for a Job Listing."
+          },
+          "response": []
+        },
+        {
+          "name": "Get All Follow Ups for a Listing (BusinessListing)",
           "request": {
             "method": "GET",
             "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
             "url": {
-              "raw": "{{baseUrl}}/api/followups/listing/{{listingId}}",
+              "raw": "{{baseUrl}}/api/followups/listing/{{listingId}}?module=BusinessListing",
               "host": ["{{baseUrl}}"],
-              "path": ["api", "followups", "listing", "{{listingId}}"]
+              "path": ["api", "followups", "listing", "{{listingId}}"],
+              "query": [{ "key": "module", "value": "BusinessListing" }]
             },
-            "description": "Get all follow-up logs for a specific listing.\n\nReturns newest first (createdAt: -1).\nOnly returns non-deleted logs (isDeleted: false).\n\nUsed by FollowUpModal.jsx to populate the Interaction History panel on the right side.\n\nNOTE: This route /listing/:listingId is registered BEFORE /:id in the router to avoid Express matching 'listing' as an ID param."
+            "description": "Get all follow-up logs for a specific Business Listing.\n\n?module= is required — filters results to only this module so a PropertyListing and a BusinessListing with the same ObjectId never bleed into each other.\n\nReturns newest first (createdAt: -1).\nOnly returns non-deleted logs (isDeleted: false).\n\nNOTE: This route /listing/:listingId is registered BEFORE /:id in the router to avoid Express matching 'listing' as an ID param."
           },
           "response": [
             {
@@ -289,7 +416,7 @@
               "status": "OK",
               "code": 200,
               "header": [{ "key": "Content-Type", "value": "application/json" }],
-              "body": "{\n  \"success\": true,\n  \"message\": \"Follow-ups fetched successfully\",\n  \"count\": 2,\n  \"data\": [\n    {\n      \"_id\": \"64fu002\",\n      \"listing\": \"69bd1aeba350f63562a43ed8\",\n      \"reason\": \"Interested\",\n      \"remark\": \"Very interested, wants a demo next week.\",\n      \"nextFollowUpDate\": \"2026-03-27T09:00:00.000Z\",\n      \"isDeleted\": false,\n      \"createdBy\": { \"_id\": \"user001\", \"name\": \"Ayush Gupta\", \"email\": \"ayush@addressguru.com\" },\n      \"createdAt\": \"2026-03-21T08:00:00.000Z\"\n    },\n    {\n      \"_id\": \"64fu001\",\n      \"listing\": \"69bd1aeba350f63562a43ed8\",\n      \"reason\": \"Call Back Later\",\n      \"remark\": null,\n      \"nextFollowUpDate\": \"2026-03-22T10:00:00.000Z\",\n      \"isDeleted\": false,\n      \"createdBy\": { \"_id\": \"user001\", \"name\": \"Ayush Gupta\", \"email\": \"ayush@addressguru.com\" },\n      \"createdAt\": \"2026-03-20T12:30:00.000Z\"\n    }\n  ]\n}"
+              "body": "{\n  \"success\": true,\n  \"message\": \"Follow-ups fetched successfully\",\n  \"count\": 2,\n  \"data\": [\n    {\n      \"_id\": \"64fu002\",\n      \"listing\": \"69bd1aeba350f63562a43ed8\",\n      \"module\": \"BusinessListing\",\n      \"reason\": \"Interested\",\n      \"remark\": \"Very interested, wants a demo next week.\",\n      \"nextFollowUpDate\": \"2026-03-27T09:00:00.000Z\",\n      \"isDeleted\": false,\n      \"createdBy\": { \"_id\": \"user001\", \"name\": \"Ayush Gupta\", \"email\": \"ayush@addressguru.com\" },\n      \"createdAt\": \"2026-03-21T08:00:00.000Z\"\n    },\n    {\n      \"_id\": \"64fu001\",\n      \"listing\": \"69bd1aeba350f63562a43ed8\",\n      \"module\": \"BusinessListing\",\n      \"reason\": \"Call Back Later\",\n      \"remark\": null,\n      \"nextFollowUpDate\": \"2026-03-22T10:00:00.000Z\",\n      \"isDeleted\": false,\n      \"createdBy\": { \"_id\": \"user001\", \"name\": \"Ayush Gupta\", \"email\": \"ayush@addressguru.com\" },\n      \"createdAt\": \"2026-03-20T12:30:00.000Z\"\n    }\n  ]\n}"
             },
             {
               "name": "200 – No Logs Yet",
@@ -297,8 +424,60 @@
               "code": 200,
               "header": [{ "key": "Content-Type", "value": "application/json" }],
               "body": "{\n  \"success\": true,\n  \"message\": \"Follow-ups fetched successfully\",\n  \"count\": 0,\n  \"data\": []\n}"
+            },
+            {
+              "name": "400 – Missing or Invalid Module",
+              "status": "Bad Request",
+              "code": 400,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": false,\n  \"message\": \"module is required. Must be one of: BusinessListing, MarketplaceListing, PropertyListing, JobListing\"\n}"
             }
           ]
+        },
+        {
+          "name": "Get All Follow Ups for a Listing (MarketplaceListing)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/followups/listing/{{listingId}}?module=MarketplaceListing",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "followups", "listing", "{{listingId}}"],
+              "query": [{ "key": "module", "value": "MarketplaceListing" }]
+            },
+            "description": "Get all follow-up logs for a specific Marketplace Listing."
+          },
+          "response": []
+        },
+        {
+          "name": "Get All Follow Ups for a Listing (PropertyListing)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/followups/listing/{{listingId}}?module=PropertyListing",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "followups", "listing", "{{listingId}}"],
+              "query": [{ "key": "module", "value": "PropertyListing" }]
+            },
+            "description": "Get all follow-up logs for a specific Property Listing."
+          },
+          "response": []
+        },
+        {
+          "name": "Get All Follow Ups for a Listing (JobListing)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/followups/listing/{{listingId}}?module=JobListing",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "followups", "listing", "{{listingId}}"],
+              "query": [{ "key": "module", "value": "JobListing" }]
+            },
+            "description": "Get all follow-up logs for a specific Job Listing."
+          },
+          "response": []
         },
         {
           "name": "Get Single Follow Up by ID",
@@ -310,7 +489,7 @@
               "host": ["{{baseUrl}}"],
               "path": ["api", "followups", "{{followUpId}}"]
             },
-            "description": "Get a single follow-up log by its MongoDB _id.\n\nIncludes populated createdBy (name, email) and listing (businessName).\n\nReturns 404 if not found."
+            "description": "Get a single follow-up log by its MongoDB _id.\n\nNo module param needed — _id is globally unique.\n\nIncludes populated createdBy (name, email).\n\nReturns 404 if not found."
           },
           "response": [
             {
@@ -318,7 +497,7 @@
               "status": "OK",
               "code": 200,
               "header": [{ "key": "Content-Type", "value": "application/json" }],
-              "body": "{\n  \"success\": true,\n  \"data\": {\n    \"_id\": \"64fu001\",\n    \"listing\": { \"_id\": \"69bd1aeba350f63562a43ed8\", \"businessName\": \"Dubai Taxi Company\" },\n    \"reason\": \"Interested\",\n    \"remark\": \"Very interested in the premium plan.\",\n    \"nextFollowUpDate\": \"2026-03-25T10:00:00.000Z\",\n    \"isDeleted\": false,\n    \"createdBy\": { \"_id\": \"user001\", \"name\": \"Ayush Gupta\", \"email\": \"ayush@addressguru.com\" },\n    \"createdAt\": \"2026-03-20T12:30:00.000Z\"\n  }\n}"
+              "body": "{\n  \"success\": true,\n  \"data\": {\n    \"_id\": \"64fu001\",\n    \"listing\": \"69bd1aeba350f63562a43ed8\",\n    \"module\": \"BusinessListing\",\n    \"reason\": \"Interested\",\n    \"remark\": \"Very interested in the premium plan.\",\n    \"nextFollowUpDate\": \"2026-03-25T10:00:00.000Z\",\n    \"isDeleted\": false,\n    \"createdBy\": { \"_id\": \"user001\", \"name\": \"Ayush Gupta\", \"email\": \"ayush@addressguru.com\" },\n    \"createdAt\": \"2026-03-20T12:30:00.000Z\"\n  }\n}"
             },
             {
               "name": "404 – Not Found",
@@ -339,7 +518,7 @@
               "host": ["{{baseUrl}}"],
               "path": ["api", "followups", "{{followUpId}}"]
             },
-            "description": "Soft-delete a follow-up log by setting isDeleted: true.\n\nThe record is NOT removed from the database.\nIt will no longer appear in GET /listing/:listingId results.\n\nAdmin only."
+            "description": "Soft-delete a follow-up log by setting isDeleted: true.\n\nThe record is NOT removed from the database.\nIt will no longer appear in GET /listing/:listingId results.\n\nNo module param needed — _id is globally unique.\n\nAdmin only."
           },
           "response": [
             {

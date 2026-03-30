@@ -544,7 +544,6 @@ export const getAllListingsWithPaginationAndFilters = async (req, res) => {
 };
 
 // get listings for website
-
 export const getListingsByCategoryAndCity = async (req, res) => {
   try {
     const { category_slug, city_slug } = req.params;
@@ -854,3 +853,4 @@ export const getApprovedListings = async (req, res) => {
     return errorData(res, 500, false, "Internal server error");
   }
 };
+

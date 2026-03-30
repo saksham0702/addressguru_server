@@ -1,4 +1,3 @@
-// ─── marketplaceListingController.js ─────────────────────────────────────────
 import MarketplaceListing from "../model/marketplaceListingSchema.js";
 import AdditionalField from "../model/additionalFieldSchema.js";
 import Category from "../model/categoriesSchema.js";
@@ -157,10 +156,14 @@ export const updateMarketplaceListingStep = async (req, res) => {
     if (!listing) return errorData(res, 404, false, "Listing not found");
 
     // ── Ownership check ──
+    const user = await User.findById(req.user.id);
+    const userRole = user.roles.includes(1);
+
     if (
       listing.createdBy &&
       req.user?.id &&
-      listing.createdBy.toString() !== req.user.id.toString()
+      listing.createdBy.toString() !== req.user.id.toString() &&
+      !userRole // ← admin bypass added
     ) {
       return errorData(
         res,
@@ -320,6 +323,9 @@ export const getAllMarketplaceListings = async (req, res) => {
     const limit = parseInt(req.query.limit) || 10;
     const skip = (page - 1) * limit;
 
+    // ✅ DEBUG: Log what's actually coming in
+    console.log("Query Params Received:", req.query);
+
     // Base filter — only non-deleted listings
     const filter = { isDeleted: false };
 
@@ -348,23 +354,67 @@ export const getAllMarketplaceListings = async (req, res) => {
     // Free items toggle
     if (req.query.is_free === "true") filter["price.isFree"] = true;
 
-    const [listings, total] = await Promise.all([
+    // ✅ Status filter with validation
+    const VALID_STATUSES = ["pending", "approved", "rejected"];
+    if (req.query.status) {
+      const statusValue = req.query.status.trim().toLowerCase();
+      if (VALID_STATUSES.includes(statusValue)) {
+        filter.status = statusValue;
+      } else {
+        return errorData(
+          res,
+          400,
+          false,
+          `Invalid status. Must be one of: ${VALID_STATUSES.join(", ")}`,
+        );
+      }
+    }
+
+    // ✅ DEBUG: Log the final filter being passed to MongoDB
+    console.log("Final MongoDB Filter:", JSON.stringify(filter));
+
+    const [
+      listings,
+      total,
+      totalAll,
+      totalPending,
+      totalApproved,
+      totalRejected,
+    ] = await Promise.all([
       MarketplaceListing.find(filter)
         .populate("category", "name")
         .populate("subCategory", "name")
         .populate("city", "name")
+        .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit)
         .lean(),
       MarketplaceListing.countDocuments(filter),
+      MarketplaceListing.countDocuments({ isDeleted: false }),
+      MarketplaceListing.countDocuments({
+        isDeleted: false,
+        status: "pending",
+      }), // ✅
+      MarketplaceListing.countDocuments({
+        isDeleted: false,
+        status: "approved",
+      }), // ✅
+      MarketplaceListing.countDocuments({
+        isDeleted: false,
+        status: "rejected",
+      }), // ✅
     ]);
 
-    if (!listings.length)
-      return errorData(res, 404, false, "No listings found");
-
+    // ✅ Return empty array instead of 404 — better UX for filtered results
     return successData(res, 200, true, "Listings fetched successfully", {
       listings,
       pagination: { total, page, limit, totalPages: Math.ceil(total / limit) },
+      totalAll,
+      statusCounts: {
+        pending: totalPending,
+        approved: totalApproved,
+        rejected: totalRejected,
+      },
     });
   } catch (error) {
     console.error("Marketplace listing fetch error:", error);

@@ -8,6 +8,7 @@ import slugify from "slugify";
 import { successData, errorData } from "../services/helper.js";
 import googleIndexingService from "../services/googleIndexing.service.js";
 import { APP_BASE_URL } from "../services/constant.js";
+import { sendApprovedAndRejectedListingMail } from "../utils/sendMail.js";
 
 // ─── Helper: validate additional fields ──────────────────────────────────────
 const validateAdditionalFields = async (additionalFields = []) => {
@@ -173,10 +174,14 @@ export const updatePropertyListingStep = async (req, res) => {
     if (!listing) return errorData(res, 404, false, "Listing not found");
 
     // ── Ownership check ──
+    const user = await User.findById(req.user.id);
+    const userRole = user.roles.includes(1);
+
     if (
       listing.createdBy &&
       req.user?.id &&
-      listing.createdBy.toString() !== req.user.id.toString()
+      listing.createdBy.toString() !== req.user.id.toString() &&
+      !userRole
     ) {
       return errorData(
         res,
@@ -336,67 +341,85 @@ export const updatePropertyListingStep = async (req, res) => {
 };
 
 /* ── GET ALL (paginated + filtered) ── */
-export const getAllPropertyListings = async (req, res) => {
+export const getAllPropertiesWithPaginationAndFilters = async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 10;
+    const limit = parseInt(req.query.limit) || 20;
     const skip = (page - 1) * limit;
 
-    // Base filter — only non-deleted listings
+    // ✅ DEBUG: Log what's actually coming in
+    console.log("Query Params Received:", req.query);
+
+    // Base filter — only non-deleted
     const filter = { isDeleted: false };
 
     // Optional filters from query params
-    if (req.query.purpose) filter.purpose = req.query.purpose;
-    if (req.query.city_id) filter.city = req.query.city_id;
     if (req.query.category_id) filter.category = req.query.category_id;
-    if (req.query.sub_category_id)
-      filter.subCategory = req.query.sub_category_id;
-    if (req.query.area_unit) filter["area.unit"] = req.query.area_unit;
-    if (req.query.is_sold !== undefined)
-      filter.isSold = req.query.is_sold === "true";
+    if (req.query.sub_category_id) filter.subCategory = req.query.sub_category_id;
+    if (req.query.city_id) filter.city = req.query.city_id;
     if (req.query.is_published !== undefined)
       filter.isPublished = req.query.is_published === "true";
     if (req.query.is_verified !== undefined)
       filter.isVerified = req.query.is_verified === "true";
+    if (req.query.provider) filter.provider = req.query.provider;
 
-    // Price range
-    if (req.query.min_price || req.query.max_price) {
-      filter["price.amount"] = {};
-      if (req.query.min_price)
-        filter["price.amount"].$gte = Number(req.query.min_price);
-      if (req.query.max_price)
-        filter["price.amount"].$lte = Number(req.query.max_price);
+    // ✅ Status filter with validation
+    const VALID_STATUSES = ["pending", "approved", "rejected"];
+    if (req.query.status) {
+      const statusValue = req.query.status.trim().toLowerCase();
+      if (VALID_STATUSES.includes(statusValue)) {
+        filter.status = statusValue;
+      } else {
+        return errorData(
+          res,
+          400,
+          false,
+          `Invalid status. Must be one of: ${VALID_STATUSES.join(", ")}`,
+        );
+      }
     }
 
-    // Area size range
-    if (req.query.min_area || req.query.max_area) {
-      filter["area.size"] = {};
-      if (req.query.min_area)
-        filter["area.size"].$gte = Number(req.query.min_area);
-      if (req.query.max_area)
-        filter["area.size"].$lte = Number(req.query.max_area);
-    }
+    // ✅ DEBUG: Log the final filter being passed to MongoDB
+    console.log("Final MongoDB Filter:", JSON.stringify(filter));
 
-    const [listings, total] = await Promise.all([
+    const [
+      properties,
+      total,
+      totalAll,
+      totalPending,
+      totalApproved,
+      totalRejected,
+    ] = await Promise.all([
       PropertyListing.find(filter)
         .populate("category", "name")
         .populate("subCategory", "name")
         .populate("city", "name")
+        .populate("plan", "name")
+        .populate("createdBy", "name")
+        .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit)
         .lean(),
       PropertyListing.countDocuments(filter),
+      PropertyListing.countDocuments({ isDeleted: false }),
+      PropertyListing.countDocuments({ isDeleted: false, status: "pending" }),   // ✅
+      PropertyListing.countDocuments({ isDeleted: false, status: "approved" }),  // ✅
+      PropertyListing.countDocuments({ isDeleted: false, status: "rejected" }),  // ✅
     ]);
 
-    if (!listings.length)
-      return errorData(res, 404, false, "No listings found");
-
-    return successData(res, 200, true, "Listings fetched successfully", {
-      listings,
+    // ✅ Return empty array instead of 404 — better UX for filtered results
+    return successData(res, 200, true, "Properties fetched successfully", {
+      properties,
       pagination: { total, page, limit, totalPages: Math.ceil(total / limit) },
+      totalAll,
+      statusCounts: {
+        pending: totalPending,
+        approved: totalApproved,
+        rejected: totalRejected,
+      },
     });
   } catch (error) {
-    console.error("Property listing fetch error:", error);
+    console.error("Property fetch error:", error);
     return errorData(res, 500, false, "Internal server error");
   }
 };

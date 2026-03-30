@@ -3,13 +3,13 @@ import express from "express";
 import {
   createPropertyListing,
   updatePropertyListingStep,
-  getAllPropertyListings,
+  getAllPropertiesWithPaginationAndFilters,
   getPropertyListingBySlug,
   markPropertyListingAsSold,
   deletePropertyListing,
   getPropertyListingByUser,
   updatePropertyListingStatus,
-  getApprovedListings
+  getApprovedListings,
 } from "../controller/property.Controller.js";
 import { setUploadFolder } from "../middleware/setUploadFolder.js";
 import upload from "../middleware/multerConfig.js";
@@ -38,14 +38,14 @@ router.put(
   updatePropertyListingStep,
 );
 
-router.get("/get-all-listings", getAllPropertyListings);
+router.get("/get-all-listings", getAllPropertiesWithPaginationAndFilters);
 router.get("/get-property-by-user", authenticate, getPropertyListingByUser);
 router.get("/get-listing-by-slug/:slug", getPropertyListingBySlug);
 router.patch("/mark-as-sold/:slug", authenticate, markPropertyListingAsSold);
 router.delete("/delete-listing/:slug", authenticate, deletePropertyListing);
 
-router.patch(
-  "/update-listing-status/:id",
+router.put(
+  "/:id/status",
   authenticate,
   updatePropertyListingStatus
 );

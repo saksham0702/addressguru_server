@@ -1,12 +1,25 @@
 import mongoose from "mongoose";
 
+const MODULES = [
+  "BusinessListing",
+  "MarketplaceListing",
+  "PropertyListing",
+  "JobListing",
+];
+
 // ── Each follow-up log entry created when agent submits the modal ─────────────
 const followUpSchema = new mongoose.Schema(
   {
-    // Which listing this follow-up belongs to  
+    // Generic ObjectId — no fixed ref, module tells us which collection it points to
     listing: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "BusinessListing",
+      required: true,
+    },
+
+    // Which module this listing belongs to
+    module: {
+      type: String,
+      enum: MODULES,
       required: true,
     },
 
@@ -16,8 +29,7 @@ const followUpSchema = new mongoose.Schema(
       required: true,
     },
 
-    // Label stored directly so history still shows correctly
-    // even if admin later renames or deletes that option
+    // Label stored as snapshot — history stays correct even if option is renamed/deleted
     reason: {
       type: String,
       required: true,
@@ -48,21 +60,14 @@ const followUpSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
-
-    // Which module this log belongs to — future-proofing for leads/crm
-    module: {
-      type: String,
-      enum: ["listing", "lead", "crm"],
-      default: "listing",
-    },
   },
   {
     timestamps: true, // createdAt, updatedAt auto-managed
   },
 );
 
-// ── Index for fast lookups by listing ────────────────────────────────────────
-followUpSchema.index({ listing: 1, createdAt: -1 });
+// ── Compound index — fast lookups by listing + module ────────────────────────
+followUpSchema.index({ listing: 1, module: 1, createdAt: -1 });
 
 const FollowUp = mongoose.model("FollowUp", followUpSchema);
 export default FollowUp;
