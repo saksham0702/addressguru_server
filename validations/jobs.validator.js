@@ -131,11 +131,14 @@ export const jobStepSchemas = {
 
     // Age Range (JSON object parsed by middleware)
     ageRange: Joi.object({
-      from: Joi.number().min(18).max(100).optional().allow(null, ""),
-      to: Joi.number().min(18).max(100).optional().allow(null, ""),
+      from: Joi.number().min(0).max(100).optional().allow(null, ""),
+      to: Joi.number().min(0).max(100).optional().allow(null, ""),
     })
       .optional()
       .allow(null, ""),
+
+    nationality: stringArray(),
+    language: stringArray(),
   }),
 
   /* =========================
@@ -177,6 +180,12 @@ export const jobStepSchemas = {
         .valid("1-10", "11-50", "51-200", "201-500", "500+")
         .optional()
         .allow("", null),
+      address: Joi.string().optional().allow("", null),
+      city: Joi.object({
+        _id: Joi.string().required(),
+        name: Joi.string().required(),
+        slug: Joi.string().required(),
+      }).optional().allow(null),
       // logo is uploaded and handled by multer, not validated by Joi
     })
       .optional()
@@ -187,5 +196,6 @@ export const jobStepSchemas = {
     seo_keywords: stringArray(),
 
     application_deadline: Joi.date().iso().optional().allow("", null),
+    logo_url: Joi.string().optional().allow("", null),
   }),
 };

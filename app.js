@@ -39,6 +39,7 @@ import plansRouter from "./routes/plans.Router.js";
 import statisticsRouter from "./routes/statistics.Routes.js";
 import followUpRouter from "./routes/followUp.Router.js";
 import followUpConfigRouter from "./routes/followUpConfig.Router.js";
+import templateRouter from "./routes/template.Router.js";
 
 
 var app = express();
@@ -155,6 +156,7 @@ app.use(`/statistics`, statisticsRouter);
 
 app.use(`/follow-ups`, followUpRouter);
 app.use(`/followup-config`, followUpConfigRouter);
+app.use(`/template`, templateRouter);
 
 app.get("/test-cookie", (req, res) => {
   console.log("cookies:", req.cookies);

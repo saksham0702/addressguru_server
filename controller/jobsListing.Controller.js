@@ -1,9 +1,16 @@
 import Job from "../model/jobsListingSchema.js";
 import User from "../model/userSchema.js";
+import Category from "../model/categoriesSchema.js";
+import City from "../model/CitiesSchema.js";
 import slugify from "slugify";
+import path from "path";
 import { successData, errorData } from "../services/helper.js";
 import googleIndexingService from "../services/googleIndexing.service.js";
 import { APP_BASE_URL } from "../services/constant.js";
+import {
+  sendApprovedAndRejectedListingMail,
+  sendListingSubmittedMail,
+} from "../utils/sendMail.js";
 
 /* =========================
    SAVE JOB (2-STEP WIZARD)
@@ -147,7 +154,6 @@ export const saveJobStep = async (req, res) => {
     let job = null;
     console.log("REQQ BODYY :", req.body);
 
-
     /* =========================
        FIND JOB IF job_id EXISTS
     ========================== */
@@ -166,7 +172,7 @@ export const saveJobStep = async (req, res) => {
 
       if (!job) return errorData(res, 404, false, "Job not found");
 
-      if (job.createdBy?.toString() !== user?.id && user?.role !== "admin") {
+      if (job.createdBy?.toString() !== user?.id && !user?.roles?.includes(1)) {
         return errorData(res, 403, false, "Unauthorized");
       }
     }
@@ -176,7 +182,12 @@ export const saveJobStep = async (req, res) => {
     ========================== */
 
     if (method === "POST" && step !== 1) {
-      return errorData(res, 400, false, "POST allowed only for Step 1 (create job)");
+      return errorData(
+        res,
+        400,
+        false,
+        "POST allowed only for Step 1 (create job)",
+      );
     }
 
     if (method === "PUT" && !(job_id || slug)) {
@@ -207,6 +218,8 @@ export const saveJobStep = async (req, res) => {
         noOfExperience,
         gender,
         ageRange,
+        nationality = [],
+        language = [],
       } = req.body;
 
       /* -------- CREATE (POST) -------- */
@@ -227,9 +240,7 @@ export const saveJobStep = async (req, res) => {
           benefits: Array.isArray(benefits)
             ? benefits
             : [benefits].filter(Boolean),
-          skills: Array.isArray(skills)
-            ? skills
-            : [skills].filter(Boolean),
+          skills: Array.isArray(skills) ? skills : [skills].filter(Boolean),
           sector,
           jobType,
           workMode,
@@ -241,9 +252,13 @@ export const saveJobStep = async (req, res) => {
           noOfExperience,
           gender,
           ageRange,
+          nationality: Array.isArray(nationality) ? nationality : [nationality].filter(Boolean),
+          language: Array.isArray(language) ? language : [language].filter(Boolean),
           slug: baseSlug,
           createdBy: user?.id,
           status: "pending",
+          stepCompleted: 1,
+          isPublished: false,
         });
 
         // Update User statistics
@@ -287,10 +302,7 @@ export const saveJobStep = async (req, res) => {
         if (benefits)
           job.benefits = Array.isArray(benefits) ? benefits : [benefits];
 
-        if (skills)
-          job.skills = Array.isArray(skills)
-            ? skills
-            : [skills];
+        if (skills) job.skills = Array.isArray(skills) ? skills : [skills];
 
         if (sector) job.sector = sector;
         if (jobType) job.jobType = jobType;
@@ -303,7 +315,10 @@ export const saveJobStep = async (req, res) => {
         if (noOfExperience) job.noOfExperience = noOfExperience;
         if (gender) job.gender = gender;
         if (ageRange) job.ageRange = ageRange;
+        if (nationality) job.nationality = Array.isArray(nationality) ? nationality : [nationality];
+        if (language) job.language = Array.isArray(language) ? language : [language];
       }
+      job.stepCompleted = Math.max(job.stepCompleted || 1, 1);
     }
 
     /* =========================
@@ -330,7 +345,10 @@ export const saveJobStep = async (req, res) => {
           name: company.name || job.company?.name,
           website: company.website || job.company?.website,
           size: company.size || job.company?.size,
-          logo: job.company?.logo,
+          description: company.description !== undefined ? company.description : job.company?.description,
+          logo: company?.logo !== undefined ? company?.logo : job?.company?.logo,
+          address: company.address !== undefined ? company.address : job.company?.address,
+          city: company.city !== undefined ? company.city : job.company?.city,
         };
       }
 
@@ -344,21 +362,54 @@ export const saveJobStep = async (req, res) => {
           : job.seo?.keywords,
       };
 
-      if (application_deadline)
-        job.applicationDeadline = application_deadline;
+      if (application_deadline) job.applicationDeadline = application_deadline;
 
       if (req.files?.logo?.[0]) {
-        job.company.logo = req.files.logo[0].path;
+        // New file uploaded — use it
+        job.company.logo = req.files.logo[0].path.replace(/\\/g, "/");
+      } else if (req.body?.logo_url) {
+        // Reuse existing remote logo — keep as-is
+        job.company.logo = req.body.logo_url;
       }
 
-      // if (req.files?.images?.length) {
-      //   const imgs = req.files.images.map((i) => i.path);
-      //   job.images = [...(job.images || []), ...imgs];
-      // }
+      // Append newly uploaded images to existing array
+      if (req.files?.images?.length > 0) {
+        const newImages = req.files.images.map((img) =>
+          img.path.replace(/\\/g, "/")
+        );
+        job.images = [...(job.images || []), ...newImages];
+      }
 
       job.status = "active";
       job.isActive = true;
-      googleIndexingService.notify(`${APP_BASE_URL}/job/${job.slug}`, "URL_UPDATED");
+      job.isPublished = true;
+      job.stepCompleted = Math.max(job.stepCompleted || 1, 2);
+
+      googleIndexingService.notify(
+        `${APP_BASE_URL}/job/${job.slug}`,
+        "URL_UPDATED",
+      );
+
+      // ── Send submitted mail ──
+      try {
+        const categoryDoc = await Category.findById(job.category);
+        const categoryName = categoryDoc?.name || "";
+
+        await sendListingSubmittedMail(
+          job.contact?.email || user?.email,
+          job.contact?.name || user?.name || "User",
+          job.title,
+          categoryName,
+          new Date().toLocaleDateString("en-AE", {
+            day: "numeric",
+            month: "long",
+            year: "numeric",
+          }),
+          `${APP_BASE_URL}/dashboard`,
+        );
+      } catch (mailError) {
+        console.warn("❌ Job submission mail failed:", mailError.message);
+      }
     }
 
     await job.save();
@@ -385,17 +436,33 @@ export const getAllJobsWithPaginationAndFilters = async (req, res) => {
     // Base query
     const filter = {
       isDeleted: false,
-      isActive: true,
-      status: "active",
     };
+
+    // Public vs Admin filtering
+    const isAdmin = req.user?.roles?.includes(1); // Assuming 1 is admin based on business controller
+    if (!isAdmin) {
+      filter.isActive = true;
+      filter.isPublished = true;
+      filter.status = "active";
+    }
 
     // Apply optional string filters
     if (req.query.category_id) filter.category = req.query.category_id;
-    if (req.query.sub_category_id) filter.subCategory = req.query.sub_category_id;
+    if (req.query.sub_category_id)
+      filter.subCategory = req.query.sub_category_id;
+    if (req.query.status) filter.status = req.query.status;
+    if (req.query.isVerified !== undefined)
+      filter.isVerified = req.query.isVerified === "true";
+    if (req.query.isFeatured !== undefined)
+      filter.isFeatured = req.query.isFeatured === "true";
+    if (req.query.isUrgent !== undefined)
+      filter.isUrgent = req.query.isUrgent === "true";
+
     if (req.query.sector) filter.sector = req.query.sector;
     if (req.query.jobType) filter.jobType = req.query.jobType;
     if (req.query.workMode) filter.workMode = req.query.workMode;
-    if (req.query.experienceLevel) filter.experienceLevel = req.query.experienceLevel;
+    if (req.query.experienceLevel)
+      filter.experienceLevel = req.query.experienceLevel;
     if (req.query.education) filter.education = req.query.education;
     if (req.query.gender) filter.gender = req.query.gender;
     if (req.query.city) filter["location.city"] = req.query.city;
@@ -408,7 +475,7 @@ export const getAllJobsWithPaginationAndFilters = async (req, res) => {
 
     // Text search filter
     if (req.query.search) {
-      filter.title = { $regex: req.query.search, $options: 'i' };
+      filter.title = { $regex: req.query.search, $options: "i" };
     }
 
     const [jobs, total] = await Promise.all([
@@ -422,8 +489,7 @@ export const getAllJobsWithPaginationAndFilters = async (req, res) => {
       Job.countDocuments(filter),
     ]);
 
-    if (!jobs.length)
-      return errorData(res, 404, false, "No jobs found");
+    if (!jobs.length) return errorData(res, 404, false, "No jobs found");
 
     return successData(res, 200, true, "Jobs fetched successfully", {
       jobs,
@@ -439,7 +505,6 @@ export const getAllJobsWithPaginationAndFilters = async (req, res) => {
     return errorData(res, 500, false, "Internal server error");
   }
 };
-
 
 /* =========================
    GET ALL JOBS BY USER
@@ -493,7 +558,6 @@ export const getAllJobsByUser = async (req, res) => {
   }
 };
 
-
 /* =========================
    GET SINGLE JOB BY ID
 ========================== */
@@ -510,9 +574,10 @@ export const getJobById = async (req, res) => {
       .populate("subCategory", "name")
       .lean();
 
-    if (!job) return errorData(res, 404, false, "Job not found", {
-      slug: slug,
-    });
+    if (!job)
+      return errorData(res, 404, false, "Job not found", {
+        slug: slug,
+      });
 
     return successData(res, 200, true, "Job fetched successfully", job);
   } catch (error) {
@@ -521,10 +586,57 @@ export const getJobById = async (req, res) => {
   }
 };
 
-
 /* =========================
    SOFT DELETE JOB
 ========================== */
+/* =========================
+   GET LAST JOB COMPANY DETAILS
+========================== */
+export const getLastJobCompanyDetails = async (req, res) => {
+  try {
+    const user = req?.user;
+    if (!user || !user.id) {
+      return errorData(res, 401, false, "Unauthorized");
+    }
+
+    const jobs = await Job.find({
+      createdBy: user.id,
+      isDeleted: false,
+      // Must have at least a company name to be useful
+      "company.name": { $exists: true, $ne: null, $ne: "" },
+    })
+      .sort({ createdAt: -1 })
+      .select("company contact location")
+      .lean();
+
+    if (!jobs || jobs.length === 0) {
+      return successData(res, 200, true, "No previous company details found", []);
+    }
+
+    // Filter unique companies by name
+    const uniqueCompanies = [];
+    const seenNames = new Set();
+
+    for (const job of jobs) {
+      const cmpName = job.company?.name?.trim()?.toLowerCase();
+      if (cmpName && !seenNames.has(cmpName)) {
+        seenNames.add(cmpName);
+        uniqueCompanies.push({
+          company: job.company,
+          contact: job.contact,
+          location: job.location,
+          jobId: job._id
+        });
+      }
+    }
+
+    return successData(res, 200, true, "Previous companies fetched", uniqueCompanies);
+  } catch (error) {
+    console.warn("getLastJobCompanyDetails error:", error);
+    return errorData(res, 500, false, "Internal server error");
+  }
+};
+
 export const deleteJob = async (req, res) => {
   try {
     const { slug } = req.params;
@@ -538,7 +650,10 @@ export const deleteJob = async (req, res) => {
 
     if (!job) return errorData(res, 404, false, "Job not found");
 
-    googleIndexingService.notify(`${APP_BASE_URL}/job/${job.slug}`, "URL_DELETED");
+    googleIndexingService.notify(
+      `${APP_BASE_URL}/job/${job.slug}`,
+      "URL_DELETED",
+    );
 
     // Update User statistics
     if (job.createdBy) {
@@ -546,7 +661,7 @@ export const deleteJob = async (req, res) => {
         $inc: {
           statistics_activeListings: -1,
           statistics_JobsListings: -1,
-          statistics_totalListings: -1
+          statistics_totalListings: -1,
         },
       });
     }
@@ -556,6 +671,158 @@ export const deleteJob = async (req, res) => {
     });
   } catch (error) {
     console.warn("Job delete error:", error);
+    return errorData(res, 500, false, "Internal server error");
+  }
+};
+
+/* =========================
+   UPDATE JOB STATUS (ADMIN)
+========================== */
+export const updateJobStatus = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status, rejectionReason } = req.body;
+    const adminId = req.user._id;
+
+    if (!["active", "rejected", "pending", "expired", "closed", "approved", "unapproved"].includes(status)) {
+      return errorData(res, 400, false, "Status must be either 'approved' or 'rejected' or 'unapproved'");
+    }
+
+    if (status === "rejected" && !rejectionReason?.trim()) {
+      return errorData(res, 400, false, "Rejection reason is required");
+    }
+
+    const job = await Job.findById(id);
+    if (!job) return errorData(res, 404, false, "Job not found");
+
+    job.status = status;
+    if (status === "active") {
+      job.approvedBy = adminId;
+      job.rejectedBy = null;
+      job.rejectionReason = null;
+    } else if (status === "rejected") {
+      job.rejectedBy = adminId;
+      job.rejectionReason = rejectionReason;
+      job.approvedBy = null;
+    }
+
+    await job.save();
+
+    // ── Send Email ──
+    try {
+      const categoryDoc = await Category.findById(job.category);
+      const categoryName = categoryDoc?.name || "";
+
+      await sendApprovedAndRejectedListingMail(
+        job.contact?.email || req.user.email,
+        job.contact?.name || "User",
+        status === "active" ? "approved" : "rejected",
+        rejectionReason || "Your job listing has been approved.",
+        {
+          businessName: job.title,
+          category: categoryName,
+          listingUrl: `${APP_BASE_URL}/job/${job.slug}`,
+          dashboardUrl: `${APP_BASE_URL}/dashboard`,
+        }
+      );
+    } catch (mailError) {
+      console.warn("❌ Admin status mail failed:", mailError.message);
+    }
+
+    return successData(res, 200, true, `Job status updated to ${status}`, { id: job._id });
+  } catch (error) {
+    console.warn("Update job status error:", error);
+    return errorData(res, 500, false, "Internal server error");
+  }
+};
+
+/* =========================
+   GET JOBS BY CATEGORY & CITY (Public SEO)
+========================== */
+export const getJobsByCategoryAndCity = async (req, res) => {
+  try {
+    const { category_slug, city_slug } = req.params;
+    let { page = 1, limit = 10 } = req.query;
+
+    page = Number(page);
+    limit = Number(limit);
+
+    // 🔹 Base filter
+    const filter = {
+      isDeleted: false,
+      status: "active",
+    };
+
+    // =========================
+    // CATEGORY FILTER
+    // =========================
+    if (category_slug) {
+      const category = await Category.findOne({
+        slug: category_slug,
+        isDeleted: false,
+      }).lean();
+
+      if (!category) {
+        return errorData(res, 404, false, "Category not found");
+      }
+
+      filter.category = category._id;
+    }
+
+    // =========================
+    // CITY FILTER
+    // =========================
+    if (city_slug) {
+      const city = await City.findOne({
+        slug: city_slug,
+        deletedAt: null,
+      }).lean();
+
+      if (!city) {
+        return errorData(res, 404, false, "City not found");
+      }
+
+      // ✅ IMPORTANT: use slug (NOT _id)
+      filter["location.city.slug"] = city.slug;
+    }
+
+    // =========================
+    // DEBUG LOG (REMOVE IN PROD)
+    // =========================
+    // console.log("FINAL FILTER =>", JSON.stringify(filter, null, 2));
+
+    const skip = (page - 1) * limit;
+
+    // =========================
+    // FETCH DATA
+    // =========================
+    const [jobs, total] = await Promise.all([
+      Job.find(filter)
+        .populate("category", "name slug")
+        .populate("subCategory", "name slug")
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean(),
+
+      Job.countDocuments(filter),
+    ]);
+
+    // =========================
+    // RESPONSE
+    // =========================
+    return successData(res, 200, true, "Jobs fetched successfully", {
+      jobs,
+      pagination: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      },
+    });
+
+  } catch (error) {
+    console.error("❌ Get jobs by category/city error:", error);
     return errorData(res, 500, false, "Internal server error");
   }
 };

@@ -131,6 +131,10 @@ const jobSchema = new mongoose.Schema(
       to: { type: Number, default: null },
     },
 
+    // ─── Nationality & Language (for filter) ─────────────────
+    nationality: [{ type: String }], // e.g., ["indian", "pakistani", "any"]
+    language: [{ type: String }],    // e.g., ["english", "arabic"]
+
     // ─── Contact Info ─────────────────────────────────────────
     contact: {
       name: { type: String },
@@ -151,10 +155,16 @@ const jobSchema = new mongoose.Schema(
         type: String,
         enum: ["1-10", "11-50", "51-200", "201-500", "500+"],
       },
+      address: { type: String },
+      city: {
+        _id: { type: mongoose.Schema.Types.ObjectId },
+        name: { type: String },
+        slug: { type: String }
+      },
     },
 
     // ─── Media ───────────────────────────────────────────────
-    images: [{ type: String }], // job post banner images
+    images: [{ type: String }], // job post banner / gallery images (relative URL paths)
 
     // ─── Posting Meta ─────────────────────────────────────────
     createdBy: {
@@ -173,13 +183,24 @@ const jobSchema = new mongoose.Schema(
       ref: "User",
     },
 
+    rejectedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      default: null,
+    },
+
+    rejectionReason: {
+      type: String,
+      default: null,
+    },
+
     totalPositions: { type: Number, default: 1 },
 
     applicationDeadline: { type: Date, default: null },
 
     status: {
       type: String,
-      enum: ["pending", "active", "expired", "rejected", "closed"],
+      enum: ["pending", "active", "expired", "approved", "rejected", "closed", "unapproved"],
       default: "pending",
     },
 
@@ -187,7 +208,9 @@ const jobSchema = new mongoose.Schema(
     isUrgent: { type: Boolean, default: false },
     isVerified: { type: Boolean, default: false },
     isActive: { type: Boolean, default: true },
+    isPublished: { type: Boolean, default: false },
     isDeleted: { type: Boolean, default: false },
+    stepCompleted: { type: Number, default: 1 },
 
     // ─── SEO ──────────────────────────────────────────────────
     seo: {
