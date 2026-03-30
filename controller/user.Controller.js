@@ -101,7 +101,7 @@ export const login = async (req, res) => {
       authToken,
     });
   } catch (err) {
-    console.error("LOGIN ERROR:", err);
+    console.warn("LOGIN ERROR:", err);
 
     return res.status(500).json({
       success: false,
@@ -123,7 +123,7 @@ export const logout = async (req, res) => {
 
     return successData(res, 200, true, "Logout successful");
   } catch (err) {
-    console.error("Logout Error:", err);
+    console.warn("Logout Error:", err);
     return res.status(500).json({
       status: false,
       message: "Server error",
@@ -173,7 +173,7 @@ export const registerAdmin = async (req, res) => {
       adminId: admin._id,
     });
   } catch (error) {
-    console.error("Error creating admin:", error);
+    console.warn("Error creating admin:", error);
     return res.status(500).json({
       success: false,
       message: "Error creating admin",
@@ -310,7 +310,7 @@ export const register = async (req, res) => {
     //   userResponse
     // );
   } catch (err) {
-    console.error("Register error:", err);
+    console.warn("Register error:", err);
     return errorData(res, 500, false, "Server Error", null, err?.message);
   }
 };
@@ -431,7 +431,7 @@ export const forgotPassword = async (req, res) => {
       },
     );
   } catch (err) {
-    console.error("Forgot password error:", err);
+    console.warn("Forgot password error:", err);
     res.status(500).json({
       status: false,
       message: "An unexpected error occurred. Please try again later.",
@@ -523,7 +523,7 @@ export const setNewPassword = async (req, res) => {
 
     return successData(res, 200, true, "Password has been reset successfully.");
   } catch (err) {
-    console.error("Set New Password Error:", err);
+    console.warn("Set New Password Error:", err);
     return res.status(500).json({
       status: false,
       message: "Server error. Please try again later.",
@@ -557,7 +557,7 @@ export const changePassword = async (req, res) => {
 
     return successData(res, 200, true, "Password changed successfully.");
   } catch (err) {
-    console.error("Change password error:", err);
+    console.warn("Change password error:", err);
     return errorData(res, 500, false, "Server Error", null, err?.message);
   }
 };
@@ -586,7 +586,7 @@ export const getUserDetails = async (req, res) => {
       user,
     );
   } catch (err) {
-    console.error("Get user details error:", err);
+    console.warn("Get user details error:", err);
     return errorData(res, 500, false, "Server Error");
   }
 };
@@ -631,7 +631,7 @@ export const updateProfile = async (req, res) => {
       imageUrl,
     );
   } catch (err) {
-    console.error("Update profile error:", err);
+    console.warn("Update profile error:", err);
     return errorData(res, 500, false, "Server Error", null, err?.message);
   }
 };

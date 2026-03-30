@@ -140,7 +140,7 @@ export const createMarketplaceListing = async (req, res) => {
       slug: listing.slug,
     });
   } catch (error) {
-    console.error("Create marketplace listing error:", error);
+    console.warn("Create marketplace listing error:", error);
     return errorData(res, 500, false, "Internal server error");
   }
 };
@@ -305,7 +305,7 @@ export const updateMarketplaceListingStep = async (req, res) => {
       stepCompleted: listing.stepCompleted,
     });
   } catch (error) {
-    console.error("Update marketplace listing step error:", error);
+    console.warn("Update marketplace listing step error:", error);
     return errorData(res, 500, false, "Internal server error");
   }
 };
@@ -364,7 +364,7 @@ export const getAllMarketplaceListings = async (req, res) => {
       pagination: { total, page, limit, totalPages: Math.ceil(total / limit) },
     });
   } catch (error) {
-    console.error("Marketplace listing fetch error:", error);
+    console.warn("Marketplace listing fetch error:", error);
     return errorData(res, 500, false, "Internal server error");
   }
 };
@@ -389,7 +389,7 @@ export const getMarketplaceListingBySlug = async (req, res) => {
 
     return successData(res, 200, true, "Listing fetched successfully", listing);
   } catch (error) {
-    console.error("Marketplace listing fetch error:", error);
+    console.warn("Marketplace listing fetch error:", error);
     return errorData(res, 500, false, "Internal server error");
   }
 };
@@ -412,7 +412,7 @@ export const getMarketplaceListingByUser = async (req, res) => {
       return errorData(res, 404, false, "No listings found");
     return successData(res, 200, true, "Listings fetched successfully", listings);
   } catch (error) {
-    console.error("Marketplace listing fetch error:", error);
+    console.warn("Marketplace listing fetch error:", error);
     return errorData(res, 500, false, "Internal server error");
   }
 };
@@ -457,7 +457,7 @@ export const markMarketplaceListingAsSold = async (req, res) => {
       id: listing._id,
     });
   } catch (error) {
-    console.error("Mark as sold error:", error);
+    console.warn("Mark as sold error:", error);
     return errorData(res, 500, false, "Internal server error");
   }
 };
@@ -509,7 +509,7 @@ export const deleteMarketplaceListing = async (req, res) => {
       id: listing._id,
     });
   } catch (error) {
-    console.error("Marketplace listing delete error:", error);
+    console.warn("Marketplace listing delete error:", error);
     return errorData(res, 500, false, "Internal server error");
   }
 };

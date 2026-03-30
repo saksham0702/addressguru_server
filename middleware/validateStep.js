@@ -26,6 +26,9 @@ export const validateStep = (schemaMap) => {
       "requirements",
       "responsibilities",
       "benefits",
+      "skills",
+      "nationality",
+      "language",
       "salary",
       "location",
       "experienceYears",
@@ -53,6 +56,9 @@ export const validateStep = (schemaMap) => {
       "requirements",
       "responsibilities",
       "benefits",
+      "skills",
+      "nationality",
+      "language",
       "seo_keywords",
     ];
     for (const field of arrayFields) {

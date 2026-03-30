@@ -43,7 +43,7 @@ export const validateBusinessStep = (req, res, next) => {
 
     next();
   } catch (err) {
-    console.error("Business validation middleware error:", err);
+    console.warn("Business validation middleware error:", err);
     return res.status(500).json({
       success: false,
       message: "Internal validation error",

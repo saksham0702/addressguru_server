@@ -113,7 +113,7 @@ export const addUserLog = async (user, req) => {
 
     console.log(`📝 User log added for ${user.email} from ${ipAddress}`);
   } catch (error) {
-    console.error("⚠️ Failed to add user log:", error.message);
+    console.warn("⚠️ Failed to add user log:", error.message);
   }
 };
 

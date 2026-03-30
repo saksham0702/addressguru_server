@@ -4,7 +4,7 @@ dotenv.config();
 
 async function testIndexing() {
   console.log("Starting Google Indexing API Test...");
-  
+
   const testUrls = [
     { url: "https://addressguru.ae/blog/test-blog-post", type: "URL_UPDATED" },
     { url: "https://addressguru.ae/business/test-business-listing", type: "URL_UPDATED" },
@@ -21,11 +21,11 @@ async function testIndexing() {
         console.log("Check logs above for reasons why it skipped or failed.");
       }
     } catch (error) {
-      console.error("Test failed with error:", error.message);
+      console.warn("Test failed with error:", error.message);
     }
   }
 
   console.log("\nTest completed.");
 }
 
-testIndexing().catch(console.error);
+testIndexing().catch(console.warn);

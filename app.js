@@ -39,6 +39,8 @@ import plansRouter from "./routes/plans.Router.js";
 import statisticsRouter from "./routes/statistics.Routes.js";
 import followUpRouter from "./routes/followUp.Router.js";
 import followUpConfigRouter from "./routes/followUpConfig.Router.js";
+import templateRouter from "./routes/template.Router.js";
+
 
 var app = express();
 
@@ -80,7 +82,9 @@ app.use(express.static(join(__dirname, "public")));
 // app.use("/uploads", express.static(path.join(process.cwd(), "public")));
 app.use("/uploads", express.static(join(process.cwd(), "uploads")));
 
-app.get("/api", async (req, res) => {
+app.get("/test-me", (req, res) => res.json({ message: "routing works" }));
+
+app.get("/", async (req, res) => {
   const html = `
     <!DOCTYPE html>
     <html lang="en">
@@ -152,7 +156,7 @@ app.use(`/statistics`, statisticsRouter);
 
 app.use(`/follow-ups`, followUpRouter);
 app.use(`/followup-config`, followUpConfigRouter);
-app.use(`/statistics`, statisticsRouter);
+app.use(`/template`, templateRouter);
 
 app.get("/test-cookie", (req, res) => {
   console.log("cookies:", req.cookies);

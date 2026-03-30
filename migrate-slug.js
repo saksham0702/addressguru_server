@@ -66,4 +66,4 @@ async function migrateSlugs() {
   await mongoose.disconnect();
 }
 
-migrateSlugs().catch(console.error);
+migrateSlugs().catch(console.warn);
