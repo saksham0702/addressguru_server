@@ -184,8 +184,8 @@ export const updateListingStep = async (req, res) => {
     if (
       listing.createdBy &&
       req.user?.id &&
-      listing.createdBy.toString() !== req.user.id.toString()
-      && !userRole
+      listing.createdBy.toString() !== req.user.id.toString() &&
+      !userRole
     ) {
       return errorData(
         res,
@@ -344,7 +344,10 @@ export const updateListingStep = async (req, res) => {
         }
         listing.plan = req.body.plan_id || null;
         listing.isPublished = true;
-        googleIndexingService.notify(`${APP_BASE_URL}/business/${listing.slug}`, "URL_UPDATED");
+        googleIndexingService.notify(
+          `${APP_BASE_URL}/business/${listing.slug}`,
+          "URL_UPDATED",
+        );
         break;
       }
 
@@ -541,33 +544,36 @@ export const getAllListingsWithPaginationAndFilters = async (req, res) => {
 };
 
 // get listings for website
+
 export const getListingsByCategoryAndCity = async (req, res) => {
-  console.log("req.params", req.params);
-  console.log("req.query", req.query);
   try {
     const { category_slug, city_slug } = req.params;
-    const { page = 1, limit = 10 } = req.query; // ✅ pagination from query, not params
-    // 🔴 1. Category is REQUIRED
+    const { page = 1, limit = 10 } = req.query;
+
+    // 1. Category is REQUIRED
     if (!category_slug) {
       return errorData(res, 400, false, "Category slug is required");
     }
-    // 🔍 2. Find category by slug — debug log added
-    console.log("🔍 Looking for category with slug:", category_slug);
+
+    // 2. Find category
     const category = await Category.findOne({
       slug: category_slug,
       isDeleted: false,
     });
-    console.log("📦 Category found:", category); // will be null if not matched
+
     if (!category) {
       return errorData(res, 404, false, "Category not found");
     }
-    // 🧩 3. Build filter
+
+    // 3. Base filter
     const filter = {
       category: category._id,
       isDeleted: false,
+      status: "approved",
     };
-    // 🏙️ 4. Optional city filter
-    if (city_slug) {
+
+    // 4. City filter (skip if "all-cities" or not provided)
+    if (city_slug && city_slug.toLowerCase().trim() !== "all-cities") {
       const city = await CitiesSchema.findOne({
         slug: city_slug,
         deletedAt: null,
@@ -580,34 +586,37 @@ export const getListingsByCategoryAndCity = async (req, res) => {
       filter.city = city._id;
     }
 
-    // 📄 5. Pagination logic
-    const skip = (Number(page) - 1) * Number(limit); // ✅ ensure Numbers
+    // 5. Pagination
+    const pageNumber = Number(page);
+    const limitNumber = Number(limit);
+    const skip = (pageNumber - 1) * limitNumber;
 
-    // 📊 6. Fetch data + count
+    console.log("Filter:", JSON.stringify(filter, null, 2));
+
+    // 6. Fetch listings + count
     const [listings, total] = await Promise.all([
-      BusinessListing.find({...filter, status: "approved"})
+      BusinessListing.find(filter)
         .populate("category", "name slug")
         .populate("subCategory", "name slug")
         .populate("city", "name slug")
         .sort({ createdAt: -1 })
         .skip(skip)
-        .limit(Number(limit))
+        .limit(limitNumber)
         .lean(),
 
       BusinessListing.countDocuments(filter),
     ]);
+    console.log("Total listings found:", total);
+    console.log("Listings:", listings);
 
-    if (!listings.length) {
-      return errorData(res, 404, false, "No listings found");
-    }
-
+    // 7. Always return 200 with data (even if empty)
     return successData(res, 200, true, "Listings fetched successfully", {
       listings,
       pagination: {
         total,
-        page: Number(page),
-        limit: Number(limit),
-        totalPages: Math.ceil(total / Number(limit)),
+        page: pageNumber,
+        limit: limitNumber,
+        totalPages: Math.ceil(total / limitNumber),
       },
     });
   } catch (error) {
@@ -712,14 +721,17 @@ export const deleteListing = async (req, res) => {
     listing.isDeleted = true;
     await listing.save();
 
-    googleIndexingService.notify(`${APP_BASE_URL}/business/${listing.slug}`, "URL_DELETED");
+    googleIndexingService.notify(
+      `${APP_BASE_URL}/business/${listing.slug}`,
+      "URL_DELETED",
+    );
 
     // Update User statistics
     if (listing.createdBy) {
       await User.findByIdAndUpdate(listing.createdBy, {
         $inc: {
           statistics_activeListings: -1,
-          statistics_totalListings: -1
+          statistics_totalListings: -1,
         },
       });
     }
@@ -743,7 +755,8 @@ export const updateListingStatus = async (req, res) => {
     if (!["approved", "rejected", "unapproved"].includes(status)) {
       return res.status(400).json({
         success: false,
-        message: "Status must be either 'approved' or 'rejected' or 'unapproved'",
+        message:
+          "Status must be either 'approved' or 'rejected' or 'unapproved'",
       });
     }
 
