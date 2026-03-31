@@ -8,15 +8,13 @@ const VALID_MODULES = [
   "JobListing",
 ];
 
-// ── CREATE a follow-up log ────────────────────────────────────────────────────
-// POST /api/followups?module=BusinessListing
-// Body: { listingId, activityOptionId, remark, nextFollowUpDate }
+const CONFIG_MODULE = "lead"; // ✅ config is always this
+
+// ── CREATE ────────────────────────────────────────────────────────────────────
 export const createFollowUp = async (req, res) => {
   try {
     const { listingId, activityOptionId, remark, nextFollowUpDate } = req.body;
-    const createdBy = req.user.id; // comes from your auth middleware
-
-    // ── Resolve module from query or body ───────────────────────────────────
+    const createdBy = req.user.id;
     const module = req.query.module || req.body.module;
 
     if (!module || !VALID_MODULES.includes(module)) {
@@ -26,7 +24,6 @@ export const createFollowUp = async (req, res) => {
       });
     }
 
-    // ── Validate required fields ────────────────────────────────────────────
     if (!listingId || !activityOptionId) {
       return res.status(400).json({
         success: false,
@@ -34,12 +31,12 @@ export const createFollowUp = async (req, res) => {
       });
     }
 
-    // ── Fetch the config for this module to validate the option ────────────
-    const config = await FollowUpConfig.findOne({ module });
+    // ✅ FIXED — always fetch the single shared config
+    const config = await FollowUpConfig.findOne({ module: CONFIG_MODULE });
     if (!config) {
       return res.status(404).json({
         success: false,
-        message: `Follow-up config not found for module: ${module}`,
+        message: "Follow-up config not found. Please seed the config first.",
       });
     }
 
@@ -51,7 +48,6 @@ export const createFollowUp = async (req, res) => {
       });
     }
 
-    // ── Validate remark if required ─────────────────────────────────────────
     if (option.remarkRequired && !remark?.trim()) {
       return res.status(400).json({
         success: false,
@@ -59,18 +55,16 @@ export const createFollowUp = async (req, res) => {
       });
     }
 
-    // ── Create the log ──────────────────────────────────────────────────────
     const followUp = await FollowUp.create({
       listing: listingId,
-      module, // ✅ classify by module
+      module, // ✅ listing module stored here
       activityOptionId,
-      reason: option.label, // snapshot the label
+      reason: option.label,
       remark: option.hasRemark ? remark?.trim() : null,
       nextFollowUpDate: nextFollowUpDate || null,
       createdBy,
     });
 
-    // Populate createdBy for response
     await followUp.populate("createdBy", "name email");
 
     return res.status(201).json({
@@ -83,14 +77,12 @@ export const createFollowUp = async (req, res) => {
   }
 };
 
-// ── GET all follow-ups for a listing ─────────────────────────────────────────
-// GET /api/followups/listing/:listingId?module=BusinessListing
+// ── GET follow-ups for a listing ──────────────────────────────────────────────
 export const getFollowUpsByListing = async (req, res) => {
   try {
     const { listingId } = req.params;
     const module = req.query.module;
 
-    // ── Validate module ─────────────────────────────────────────────────────
     if (!module || !VALID_MODULES.includes(module)) {
       return res.status(400).json({
         success: false,
@@ -98,18 +90,16 @@ export const getFollowUpsByListing = async (req, res) => {
       });
     }
 
-    // ── Filter by both listingId + module so results stay scoped ───────────
     const followUps = await FollowUp.find({
       listing: listingId,
       module,
       isDeleted: false,
     })
       .populate("createdBy", "name email")
-      .sort({ createdAt: -1 }); // newest first
+      .sort({ createdAt: -1 });
 
     return res.status(200).json({
       success: true,
-      message: "Follow-ups fetched successfully",
       count: followUps.length,
       data: followUps,
     });
@@ -118,8 +108,7 @@ export const getFollowUpsByListing = async (req, res) => {
   }
 };
 
-// ── GET single follow-up detail ───────────────────────────────────────────────
-// GET /api/followups/:id
+// ── GET single follow-up ──────────────────────────────────────────────────────
 export const getFollowUpById = async (req, res) => {
   try {
     const followUp = await FollowUp.findById(req.params.id).populate(
@@ -139,8 +128,7 @@ export const getFollowUpById = async (req, res) => {
   }
 };
 
-// ── DELETE a follow-up log (soft delete) ─────────────────────────────────────
-// DELETE /api/followups/:id
+// ── SOFT DELETE follow-up ─────────────────────────────────────────────────────
 export const deleteFollowUp = async (req, res) => {
   try {
     const followUp = await FollowUp.findByIdAndUpdate(
@@ -163,25 +151,16 @@ export const deleteFollowUp = async (req, res) => {
   }
 };
 
-// ── GET config for a module (used by modal to load options) ──────────────────
-// GET /api/followup-config/:module
+// ── GET config (always "lead") ────────────────────────────────────────────────
+// GET /api/followup-config
 export const getConfig = async (req, res) => {
   try {
-    const { module } = req.params;
+    // ✅ FIXED — no module param needed, always "lead"
+    let config = await FollowUpConfig.findOne({ module: CONFIG_MODULE });
 
-    if (!VALID_MODULES.includes(module)) {
-      return res.status(400).json({
-        success: false,
-        message: `Invalid module. Must be one of: ${VALID_MODULES.join(", ")}`,
-      });
-    }
-
-    let config = await FollowUpConfig.findOne({ module });
-
-    // If no config exists yet, seed defaults for this module
     if (!config) {
       config = await FollowUpConfig.create({
-        module,
+        module: CONFIG_MODULE, // ✅ seed as "lead"
         options: [
           {
             label: "Call Back Later",
@@ -242,21 +221,15 @@ export const getConfig = async (req, res) => {
       });
     }
 
-    return res.status(200).json({
-      success: true,
-      message: "Config fetched successfully",
-      data: config,
-    });
+    return res.status(200).json({ success: true, data: config });
   } catch (error) {
     return res.status(500).json({ success: false, message: error.message });
   }
 };
 
-// ── ADD a new option ─────────────────────────────────────────────────────────
-// POST /api/followup-config/:module/option
+// ── ADD option ────────────────────────────────────────────────────────────────
 export const addOption = async (req, res) => {
   try {
-    const { module } = req.params;
     const { label, hasRemark, remarkRequired, remarkPlaceholder } = req.body;
 
     if (!label?.trim()) {
@@ -265,7 +238,8 @@ export const addOption = async (req, res) => {
         .json({ success: false, message: "Label is required" });
     }
 
-    const config = await FollowUpConfig.findOne({ module });
+    // ✅ FIXED — no module from params
+    const config = await FollowUpConfig.findOne({ module: CONFIG_MODULE });
     if (!config) {
       return res
         .status(404)
@@ -288,25 +262,20 @@ export const addOption = async (req, res) => {
 
     await config.save();
 
-    return res.status(201).json({
-      success: true,
-      message: "Option added successfully",
-      data: config,
-    });
+    return res.status(201).json({ success: true, data: config });
   } catch (error) {
     return res.status(500).json({ success: false, message: error.message });
   }
 };
 
-// ── UPDATE an option (toggle remark, rename, etc.) ───────────────────────────
-// PUT /api/followup-config/:module/option/:optionId
+// ── UPDATE option ─────────────────────────────────────────────────────────────
 export const updateOption = async (req, res) => {
   try {
-    const { module, optionId } = req.params;
+    const { optionId } = req.params; // ✅ FIXED — removed module from params
     const { label, hasRemark, remarkRequired, remarkPlaceholder, isActive } =
       req.body;
 
-    const config = await FollowUpConfig.findOne({ module });
+    const config = await FollowUpConfig.findOne({ module: CONFIG_MODULE });
     if (!config) {
       return res
         .status(404)
@@ -326,29 +295,22 @@ export const updateOption = async (req, res) => {
     if (remarkPlaceholder !== undefined)
       option.remarkPlaceholder = remarkPlaceholder;
     if (isActive !== undefined) option.isActive = isActive;
-
-    // If remark is turned off, also turn off remarkRequired
     if (hasRemark === false) option.remarkRequired = false;
 
     await config.save();
 
-    return res.status(200).json({
-      success: true,
-      message: "Option updated successfully",
-      data: config,
-    });
+    return res.status(200).json({ success: true, data: config });
   } catch (error) {
     return res.status(500).json({ success: false, message: error.message });
   }
 };
 
-// ── DELETE an option ─────────────────────────────────────────────────────────
-// DELETE /api/followup-config/:module/option/:optionId
+// ── DELETE option ─────────────────────────────────────────────────────────────
 export const deleteOption = async (req, res) => {
   try {
-    const { module, optionId } = req.params;
+    const { optionId } = req.params; // ✅ FIXED — removed module from params
 
-    const config = await FollowUpConfig.findOne({ module });
+    const config = await FollowUpConfig.findOne({ module: CONFIG_MODULE });
     if (!config) {
       return res
         .status(404)
@@ -358,25 +320,17 @@ export const deleteOption = async (req, res) => {
     config.options = config.options.filter(
       (o) => o._id.toString() !== optionId,
     );
-
     await config.save();
 
-    return res.status(200).json({
-      success: true,
-      message: "Option deleted successfully",
-      data: config,
-    });
+    return res.status(200).json({ success: true, data: config });
   } catch (error) {
     return res.status(500).json({ success: false, message: error.message });
   }
 };
 
-// ── REORDER options ──────────────────────────────────────────────────────────
-// PUT /api/followup-config/:module/reorder
-// Body: { orderedIds: ["id1", "id2", ...] }
+// ── REORDER options ───────────────────────────────────────────────────────────
 export const reorderOptions = async (req, res) => {
   try {
-    const { module } = req.params;
     const { orderedIds } = req.body;
 
     if (!Array.isArray(orderedIds)) {
@@ -385,7 +339,8 @@ export const reorderOptions = async (req, res) => {
         .json({ success: false, message: "orderedIds must be an array" });
     }
 
-    const config = await FollowUpConfig.findOne({ module });
+    // ✅ FIXED — removed module from params
+    const config = await FollowUpConfig.findOne({ module: CONFIG_MODULE });
     if (!config) {
       return res
         .status(404)
@@ -400,11 +355,7 @@ export const reorderOptions = async (req, res) => {
     config.options.sort((a, b) => a.order - b.order);
     await config.save();
 
-    return res.status(200).json({
-      success: true,
-      message: "Options reordered successfully",
-      data: config,
-    });
+    return res.status(200).json({ success: true, data: config });
   } catch (error) {
     return res.status(500).json({ success: false, message: error.message });
   }

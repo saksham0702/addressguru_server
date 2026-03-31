@@ -20,19 +20,19 @@
   "item": [
     {
       "name": "📋 Follow Up Config (Settings)",
-      "description": "Manage activity options that appear in the Follow Up modal. Admin use only.\n\nBase path: /api/followup-config\n\nValid module values: BusinessListing | MarketplaceListing | PropertyListing | JobListing",
+      "description": "Manage activity options that appear in the Follow Up modal. Admin use only.\n\nBase path: /api/followup-config\n\nThere is ONE shared config (module: 'lead') used across ALL listing types.\nNo module param needed in any config route.",
       "item": [
         {
-          "name": "Get Config (BusinessListing)",
+          "name": "Get Config",
           "request": {
             "method": "GET",
             "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
             "url": {
-              "raw": "{{baseUrl}}/api/followup-config/BusinessListing",
+              "raw": "{{baseUrl}}/api/followup-config",
               "host": ["{{baseUrl}}"],
-              "path": ["api", "followup-config", "BusinessListing"]
+              "path": ["api", "followup-config"]
             },
-            "description": "Fetch all follow-up activity options for BusinessListing module.\n\nOn first call, auto-seeds default options if none exist.\n\nUsed by FollowUpModal.jsx to load options dynamically."
+            "description": "Fetch all follow-up activity options from the single shared config (module: 'lead').\n\nThis config is shared across ALL listing types: BusinessListing, MarketplaceListing, PropertyListing, JobListing.\n\nOn first call, auto-seeds default options if none exist.\n\nUsed by FollowUpModal.jsx to load options dynamically."
           },
           "response": [
             {
@@ -40,51 +40,9 @@
               "status": "OK",
               "code": 200,
               "header": [{ "key": "Content-Type", "value": "application/json" }],
-              "body": "{\n  \"success\": true,\n  \"message\": \"Config fetched successfully\",\n  \"data\": {\n    \"_id\": \"64abc123\",\n    \"module\": \"BusinessListing\",\n    \"options\": [\n      {\n        \"_id\": \"opt001\",\n        \"label\": \"Call Back Later\",\n        \"hasRemark\": false,\n        \"remarkRequired\": false,\n        \"remarkPlaceholder\": \"Add a remark…\",\n        \"isActive\": true,\n        \"order\": 0\n      },\n      {\n        \"_id\": \"opt002\",\n        \"label\": \"Not Interested\",\n        \"hasRemark\": true,\n        \"remarkRequired\": true,\n        \"remarkPlaceholder\": \"Add a remark…\",\n        \"isActive\": true,\n        \"order\": 5\n      }\n    ],\n    \"createdAt\": \"2026-03-20T10:00:00.000Z\",\n    \"updatedAt\": \"2026-03-20T10:00:00.000Z\"\n  }\n}"
+              "body": "{\n  \"success\": true,\n  \"data\": {\n    \"_id\": \"64abc123\",\n    \"module\": \"lead\",\n    \"options\": [\n      {\n        \"_id\": \"opt001\",\n        \"label\": \"Call Back Later\",\n        \"hasRemark\": false,\n        \"remarkRequired\": false,\n        \"remarkPlaceholder\": \"Add a remark…\",\n        \"isActive\": true,\n        \"order\": 0\n      },\n      {\n        \"_id\": \"opt002\",\n        \"label\": \"Not Interested\",\n        \"hasRemark\": true,\n        \"remarkRequired\": true,\n        \"remarkPlaceholder\": \"Add a remark…\",\n        \"isActive\": true,\n        \"order\": 5\n      }\n    ],\n    \"createdAt\": \"2026-03-20T10:00:00.000Z\",\n    \"updatedAt\": \"2026-03-20T10:00:00.000Z\"\n  }\n}"
             }
           ]
-        },
-        {
-          "name": "Get Config (MarketplaceListing)",
-          "request": {
-            "method": "GET",
-            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
-            "url": {
-              "raw": "{{baseUrl}}/api/followup-config/MarketplaceListing",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "followup-config", "MarketplaceListing"]
-            },
-            "description": "Fetch all follow-up activity options for MarketplaceListing module."
-          },
-          "response": []
-        },
-        {
-          "name": "Get Config (PropertyListing)",
-          "request": {
-            "method": "GET",
-            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
-            "url": {
-              "raw": "{{baseUrl}}/api/followup-config/PropertyListing",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "followup-config", "PropertyListing"]
-            },
-            "description": "Fetch all follow-up activity options for PropertyListing module."
-          },
-          "response": []
-        },
-        {
-          "name": "Get Config (JobListing)",
-          "request": {
-            "method": "GET",
-            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
-            "url": {
-              "raw": "{{baseUrl}}/api/followup-config/JobListing",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "followup-config", "JobListing"]
-            },
-            "description": "Fetch all follow-up activity options for JobListing module."
-          },
-          "response": []
         },
         {
           "name": "Add New Option",
@@ -100,11 +58,11 @@
               "options": { "raw": { "language": "json" } }
             },
             "url": {
-              "raw": "{{baseUrl}}/api/followup-config/{{module}}/option",
+              "raw": "{{baseUrl}}/api/followup-config/option",
               "host": ["{{baseUrl}}"],
-              "path": ["api", "followup-config", "{{module}}", "option"]
+              "path": ["api", "followup-config", "option"]
             },
-            "description": "Add a new activity option to the follow-up modal.\n\nReplace {{module}} with: BusinessListing | MarketplaceListing | PropertyListing | JobListing\n\nFields:\n- label (required): Display text shown in modal\n- hasRemark: Show remark textarea when this is selected\n- remarkRequired: Force agent to fill remark before submitting\n- remarkPlaceholder: Custom placeholder text in remark box"
+            "description": "Add a new activity option to the shared follow-up config.\n\nNo module param needed — always operates on the single 'lead' config.\n\nFields:\n- label (required): Display text shown in modal\n- hasRemark: Show remark textarea when this option is selected\n- remarkRequired: Force agent to fill remark before submitting\n- remarkPlaceholder: Custom placeholder text in remark box"
           },
           "response": [
             {
@@ -112,7 +70,7 @@
               "status": "Created",
               "code": 201,
               "header": [{ "key": "Content-Type", "value": "application/json" }],
-              "body": "{\n  \"success\": true,\n  \"message\": \"Option added successfully\",\n  \"data\": {\n    \"_id\": \"64abc123\",\n    \"module\": \"BusinessListing\",\n    \"options\": [\n      {\n        \"_id\": \"opt_new\",\n        \"label\": \"Visited Office\",\n        \"hasRemark\": true,\n        \"remarkRequired\": false,\n        \"remarkPlaceholder\": \"Describe the office visit…\",\n        \"isActive\": true,\n        \"order\": 10\n      }\n    ]\n  }\n}"
+              "body": "{\n  \"success\": true,\n  \"data\": {\n    \"_id\": \"64abc123\",\n    \"module\": \"lead\",\n    \"options\": [\n      {\n        \"_id\": \"opt_new\",\n        \"label\": \"Visited Office\",\n        \"hasRemark\": true,\n        \"remarkRequired\": false,\n        \"remarkPlaceholder\": \"Describe the office visit…\",\n        \"isActive\": true,\n        \"order\": 10\n      }\n    ]\n  }\n}"
             },
             {
               "name": "400 – Label Missing",
@@ -122,11 +80,11 @@
               "body": "{\n  \"success\": false,\n  \"message\": \"Label is required\"\n}"
             },
             {
-              "name": "400 – Invalid Module",
-              "status": "Bad Request",
-              "code": 400,
+              "name": "404 – Config Not Found",
+              "status": "Not Found",
+              "code": 404,
               "header": [{ "key": "Content-Type", "value": "application/json" }],
-              "body": "{\n  \"success\": false,\n  \"message\": \"Invalid module. Must be one of: BusinessListing, MarketplaceListing, PropertyListing, JobListing\"\n}"
+              "body": "{\n  \"success\": false,\n  \"message\": \"Config not found\"\n}"
             }
           ]
         },
@@ -144,11 +102,11 @@
               "options": { "raw": { "language": "json" } }
             },
             "url": {
-              "raw": "{{baseUrl}}/api/followup-config/{{module}}/option/{{activityOptionId}}",
+              "raw": "{{baseUrl}}/api/followup-config/option/{{activityOptionId}}",
               "host": ["{{baseUrl}}"],
-              "path": ["api", "followup-config", "{{module}}", "option", "{{activityOptionId}}"]
+              "path": ["api", "followup-config", "option", "{{activityOptionId}}"]
             },
-            "description": "Update any field of an existing option.\n\nAll fields are optional — send only what you want to change.\n\nNote: If you set hasRemark to false, remarkRequired is automatically set to false too."
+            "description": "Update any field of an existing option.\n\nNo module param needed — always operates on the single 'lead' config.\n\nAll fields are optional — send only what you want to change.\n\nNote: If you set hasRemark to false, remarkRequired is automatically set to false too."
           },
           "response": [
             {
@@ -156,7 +114,7 @@
               "status": "OK",
               "code": 200,
               "header": [{ "key": "Content-Type", "value": "application/json" }],
-              "body": "{\n  \"success\": true,\n  \"message\": \"Option updated successfully\",\n  \"data\": { \"...\" : \"...\" }\n}"
+              "body": "{\n  \"success\": true,\n  \"data\": { \"...\" : \"...\" }\n}"
             },
             {
               "name": "404 – Option Not Found",
@@ -181,9 +139,9 @@
               "options": { "raw": { "language": "json" } }
             },
             "url": {
-              "raw": "{{baseUrl}}/api/followup-config/{{module}}/option/{{activityOptionId}}",
+              "raw": "{{baseUrl}}/api/followup-config/option/{{activityOptionId}}",
               "host": ["{{baseUrl}}"],
-              "path": ["api", "followup-config", "{{module}}", "option", "{{activityOptionId}}"]
+              "path": ["api", "followup-config", "option", "{{activityOptionId}}"]
             },
             "description": "Disable or enable an option without deleting it.\n\nisActive: false → hidden from modal\nisActive: true  → visible in modal\n\nSame endpoint as Update Option, just send only isActive."
           },
@@ -195,11 +153,11 @@
             "method": "DELETE",
             "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
             "url": {
-              "raw": "{{baseUrl}}/api/followup-config/{{module}}/option/{{activityOptionId}}",
+              "raw": "{{baseUrl}}/api/followup-config/option/{{activityOptionId}}",
               "host": ["{{baseUrl}}"],
-              "path": ["api", "followup-config", "{{module}}", "option", "{{activityOptionId}}"]
+              "path": ["api", "followup-config", "option", "{{activityOptionId}}"]
             },
-            "description": "Permanently delete an activity option.\n\nWarning: This cannot be undone. Previously logged follow-ups that used this option will still show the label correctly because the label is snapshotted at log time."
+            "description": "Permanently delete an activity option from the shared config.\n\nNo module param needed.\n\nWarning: This cannot be undone. Previously logged follow-ups that used this option will still show the label correctly because the label is snapshotted at log time."
           },
           "response": [
             {
@@ -225,11 +183,11 @@
               "options": { "raw": { "language": "json" } }
             },
             "url": {
-              "raw": "{{baseUrl}}/api/followup-config/{{module}}/reorder",
+              "raw": "{{baseUrl}}/api/followup-config/reorder",
               "host": ["{{baseUrl}}"],
-              "path": ["api", "followup-config", "{{module}}", "reorder"]
+              "path": ["api", "followup-config", "reorder"]
             },
-            "description": "Reorder activity options by passing an array of option IDs in the desired order.\n\nThe index in the array becomes the new `order` value for each option.\n\nIMPORTANT: This route is registered BEFORE /:module/option/:optionId in the router to avoid Express matching 'reorder' as an optionId.\n\nUseful when you implement drag-and-drop in FollowUpSettings."
+            "description": "Reorder activity options by passing an array of option IDs in the desired order.\n\nNo module param needed — always operates on the single 'lead' config.\n\nThe index in the array becomes the new `order` value for each option.\n\nUseful when you implement drag-and-drop in FollowUpSettings."
           },
           "response": [
             {
@@ -245,7 +203,7 @@
     },
     {
       "name": "📞 Follow Up Logs",
-      "description": "Create and retrieve follow-up log entries. These are created when an agent submits the FollowUpModal.\n\nBase path: /api/followups\n\nNOTE: All routes require ?module= query param.\nValid values: BusinessListing | MarketplaceListing | PropertyListing | JobListing\n\nNOTE: GET /listing/:listingId is registered BEFORE GET /:id to avoid Express matching 'listing' as an ID.",
+      "description": "Create and retrieve follow-up log entries. These are created when an agent submits the FollowUpModal.\n\nBase path: /api/followups\n\nNOTE: All create/get-by-listing routes require ?module= query param.\nValid values: BusinessListing | MarketplaceListing | PropertyListing | JobListing\n\nNOTE: GET /listing/:listingId is registered BEFORE GET /:id to avoid Express matching 'listing' as an ID.",
       "item": [
         {
           "name": "Create Follow Up Log (BusinessListing)",
@@ -281,7 +239,7 @@
               "path": ["api", "followups"],
               "query": [{ "key": "module", "value": "BusinessListing" }]
             },
-            "description": "Log a new follow-up for a Business Listing.\n\nThe ?module= query param is required and tells the controller:\n1. Which FollowUpConfig to validate the activityOptionId against\n2. Which module value to store on the follow-up log\n\nThe controller will:\n1. Validate module is one of the 4 valid values\n2. Validate listingId and activityOptionId are present\n3. Fetch FollowUpConfig for this module and validate the option\n4. Check if remark is required for that option\n5. Snapshot the label so history stays accurate even if option is renamed later\n6. Save and return the populated log\n\nRequires: auth middleware — createdBy is taken from req.user.id"
+            "description": "Log a new follow-up for a Business Listing.\n\nThe ?module= query param is required and tells the controller which module to store on the log.\n\nThe activityOptionId is validated against the single shared 'lead' config.\n\nThe controller will:\n1. Validate module is one of the 4 valid listing types\n2. Validate listingId and activityOptionId are present\n3. Fetch the shared FollowUpConfig (module: 'lead') and validate the option\n4. Check if remark is required for that option\n5. Snapshot the label so history stays accurate even if option is renamed later\n6. Save and return the populated log\n\nRequires: auth middleware — createdBy is taken from req.user.id"
           },
           "response": [
             {
@@ -324,7 +282,7 @@
               "status": "Not Found",
               "code": 404,
               "header": [{ "key": "Content-Type", "value": "application/json" }],
-              "body": "{\n  \"success\": false,\n  \"message\": \"Follow-up config not found for module: BusinessListing\"\n}"
+              "body": "{\n  \"success\": false,\n  \"message\": \"Follow-up config not found. Please seed the config first.\"\n}"
             }
           ]
         },
@@ -416,14 +374,14 @@
               "status": "OK",
               "code": 200,
               "header": [{ "key": "Content-Type", "value": "application/json" }],
-              "body": "{\n  \"success\": true,\n  \"message\": \"Follow-ups fetched successfully\",\n  \"count\": 2,\n  \"data\": [\n    {\n      \"_id\": \"64fu002\",\n      \"listing\": \"69bd1aeba350f63562a43ed8\",\n      \"module\": \"BusinessListing\",\n      \"reason\": \"Interested\",\n      \"remark\": \"Very interested, wants a demo next week.\",\n      \"nextFollowUpDate\": \"2026-03-27T09:00:00.000Z\",\n      \"isDeleted\": false,\n      \"createdBy\": { \"_id\": \"user001\", \"name\": \"Ayush Gupta\", \"email\": \"ayush@addressguru.com\" },\n      \"createdAt\": \"2026-03-21T08:00:00.000Z\"\n    },\n    {\n      \"_id\": \"64fu001\",\n      \"listing\": \"69bd1aeba350f63562a43ed8\",\n      \"module\": \"BusinessListing\",\n      \"reason\": \"Call Back Later\",\n      \"remark\": null,\n      \"nextFollowUpDate\": \"2026-03-22T10:00:00.000Z\",\n      \"isDeleted\": false,\n      \"createdBy\": { \"_id\": \"user001\", \"name\": \"Ayush Gupta\", \"email\": \"ayush@addressguru.com\" },\n      \"createdAt\": \"2026-03-20T12:30:00.000Z\"\n    }\n  ]\n}"
+              "body": "{\n  \"success\": true,\n  \"count\": 2,\n  \"data\": [\n    {\n      \"_id\": \"64fu002\",\n      \"listing\": \"69bd1aeba350f63562a43ed8\",\n      \"module\": \"BusinessListing\",\n      \"reason\": \"Interested\",\n      \"remark\": \"Very interested, wants a demo next week.\",\n      \"nextFollowUpDate\": \"2026-03-27T09:00:00.000Z\",\n      \"isDeleted\": false,\n      \"createdBy\": { \"_id\": \"user001\", \"name\": \"Ayush Gupta\", \"email\": \"ayush@addressguru.com\" },\n      \"createdAt\": \"2026-03-21T08:00:00.000Z\"\n    },\n    {\n      \"_id\": \"64fu001\",\n      \"listing\": \"69bd1aeba350f63562a43ed8\",\n      \"module\": \"BusinessListing\",\n      \"reason\": \"Call Back Later\",\n      \"remark\": null,\n      \"nextFollowUpDate\": \"2026-03-22T10:00:00.000Z\",\n      \"isDeleted\": false,\n      \"createdBy\": { \"_id\": \"user001\", \"name\": \"Ayush Gupta\", \"email\": \"ayush@addressguru.com\" },\n      \"createdAt\": \"2026-03-20T12:30:00.000Z\"\n    }\n  ]\n}"
             },
             {
               "name": "200 – No Logs Yet",
               "status": "OK",
               "code": 200,
               "header": [{ "key": "Content-Type", "value": "application/json" }],
-              "body": "{\n  \"success\": true,\n  \"message\": \"Follow-ups fetched successfully\",\n  \"count\": 0,\n  \"data\": []\n}"
+              "body": "{\n  \"success\": true,\n  \"count\": 0,\n  \"data\": []\n}"
             },
             {
               "name": "400 – Missing or Invalid Module",

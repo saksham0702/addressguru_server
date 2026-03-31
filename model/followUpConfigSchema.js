@@ -40,7 +40,7 @@ const followUpConfigSchema = new mongoose.Schema(
       required: true,
       unique: true,
       trim: true,
-      enum: ["BusinessListing", "MarketplaceListing", "PropertyListing", "JobListing"],
+      enum: ["lead"],
     },
     options: [activityOptionSchema],
   },

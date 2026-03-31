@@ -9,19 +9,10 @@ import {
 
 const router = express.Router();
 
-// GET    /api/followup-config/:module
-router.get("/:module", getConfig);
-
-// POST   /api/followup-config/:module/option
-router.post("/:module/option", addOption);
-
-// PUT    /api/followup-config/:module/option/:optionId
-router.put("/:module/option/:optionId", updateOption);
-
-// DELETE /api/followup-config/:module/option/:optionId
-router.delete("/:module/option/:optionId", deleteOption);
-
-// PUT    /api/followup-config/:module/reorder
-router.put("/:module/reorder", reorderOptions);
+router.get("/", getConfig);
+router.post("/option", addOption);
+router.put("/option/:optionId", updateOption);
+router.delete("/option/:optionId", deleteOption);
+router.put("/reorder", reorderOptions);
 
 export default router;
