@@ -633,13 +633,13 @@ export const getListingBySlug = async (req, res) => {
       slug,
       isDeleted: false,
     })
-      .populate("category", "name")
-      .populate("subCategory", "name")
-      .populate("city", "name")
+      .populate("category", "name iconSvg")
+      .populate("subCategory", "name iconSvg")
+      .populate("city", "name iconSvg")
       .populate("additionalFields.field_id", "field_label field_type")
-      .populate("facilities", "name")
-      .populate("services", "name")
-      .populate("paymentModes", "name")
+      .populate("facilities", "name iconSvg")
+      .populate("services", "name iconSvg")
+      .populate("paymentModes", "name iconSvg")
       .lean();
     if (!listing) return errorData(res, 404, false, "Listing not found");
     return successData(res, 200, true, "Listing fetched successfully", listing);
@@ -648,6 +648,7 @@ export const getListingBySlug = async (req, res) => {
     return errorData(res, 500, false, "Internal server error");
   }
 };
+
 // get listing by user
 export const getListingByUser = async (req, res) => {
   console.log("req.user get listing by user", req.user);
@@ -662,7 +663,7 @@ export const getListingByUser = async (req, res) => {
         createdBy: id,
         isDeleted: false,
       })
-        .populate("category", "name")
+        .populate("category", "name iconSvg")
         .populate("subCategory", "name")
         .populate("city", "name")
         .populate("createdBy", "name email phone avatar") // optional: show owner info
@@ -854,3 +855,4 @@ export const getApprovedListings = async (req, res) => {
   }
 };
 
+  

@@ -20,11 +20,11 @@ const propertyStepSchema = {
       "string.max": "Title must not exceed 100 characters",
     }),
 
-    description: Joi.string().min(500).max(700).required().messages({
+    description: Joi.string().min(200).max(500).required().messages({
       "any.required": "Description is required",
       "string.empty": "Description is required",
-      "string.min": "Description must be at least 500 characters",
-      "string.max": "Description must not exceed 700 characters",
+      "string.min": "Description must be at least 200 characters",
+      "string.max": "Description must not exceed 500 characters",
     }),
 
     purpose: Joi.string().valid("sale", "rent", "lease").required().messages({
@@ -51,11 +51,11 @@ const propertyStepSchema = {
     area_size: Joi.number().min(0).allow(null).optional(),
 
     area_unit: Joi.string()
-      .valid("sqft", "sqm", "marla", "kanal")
+      .valid("sqft", "sqm")
       .default("sqft")
       .optional()
       .messages({
-        "any.only": "Area unit must be one of: sqft, sqm, marla, kanal",
+        "any.only": "Area unit must be one of: sqft, sqm",
       }),
 
     payments: Joi.alternatives()
