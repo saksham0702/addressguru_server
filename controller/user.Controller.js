@@ -14,9 +14,6 @@ import {
   sendResendOTPMail,
   sendSuccessMail,
 } from "../utils/sendMail.js";
-import geoip from "geoip-lite";
-import { UAParser } from "ua-parser-js";
-
 const OTP_VALIDITY_MINUTES = 10;
 
 export const login = async (req, res) => {
@@ -25,21 +22,7 @@ export const login = async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    // 🌍 Get IP
-    // const ip =
-    //   req?.headers?.["x-forwarded-for"]?.split(",")[0] ||
-    //   req?.socket?.remoteAddress ||
-    //   null;
-
-    // 🌍 Geo lookup
-    // const geo = ip ? geoip.lookup(ip) : null;
-
-    // 📱 Device info (safe)
-    // const userAgent = req.headers["user-agent"] || "";
-    // const uaParser = new UAParser(userAgent);
-    // const deviceInfo = uaParser.getResult();
-
-    // 🔎 Check user (FIXED)
+    // 🔎 Check user
     const user = await User.findOne({
       email,
       deletedAt: null,
@@ -88,13 +71,29 @@ export const login = async (req, res) => {
       // path: "/",
     });
 
+    if (!user?.verified_email) {
+      const otp = generateOTP();
+      user.otp = otp;
+      user.otpCreatedAt = new Date();
+      await user.save();
+
+      try {
+        console.log("Sending OTP email to:", email);
+        // NOTE: it's unsafe to send plaintext passwords in real apps — consider sending a password-reset link or templated welcome email without password.
+        await sendOTPMail(email, user?.name, otp);
+        console.log("OTP email sent successfully");
+      } catch (mailErr) {
+        console.warn("sendMail failed:", mailErr?.message || mailErr);
+      }
+    }
+
+
     // 📝 Save login log
-    // await addUserLog(user._id, {
-    //   // ip,
-    //   // geo,
-    //   // deviceInfo,
-    //   loginAt: new Date(),
-    // });
+    try {
+      await addUserLog(user, req);
+    } catch (logError) {
+      console.warn("Failed to save login log:", logError.message);
+    }
 
     return successData(res, 200, true, "Login successful", {
       user,
@@ -327,7 +326,7 @@ export const verifyOTP = async (req, res, next) => {
   if (!otp || otp.length !== 6) {
     return res.status(400).json({
       status: false,
-      message: "OTP is required and must be a 4-digit code.",
+      message: "OTP is required and must be a 6-digit code.",
     });
   }
 
@@ -498,7 +497,7 @@ export const setNewPassword = async (req, res) => {
 
   try {
     const user = await User.findOne({ email });
-    console.log("USERRR :", user);
+    // console.log("USERRR :", user);
 
     if (!user) {
       return errorData(res, 404, false, "No account found with this email.");
@@ -534,8 +533,8 @@ export const setNewPassword = async (req, res) => {
 export const changePassword = async (req, res) => {
   try {
     console.log("REQQ BODY ::", req.body);
-    console.log("REQQ USER ::", req.user?.user);
-    const userInfo = req.user?.user;
+    console.log("REQQ USER ::", req.user);
+    const userInfo = req?.user;
     const userId = userInfo?.id;
 
     const { oldPassword, newPassword } = req.body;
@@ -593,13 +592,25 @@ export const getUserDetails = async (req, res) => {
 
 export const updateProfile = async (req, res) => {
   try {
-    console.log("RESS BODYY ::", req?.body);
-    console.log("RESS FILE ::", req?.file);
+    console.log("UPDATE PROFILE BODY ::", req?.body);
+    console.log("UPDATE PROFILE FILE ::", req?.file);
 
-    const userInfo = req.user?.user;
-    const userId = userInfo?.id;
+    const userId = req.user?.id;
+    if (!userId) {
+      return errorData(res, 401, false, "Unauthorized");
+    }
 
-    const allowedFields = ["email", "name", "avatar", "phone"];
+    const allowedFields = [
+      "name",
+      "phone",
+      "dob",
+      "city",
+      "profile_bio",
+      "profile_website",
+      "profile_location_emirate",
+      "profile_location_area",
+      "whatsapp_same",
+    ];
 
     const updateData = {};
     for (let key of allowedFields) {
@@ -608,13 +619,25 @@ export const updateProfile = async (req, res) => {
       }
     }
 
-    if (!req.file)
-      return res
-        .status(400)
-        .json({ success: false, message: "No file uploaded" });
+    // Handle check if email update is allowed (if provided in body)
+    if (req.body.email) {
+      const existingUser = await User.findOne({
+        email: req.body.email,
+        _id: { $ne: userId },
+      });
+      if (existingUser) {
+        return errorData(res, 400, false, "Email already in use.");
+      }
+      updateData.email = req.body.email;
+    }
 
-    const filePath = req.file.path.replace(/\\/g, "/"); // normalize for Windows
-    const imageUrl = `${BACKEND_BASE_URL}/${filePath}`;
+    // Handle Image Upload
+    let imageUrl = null;
+    if (req.file) {
+      const filePath = req.file.path.replace(/\\/g, "/"); // normalize for Windows
+      imageUrl = `${BACKEND_BASE_URL}/${filePath}`;
+      updateData.avatar = imageUrl; // Save to user avatar field
+    }
 
     const updatedUser = await User.findByIdAndUpdate(
       userId,
@@ -622,13 +645,16 @@ export const updateProfile = async (req, res) => {
       { new: true, runValidators: true },
     ).select("-password -otp -otpCreatedAt");
 
+    if (!updatedUser) {
+      return errorData(res, 404, false, "User not found.");
+    }
+
     return successData(
       res,
       200,
       true,
       "Profile updated successfully.",
       updatedUser,
-      imageUrl,
     );
   } catch (err) {
     console.warn("Update profile error:", err);

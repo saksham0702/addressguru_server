@@ -1,6 +1,7 @@
 import userLogSchema from "../model/userLogSchema.js";
 import requestIp from "request-ip";
 import { UAParser } from "ua-parser-js";
+import geoip from "geoip-lite";
 
 export const successData = (
   res,
@@ -88,30 +89,56 @@ export const addUserLog = async (user, req) => {
   // console.log("USERREQ :", req.headers["x-isp"] || "Unknown");
 
   try {
+    const userAgent = req?.headers?.["user-agent"] || "";
     const ipAddress =
       req?.headers?.["x-forwarded-for"]?.split(",")[0] ||
       req?.connection?.remoteAddress ||
       requestIp.getClientIp(req) ||
       "Unknown";
 
-    const uaParser = new UAParser(req?.headers?.["user-agent"]);
+    const uaParser = new UAParser(userAgent);
     const ua = uaParser.getResult();
+
+    // 🌍 Geo lookup
+    const geo = ipAddress !== "Unknown" ? geoip.lookup(ipAddress) : null;
+    const location_coordinates = geo ? [geo.ll[1], geo.ll[0]] : undefined; // [lng, lat]
+
+    // 📱 Platform detection
+    let platform = "Web Browser";
+    if (!ua.browser.name) {
+      if (
+        ua.os.name === "iOS" ||
+        userAgent.includes("AddressGuruAE") ||
+        userAgent.includes("Darwin") ||
+        userAgent.includes("CFNetwork")
+      ) {
+        platform = "iOS App";
+      } else if (ua.os.name === "Android") {
+        platform = "Android App";
+      } else {
+        platform = "Other";
+      }
+    }
 
     await userLogSchema.create({
       userId: user._id,
       ipAddress,
-      device_type: ua.device.type || "Desktop",
+      location_coordinates,
+      device_type: ua.device.type || (ua.browser.name ? "Desktop" : "Mobile"),
       device_os: ua.os.name || "Unknown OS",
-      device_browser: ua.browser.name || "Unknown Browser",
+      device_browser: ua.browser.name || (platform !== "Web Browser" ? "App" : "Unknown Browser"),
       device_browserVersion: ua.browser.version || "Unknown",
-      device_userAgent: req?.headers?.["user-agent"],
+      device_userAgent: userAgent,
       network_proxy: req?.headers?.["via"] ? true : false,
       session_loginAt: new Date(),
       session_lastActiveAt: new Date(),
       type: "login",
+      platform,
     });
 
-    console.log(`📝 User log added for ${user.email} from ${ipAddress}`);
+    console.log(
+      `📝 User log added for ${user.email} from ${ipAddress} [${platform}]`
+    );
   } catch (error) {
     console.warn("⚠️ Failed to add user log:", error.message);
   }
