@@ -5,7 +5,7 @@ import {
   getFollowUpById,
   deleteFollowUp,
 } from "../controller/followUp.Controller.js";
-import { authenticate } from "../middleware/userAuth.js";
+import { authenticate } from "../middleware/userAuth.js"; 
 
 const router = express.Router();
 
