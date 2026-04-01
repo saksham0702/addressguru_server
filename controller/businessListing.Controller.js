@@ -57,10 +57,8 @@ const validateAdditionalFields = async (additionalFields = []) => {
 
   return { errors, validated };
 };
-
 // ─── Helper: coerce value to array ────────────────────────────────────────────
 const toArray = (val) => (Array.isArray(val) ? val : [val].filter(Boolean));
-
 // ─── Helper: parse JSON string safely ─────────────────────────────────────────
 const parseJSON = (val, fallback = null) => {
   if (typeof val !== "string") return val ?? fallback;
@@ -70,7 +68,6 @@ const parseJSON = (val, fallback = null) => {
     return fallback;
   }
 };
-
 // ─── POST /business-listings ──────────────────────────────────────────────────
 export const createListing = async (req, res) => {
   console.log("req.user testing create listing", req.user);
@@ -548,55 +545,45 @@ export const getListingsByCategoryAndCity = async (req, res) => {
   try {
     const { category_slug, city_slug } = req.params;
     const { page = 1, limit = 10 } = req.query;
-
     // 1. Category is REQUIRED
     if (!category_slug) {
       return errorData(res, 400, false, "Category slug is required");
     }
-
     // 2. Find category
     const category = await Category.findOne({
       slug: category_slug,
       isDeleted: false,
     });
-
     if (!category) {
       return errorData(res, 404, false, "Category not found");
     }
-
     // 3. Base filter
     const filter = {
       category: category._id,
       isDeleted: false,
       status: "approved",
     };
-
     // 4. City filter (skip if "all-cities" or not provided)
     if (city_slug && city_slug.toLowerCase().trim() !== "all-cities") {
       const city = await CitiesSchema.findOne({
         slug: city_slug,
         deletedAt: null,
       });
-
       if (!city) {
         return errorData(res, 404, false, "City not found");
       }
-
       filter.city = city._id;
     }
-
     // 5. Pagination
     const pageNumber = Number(page);
     const limitNumber = Number(limit);
     const skip = (pageNumber - 1) * limitNumber;
-
-    console.log("Filter:", JSON.stringify(filter, null, 2));
-
     // 6. Fetch listings + count
     const [listings, total] = await Promise.all([
       BusinessListing.find(filter)
         .populate("category", "name slug")
         .populate("subCategory", "name slug")
+        .populate("facilities")
         .populate("city", "name slug")
         .sort({ createdAt: -1 })
         .skip(skip)
@@ -605,9 +592,6 @@ export const getListingsByCategoryAndCity = async (req, res) => {
 
       BusinessListing.countDocuments(filter),
     ]);
-    console.log("Total listings found:", total);
-    console.log("Listings:", listings);
-
     // 7. Always return 200 with data (even if empty)
     return successData(res, 200, true, "Listings fetched successfully", {
       listings,
@@ -633,9 +617,9 @@ export const getListingBySlug = async (req, res) => {
       slug,
       isDeleted: false,
     })
-      .populate("category", "name iconSvg")
-      .populate("subCategory", "name iconSvg")
-      .populate("city", "name iconSvg")
+      .populate("category", "name iconSvg slug")
+      .populate("subCategory", "name iconSvg slug")
+      .populate("city", "name iconSvg slug")
       .populate("additionalFields.field_id", "field_label field_type")
       .populate("facilities", "name iconSvg")
       .populate("services", "name iconSvg")

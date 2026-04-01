@@ -29,9 +29,7 @@ console.log("req.body",req.body);
       display_order,
       show_in_filter,
     } = req.body;
-
     console.log("body", req.body);
-
     if (!category_id || !field_label || !field_type) {
       return errorData(
         res,

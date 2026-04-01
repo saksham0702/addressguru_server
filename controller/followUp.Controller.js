@@ -10,7 +10,7 @@ const VALID_MODULES = [
 
 const CONFIG_MODULE = "lead"; // ✅ config is always this
 
-// ── CREATE ────────────────────────────────────────────────────────────────────
+// CREATE
 export const createFollowUp = async (req, res) => {
   try {
     const { listingId, activityOptionId, remark, nextFollowUpDate } = req.body;
@@ -77,7 +77,7 @@ export const createFollowUp = async (req, res) => {
   }
 };
 
-// ── GET follow-ups for a listing ──────────────────────────────────────────────
+// ── GET follow-ups for a listing 
 export const getFollowUpsByListing = async (req, res) => {
   try {
     const { listingId } = req.params;
@@ -108,7 +108,7 @@ export const getFollowUpsByListing = async (req, res) => {
   }
 };
 
-// ── GET single follow-up ──────────────────────────────────────────────────────
+// ── GET single follow-up 
 export const getFollowUpById = async (req, res) => {
   try {
     const followUp = await FollowUp.findById(req.params.id).populate(
@@ -128,7 +128,7 @@ export const getFollowUpById = async (req, res) => {
   }
 };
 
-// ── SOFT DELETE follow-up ─────────────────────────────────────────────────────
+// ── SOFT DELETE follow-up 
 export const deleteFollowUp = async (req, res) => {
   try {
     const followUp = await FollowUp.findByIdAndUpdate(
@@ -151,7 +151,7 @@ export const deleteFollowUp = async (req, res) => {
   }
 };
 
-// ── GET config (always "lead") ────────────────────────────────────────────────
+// ── GET config (always "lead") 
 // GET /api/followup-config
 export const getConfig = async (req, res) => {
   try {
@@ -227,7 +227,7 @@ export const getConfig = async (req, res) => {
   }
 };
 
-// ── ADD option ────────────────────────────────────────────────────────────────
+// ADD option
 export const addOption = async (req, res) => {
   try {
     const { label, hasRemark, remarkRequired, remarkPlaceholder } = req.body;
@@ -268,7 +268,7 @@ export const addOption = async (req, res) => {
   }
 };
 
-// ── UPDATE option ─────────────────────────────────────────────────────────────
+// UPDATE option
 export const updateOption = async (req, res) => {
   try {
     const { optionId } = req.params; // ✅ FIXED — removed module from params
@@ -305,7 +305,7 @@ export const updateOption = async (req, res) => {
   }
 };
 
-// ── DELETE option ─────────────────────────────────────────────────────────────
+// DELETE option
 export const deleteOption = async (req, res) => {
   try {
     const { optionId } = req.params; // ✅ FIXED — removed module from params
@@ -328,7 +328,7 @@ export const deleteOption = async (req, res) => {
   }
 };
 
-// ── REORDER options ───────────────────────────────────────────────────────────
+// REORDER options
 export const reorderOptions = async (req, res) => {
   try {
     const { orderedIds } = req.body;
