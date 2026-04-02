@@ -17,6 +17,12 @@ import {
 import googleIndexingService from "../services/googleIndexing.service.js";
 
 // ─── Helper: validate additional fields ───────────────────────────────────────
+// ============================================
+// HELPER — validate & normalize additional fields
+// Drop this into your listing controller file,
+// replacing the existing validateAdditionalFields function
+// ============================================
+
 const validateAdditionalFields = async (additionalFields = []) => {
   if (!additionalFields.length) return { errors: [], validated: [] };
 
@@ -47,11 +53,23 @@ const validateAdditionalFields = async (additionalFields = []) => {
       continue;
     }
 
+    // For price fields, store { amount, currency } cleanly
+    // For everything else, store the value as-is
+    let storedValue;
+    if (doc.field_type === "price") {
+      storedValue = {
+        amount: Number(submitted.value.amount),
+        currency: submitted.value.currency,
+      };
+    } else {
+      storedValue = submitted.value ?? null;
+    }
+
     validated.push({
-      field_id: doc._id,
+      field_id:    doc._id,
       field_label: doc.field_label,
-      field_type: doc.field_type,
-      value: submitted.value ?? null,
+      field_type:  doc.field_type,
+      value:       storedValue,
     });
   }
 
