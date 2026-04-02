@@ -4,15 +4,15 @@ import {
   getFields,
   getField,
   updateField,
-  deleteField
+  deleteField,
 } from "../controller/additionalField.Controller.js";
-import {authenticate} from "../middleware/userAuth.js";
+import { authenticate } from "../middleware/userAuth.js";
 
 const router = express.Router();
 
 router.post("/create-field", authenticate, createField);
 router.get("/get-fields", authenticate, getFields);
-// router.get("/get-field/:id", getField);
+router.get("/get-field/:id", authenticate, getField);
 router.put("/update-field/:id", authenticate, updateField);
 router.delete("/delete-field/:id", authenticate, deleteField);
 
