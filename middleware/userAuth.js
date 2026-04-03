@@ -33,7 +33,7 @@ export const authenticate = async (req, res, next) => {
     if (error.name === "TokenExpiredError") {
       return errorData(res, 401, false, "Session expired. Please login again.");
     }
-    console.error("Authentication error:", error);
+    console.warn("Authentication error:", error);
     return errorData(res, 401, false, "Invalid authentication token");
   }
 };

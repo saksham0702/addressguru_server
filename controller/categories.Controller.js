@@ -4,7 +4,7 @@ import { successData, errorData } from "../services/helper.js";
 
 // ✅ Create Category
 export const createCategory = async (req, res) => {
-  
+
   try {
     const { name, description, color, type, textColor, iconSvg, iconPng, seo } =
       req.body;
@@ -38,7 +38,7 @@ export const createCategory = async (req, res) => {
       category
     );
   } catch (error) {
-    console.error(error);
+    console.warn(error);
     return errorData(res, 500, false, "Internal server error");
   }
 };
@@ -47,7 +47,7 @@ export const getCategories = async (req, res) => {
   try {
     const categories = await Category.find({
       isDeleted: false,
-    }).sort({ createdAt: -1 }); 
+    }).sort({ createdAt: -1 });
 
     if (!categories || categories.length === 0)
       return errorData(res, 404, false, "Category not found.");
@@ -60,7 +60,7 @@ export const getCategories = async (req, res) => {
       categories // ✅ removed redundant .filter(), already queried isDeleted: false
     );
   } catch (error) {
-    console.error(error);
+    console.warn(error);
     return errorData(res, 500, false, "Internal server error");
   }
 };
@@ -78,7 +78,7 @@ export const getCategoryByType = async (req, res) => {
 
     return successData(res, 200, true, "Get category successfully", category);
   } catch (error) {
-    console.error(error);
+    console.warn(error);
     return errorData(res, 500, false, "Internal server error");
   }
 };
@@ -96,7 +96,7 @@ export const getCategoryById = async (req, res) => {
 
     return successData(res, 200, true, "Get category successfully", category);
   } catch (error) {
-    console.error(error);
+    console.warn(error);
     return errorData(res, 500, false, "Internal server error");
   }
 };
@@ -127,7 +127,7 @@ export const updateCategory = async (req, res) => {
       updated
     );
   } catch (error) {
-    console.error(error);
+    console.warn(error);
     return errorData(res, 500, false, "Internal server error");
   }
 };
@@ -156,8 +156,7 @@ export const deleteCategory = async (req, res) => {
       category
     );
   } catch (error) {
-    console.error(error);
+    console.warn(error);
     return errorData(res, 500, false, "Internal server error");
   }
 };
-  

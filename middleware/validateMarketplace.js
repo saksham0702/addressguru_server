@@ -43,7 +43,7 @@ export const validateMarketplaceStep = (req, res, next) => {
 
     next();
   } catch (err) {
-    console.error("Validation middleware error:", err);
+    console.warn("Validation middleware error:", err);
     return res.status(500).json({
       success: false,
       message: "Internal validation error",

@@ -47,6 +47,7 @@ const UPDATABLE_FIELDS = [
 // CREATE
 // ============================================
 export const createField = async (req, res) => {
+console.log("req.body",req.body);
   try {
     const { category_id, field_label, field_type } = req.body;
 
@@ -77,8 +78,16 @@ export const createField = async (req, res) => {
       const message = Object.values(error.errors).map((e) => e.message).join(", ");
       return errorData(res, 400, false, message, null, error.message);
     }
+
     console.error("Create field error:", error);
-    return errorData(res, 500, false, "Internal server error", null, error.message);
+    return errorData(
+      res,
+      500,
+      false,
+      "Internal server error",
+      null,
+      error.message,
+    );
   }
 };
 
@@ -111,7 +120,14 @@ export const getFields = async (req, res) => {
     }
   } catch (error) {
     console.error("Get fields error:", error);
-    return errorData(res, 500, false, "Internal server error", null, error.message);
+    return errorData(
+      res,
+      500,
+      false,
+      "Internal server error",
+      null,
+      error.message,
+    );
   }
 };
 
@@ -135,7 +151,14 @@ export const getField = async (req, res) => {
     }
   } catch (error) {
     console.error("Get field error:", error);
-    return errorData(res, 500, false, "Internal server error", null, error.message);
+    return errorData(
+      res,
+      500,
+      false,
+      "Internal server error",
+      null,
+      error.message,
+    );
   }
 };
 
@@ -171,8 +194,16 @@ export const updateField = async (req, res) => {
       const message = Object.values(error.errors).map((e) => e.message).join(", ");
       return errorData(res, 400, false, message, null, error.message);
     }
+
     console.error("Update field error:", error);
-    return errorData(res, 500, false, "Internal server error", null, error.message);
+    return errorData(
+      res,
+      500,
+      false,
+      "Internal server error",
+      null,
+      error.message,
+    );
   }
 };
 
@@ -202,6 +233,13 @@ export const deleteField = async (req, res) => {
     return successData(res, 200, true, "Field deleted successfully", null);
   } catch (error) {
     console.error("Delete field error:", error);
-    return errorData(res, 500, false, "Internal server error", null, error.message);
+    return errorData(
+      res,
+      500,
+      false,
+      "Internal server error",
+      null,
+      error.message,
+    );
   }
 };

@@ -45,5 +45,7 @@ router.put(
   updateMarketplaceListingStatus
 );
 router.get("/get-approved-listings", getApprovedListings);
+router.patch("/mark-as-sold/:id", authenticate, markMarketplaceListingAsSold);
+router.delete("/delete-listing/:id", authenticate, deleteMarketplaceListing);
 
 export default router;

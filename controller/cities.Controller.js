@@ -17,7 +17,7 @@ export const getCities = async (req, res) => {
       cities,
     );
   } catch (err) {
-    console.error("Cities Error:", err); // ✅ fixed: was console.errorData
+    console.warn("Cities Error:", err); // ✅ fixed: was console.warnData
     return errorData(res, 500, false, "Server error while fetching cities");
   }
 };
@@ -42,7 +42,7 @@ export const addCities = async (req, res) => {
     const cities = await City.insertMany(prepared);
     return successData(res, 200, true, "Added cities successfully.", cities);
   } catch (error) {
-    console.error("Cities Error:", error);
+    console.warn("Cities Error:", error);
     return errorData(res, 500, false, "Server error while adding cities");
   }
 };
@@ -61,7 +61,7 @@ export const deleteCity = async (req, res) => {
     }
     return successData(res, 200, true, "Deleted city successfully.", city);
   } catch (error) {
-    console.error("Cities Error:", error); // ✅ fixed
+    console.warn("Cities Error:", error); // ✅ fixed
     return errorData(res, 500, false, "Server error while deleting city");
   }
 };
@@ -81,7 +81,7 @@ export const updateCity = async (req, res) => {
     }
     return successData(res, 200, true, "Updated city successfully.", city);
   } catch (error) {
-    console.error("Cities Error:", error); // ✅ fixed
+    console.warn("Cities Error:", error); // ✅ fixed
     return errorData(res, 500, false, "Server error while updating city");
   }
 };

@@ -23,6 +23,6 @@
 //       console.log("✅ Payment modes seeded");
 //     }
 //   } catch (error) {
-//     console.error("❌ Seeding failed:", error.message);
+//     console.warn("❌ Seeding failed:", error.message);
 //   }
 // };

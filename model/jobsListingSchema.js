@@ -90,13 +90,14 @@ const jobSchema = new mongoose.Schema(
     // ─── Location (for filter) ───────────────────────────────
     location: {
       country: { type: String, default: "" },
-      // city: {
-      //   type: mongoose.Schema.Types.ObjectId,
-      //   ref: "City",
-      //   // required: true,
-      // },
-      city: { type: String }, // neighborhood / zone
-      area: { type: String }, // neighborhood / zone
+
+      city: {
+        _id: { type: mongoose.Schema.Types.ObjectId },
+        name: { type: String },
+        slug: { type: String }
+      },
+
+      area: { type: String },
       address: { type: String },
       isRemote: { type: Boolean, default: false },
     },
@@ -116,10 +117,7 @@ const jobSchema = new mongoose.Schema(
       default: "any",
     },
 
-    experienceYears: {
-      from: { type: Number, default: 0 }, // min years
-      to: { type: Number, default: null }, // max years (null = open)
-    },
+    noOfExperience: { type: String, default: "" }, // e.g., "2 years", "1-3 years"
 
     // ─── Gender & Age Preference (for filter) ────────────────
     gender: {
@@ -132,6 +130,10 @@ const jobSchema = new mongoose.Schema(
       from: { type: Number, default: null },
       to: { type: Number, default: null },
     },
+
+    // ─── Nationality & Language (for filter) ─────────────────
+    nationality: [{ type: String }], // e.g., ["indian", "pakistani", "any"]
+    language: [{ type: String }],    // e.g., ["english", "arabic"]
 
     // ─── Contact Info ─────────────────────────────────────────
     contact: {
@@ -148,14 +150,21 @@ const jobSchema = new mongoose.Schema(
       name: { type: String },
       logo: { type: String }, // image URL
       website: { type: String },
+      description: { type: String },
       size: {
         type: String,
         enum: ["1-10", "11-50", "51-200", "201-500", "500+"],
       },
+      address: { type: String },
+      city: {
+        _id: { type: mongoose.Schema.Types.ObjectId },
+        name: { type: String },
+        slug: { type: String }
+      },
     },
 
     // ─── Media ───────────────────────────────────────────────
-    images: [{ type: String }], // job post banner images
+    images: [{ type: String }], // job post banner / gallery images (relative URL paths)
 
     // ─── Posting Meta ─────────────────────────────────────────
     createdBy: {
@@ -174,13 +183,24 @@ const jobSchema = new mongoose.Schema(
       ref: "User",
     },
 
+    rejectedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      default: null,
+    },
+
+    rejectionReason: {
+      type: String,
+      default: null,
+    },
+
     totalPositions: { type: Number, default: 1 },
 
     applicationDeadline: { type: Date, default: null },
 
     status: {
       type: String,
-      enum: ["pending", "active", "expired", "rejected", "closed"],
+      enum: ["pending", "active", "expired", "approved", "rejected", "closed", "unapproved"],
       default: "pending",
     },
 
@@ -188,7 +208,9 @@ const jobSchema = new mongoose.Schema(
     isUrgent: { type: Boolean, default: false },
     isVerified: { type: Boolean, default: false },
     isActive: { type: Boolean, default: true },
+    isPublished: { type: Boolean, default: false },
     isDeleted: { type: Boolean, default: false },
+    stepCompleted: { type: Number, default: 1 },
 
     // ─── SEO ──────────────────────────────────────────────────
     seo: {

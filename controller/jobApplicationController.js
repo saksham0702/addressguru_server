@@ -81,21 +81,21 @@ export const applyForJob = async (req, res) => {
 
     // ── 6. Create application ─────────────────────────────────
     const application = await JobApplication.create({
-      job:            job._id,
-      applicant:      user?.id || null,
-      fullName:       fullName.trim(),
-      email:          email.toLowerCase().trim(),
-      phone:          phone    || null,
-      whatsapp:       whatsapp || null,
-      coverLetter:    coverLetter    || null,
+      job: job._id,
+      applicant: user?.id || null,
+      fullName: fullName.trim(),
+      email: email.toLowerCase().trim(),
+      phone: phone || null,
+      whatsapp: whatsapp || null,
+      coverLetter: coverLetter || null,
       expectedSalary: expectedSalary || null,
-      availableFrom:  availableFrom  || null,
-      currentJobTitle:currentJobTitle|| null,
+      availableFrom: availableFrom || null,
+      currentJobTitle: currentJobTitle || null,
       currentCompany: currentCompany || null,
-      totalExperience:totalExperience|| null,
-      portfolioUrl:   portfolioUrl   || null,
-      linkedinUrl:    linkedinUrl    || null,
-      githubUrl:      githubUrl      || null,
+      totalExperience: totalExperience || null,
+      portfolioUrl: portfolioUrl || null,
+      linkedinUrl: linkedinUrl || null,
+      githubUrl: githubUrl || null,
       resume,
       source: source || "website",
       status: "pending",
@@ -112,7 +112,7 @@ export const applyForJob = async (req, res) => {
     if (error.code === 11000) {
       return errorData(res, 409, false, "You have already applied for this job");
     }
-    console.error("Apply job error:", error);
+    console.warn("Apply job error:", error);
     return errorData(res, 500, false, "Internal server error");
   }
 };
@@ -140,9 +140,9 @@ export const getApplicationsByJob = async (req, res) => {
       return errorData(res, 403, false, "Unauthorized");
     }
 
-    const page  = parseInt(req.query.page)  || 1;
+    const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
-    const skip  = (page - 1) * limit;
+    const skip = (page - 1) * limit;
 
     const filter = { job: job._id, isDeleted: false };
 
@@ -173,7 +173,7 @@ export const getApplicationsByJob = async (req, res) => {
       },
     });
   } catch (error) {
-    console.error("Get applications error:", error);
+    console.warn("Get applications error:", error);
     return errorData(res, 500, false, "Internal server error");
   }
 };
@@ -198,9 +198,9 @@ export const getApplicationById = async (req, res) => {
     if (!application) return errorData(res, 404, false, "Application not found");
 
     // Authorization
-    const isOwner  = application.job?.createdBy?.toString() === user?.id;
-    const isAdmin  = user?.role === "admin";
-    const isSelf   = application.applicant?.toString() === user?.id;
+    const isOwner = application.job?.createdBy?.toString() === user?.id;
+    const isAdmin = user?.role === "admin";
+    const isSelf = application.applicant?.toString() === user?.id;
 
     if (!isOwner && !isAdmin && !isSelf) {
       return errorData(res, 403, false, "Unauthorized");
@@ -213,7 +213,7 @@ export const getApplicationById = async (req, res) => {
 
     return successData(res, 200, true, "Application fetched", application);
   } catch (error) {
-    console.error("Get application error:", error);
+    console.warn("Get application error:", error);
     return errorData(res, 500, false, "Internal server error");
   }
 };
@@ -266,7 +266,7 @@ export const updateApplicationStatus = async (req, res) => {
       status: application.status,
     });
   } catch (error) {
-    console.error("Update status error:", error);
+    console.warn("Update status error:", error);
     return errorData(res, 500, false, "Internal server error");
   }
 };
@@ -289,7 +289,7 @@ export const withdrawApplication = async (req, res) => {
     if (!application) return errorData(res, 404, false, "Application not found");
 
     // Only the applicant can withdraw
-    const isSelf  = application.applicant?.toString() === user?.id;
+    const isSelf = application.applicant?.toString() === user?.id;
     const isEmail = application.email === user?.email;
 
     if (!isSelf && !isEmail) {
@@ -311,7 +311,7 @@ export const withdrawApplication = async (req, res) => {
 
     return successData(res, 200, true, "Application withdrawn successfully");
   } catch (error) {
-    console.error("Withdraw error:", error);
+    console.warn("Withdraw error:", error);
     return errorData(res, 500, false, "Internal server error");
   }
 };
@@ -326,9 +326,9 @@ export const getMyApplications = async (req, res) => {
   try {
     const user = req.user;
 
-    const page  = parseInt(req.query.page)  || 1;
+    const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
-    const skip  = (page - 1) * limit;
+    const skip = (page - 1) * limit;
 
     const filter = {
       $or: [
@@ -361,7 +361,7 @@ export const getMyApplications = async (req, res) => {
       },
     });
   } catch (error) {
-    console.error("My applications error:", error);
+    console.warn("My applications error:", error);
     return errorData(res, 500, false, "Internal server error");
   }
 };
@@ -390,7 +390,7 @@ export const deleteApplication = async (req, res) => {
 
     return successData(res, 200, true, "Application deleted");
   } catch (error) {
-    console.error("Delete application error:", error);
+    console.warn("Delete application error:", error);
     return errorData(res, 500, false, "Internal server error");
   }
 };
@@ -442,7 +442,7 @@ export const getApplicationStats = async (req, res) => {
 
     return successData(res, 200, true, "Application stats", result);
   } catch (error) {
-    console.error("Stats error:", error);
+    console.warn("Stats error:", error);
     return errorData(res, 500, false, "Internal server error");
   }
 };

@@ -25,6 +25,14 @@ const getUploadPath = (type, slug) => {
 // ─── Dynamic storage configuration ───────────────────────────────────────────
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
+    // console.log("file", file);
+    // console.log("req", req);
+    // console.log("req.body", req.body);
+    // console.log("req.params", req.params);
+    // console.log("req.files", req.files);
+    // console.log("req._uploadFolder", req._uploadFolder);
+
+
     const type = req._uploadFolder || req.body.folder;
     if (!type) return cb(new Error("Upload folder type is required"), null);
 
@@ -50,7 +58,7 @@ const upload = multer({
   storage,
   limits: { fileSize: 10 * 1024 * 1024 }, // 10 MB per file
   fileFilter: function (req, file, cb) {
-    const allowed = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
+    const allowed = ["image/jpeg", "image/jpg", "image/png", "image/webp", "image/heic", "image/heif"];
     if (!allowed.includes(file.mimetype)) {
       return cb(
         new Error("Only image files are allowed (jpeg, jpg, png, webp)"),
