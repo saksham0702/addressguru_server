@@ -46,6 +46,12 @@ const userLogSchema = new mongoose.Schema(
       enum: ["login", "signup", "activity"],
       default: "login",
     },
+    platform: {
+      type: String,
+      enum: ["Web Browser", "iOS App", "Android App", "Other"],
+      default: "Web Browser",
+      note: "Platform category",
+    },
   },
   {
     timestamps: { createdAt: true, updatedAt: false },

@@ -1,6 +1,6 @@
-import Enquiry        from "../model/listingEnquirySchema.js";
-import User           from "../model/userSchema.js";
-import ListingStats   from "../model/listingStatsSchema.js";
+import Enquiry from "../model/listingEnquirySchema.js";
+import User from "../model/userSchema.js";
+import ListingStats from "../model/listingStatsSchema.js";
 import { resolveListing } from "../utils/resolveListing.js";
 
 // ─── POST /api/:type/:slug/enquiry ────────────────────────────────────────────
@@ -17,17 +17,17 @@ export const sendEnquiry = async (req, res) => {
     const { listing, modelName } = await resolveListing(slug, type);
 
     const enquiry = await Enquiry.create({
-      listingId:    listing._id,
+      listingId: listing._id,
       listingModel: modelName,
-      listingSlug:  listing.slug,
+      listingSlug: listing.slug,
       listingOwner: listing.createdBy,      // works for BusinessListing & Job
       fullName,
       email,
-      countryCode:  countryCode || 91,
+      countryCode: countryCode || 91,
       mobileNumber,
       message,
-      ipAddress:    req.ip,
-      userAgent:    req.headers["user-agent"],
+      ipAddress: req.ip,
+      userAgent: req.headers["user-agent"],
     });
 
     // Record the event in ListingStats
@@ -52,7 +52,7 @@ export const sendEnquiry = async (req, res) => {
       await listing.constructor.findByIdAndUpdate(listing._id, {
         $inc: { "stats.enquiries": 1 },
       });
-    } catch (e) {}
+    } catch (e) { }
 
     // TODO: send email / push notification to listing owner
 
@@ -63,7 +63,7 @@ export const sendEnquiry = async (req, res) => {
     });
   } catch (err) {
     if (err.status) return res.status(err.status).json({ success: false, message: err.message });
-    console.error("sendEnquiry:", err);
+    console.warn("sendEnquiry:", err);
     return res.status(500).json({ success: false, message: "Server error" });
   }
 };

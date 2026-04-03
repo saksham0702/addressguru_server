@@ -182,7 +182,7 @@ export const createListing = async (req, res) => {
       slug: listing.slug,
     });
   } catch (error) {
-    console.error("Create listing error:", error);
+    console.warn("Create listing error:", error);
     return errorData(res, 500, false, "Internal server error");
   }
 };
@@ -396,7 +396,7 @@ export const updateListingStep = async (req, res) => {
         );
         console.log(`✅ Submitted mail sent to ${listing.email}`);
       } catch (mailError) {
-        console.error("❌ Submitted mail failed:", mailError.message);
+        console.warn("❌ Submitted mail failed:", mailError.message);
       }
     }
 
@@ -406,7 +406,7 @@ export const updateListingStep = async (req, res) => {
       stepCompleted: listing.stepCompleted,
     });
   } catch (error) {
-    console.error("Update listing step error:", error);
+    console.warn("Update listing step error:", error);
     return errorData(res, 500, false, "Internal server error");
   }
 };
@@ -466,7 +466,7 @@ export const getFeaturesAndAdditionalFieldsByCategory = async (req, res) => {
       },
     );
   } catch (error) {
-    console.error("Features and additional fields fetch error:", error);
+    console.warn("Features and additional fields fetch error:", error);
     return errorData(res, 500, false, "Internal server error");
   }
 };
@@ -553,7 +553,7 @@ export const getAllListingsWithPaginationAndFilters = async (req, res) => {
       },
     });
   } catch (error) {
-    console.error("Listing fetch error:", error);
+    console.warn("Listing fetch error:", error);
     return errorData(res, 500, false, "Internal server error");
   }
 };
@@ -621,7 +621,7 @@ export const getListingsByCategoryAndCity = async (req, res) => {
       },
     });
   } catch (error) {
-    console.error("Listing fetch error:", error);
+    console.warn("Listing fetch error:", error);
     return errorData(res, 500, false, "Internal server error");
   }
 };
@@ -646,7 +646,7 @@ export const getListingBySlug = async (req, res) => {
     if (!listing) return errorData(res, 404, false, "Listing not found");
     return successData(res, 200, true, "Listing fetched successfully", listing);
   } catch (error) {
-    console.error("Listing fetch error:", error);
+    console.warn("Listing fetch error:", error);
     return errorData(res, 500, false, "Internal server error");
   }
 };
@@ -689,7 +689,7 @@ export const getListingByUser = async (req, res) => {
       listings,
     });
   } catch (error) {
-    console.error("Listing fetch error:", error);
+    console.warn("Listing fetch error:", error);
     return errorData(res, 500, false, "Internal server error");
   }
 };
@@ -742,7 +742,7 @@ export const deleteListing = async (req, res) => {
       id: listing._id,
     });
   } catch (error) {
-    console.error("Listing delete error:", error);
+    console.warn("Listing delete error:", error);
     return errorData(res, 500, false, "Internal server error");
   }
 };
@@ -813,7 +813,7 @@ export const updateListingStatus = async (req, res) => {
       );
       console.log(`✅ Mail sent to ${listing.email} for status: ${status}`);
     } catch (mailError) {
-      console.error("❌ Mail send failed:", mailError.message);
+      console.warn("❌ Mail send failed:", mailError.message);
     }
 
     // Populate for response
@@ -852,7 +852,7 @@ export const getApprovedListings = async (req, res) => {
       listings,
     );
   } catch (error) {
-    console.error("Approved listings fetch error:", error);
+    console.warn("Approved listings fetch error:", error);
     return errorData(res, 500, false, "Internal server error");
   }
 };

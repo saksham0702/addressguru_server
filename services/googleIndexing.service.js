@@ -23,7 +23,7 @@ class GoogleIndexingService {
     try {
       const configDir = path.join(__dirname, '../config');
       const keyPath = path.join(configDir, 'service-account.json');
-      
+
       let credentials = null;
 
       if (fs.existsSync(keyPath)) {
@@ -49,7 +49,7 @@ class GoogleIndexingService {
         console.warn('[GoogleIndexingService] Credentials not found. Service will not be active.');
       }
     } catch (error) {
-      console.error('[GoogleIndexingService] Error initializing service:', error);
+      console.warn('[GoogleIndexingService] Error initializing service:', error);
     }
   }
 
@@ -70,7 +70,7 @@ class GoogleIndexingService {
 
     try {
       console.log(`[GoogleIndexingService] Notifying Google: ${type} - ${url}`);
-      
+
       const indexing = google.indexing('v3');
       const response = await indexing.urlNotifications.publish({
         auth: this.jwtClient,
@@ -79,12 +79,12 @@ class GoogleIndexingService {
           type: type,
         },
       });
-      
+
       console.log(`[GoogleIndexingService] Success for ${url}:`, response.data);
       return response.data;
     } catch (error) {
       const errorMessage = error.response?.data?.error?.message || error.message;
-      console.error(`[GoogleIndexingService] Error for ${url}:`, errorMessage);
+      console.warn(`[GoogleIndexingService] Error for ${url}:`, errorMessage);
       // We don't necessarily want to crash the whole request if indexing fails
       return null;
     }
