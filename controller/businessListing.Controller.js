@@ -435,9 +435,9 @@ export const getFeaturesAndAdditionalFieldsByCategory = async (req, res) => {
     const [features, additionalFields, paymentModes] = await Promise.all([
       categoryFeatures
         .findOne(featureFilter)
-        .populate("facilities", "name icon _id")
-        .populate("services", "name icon _id")
-        .populate("courses", "name icon _id"),
+        .populate("facilities", "name iconSvg _id")
+        .populate("services", "name iconSvg _id")
+        .populate("courses", "name iconSvg _id"),
 
       AdditionalField.find(additionalFieldFilter).sort({ display_order: 1 }),
 
@@ -445,7 +445,7 @@ export const getFeaturesAndAdditionalFieldsByCategory = async (req, res) => {
       Feature.find({
         type: "payment_mode",
         isDeleted: false,
-      }).select("name icon _id"),
+      }).select("name iconSvg _id"),
     ]);
 
     const { facilities = [], services = [], courses = [] } = features || {};
