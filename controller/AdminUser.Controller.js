@@ -113,18 +113,7 @@ export const adminCreateUser = async (req, res) => {
   }
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
-// LIST  —  GET /api/admin/users
-// ─────────────────────────────────────────────────────────────────────────────
-/**
- * Query params:
- *   page      default 1
- *   limit     default 10  (max 100)
- *   role      number — filter by role inside array
- *   status    true | false
- *   deleted   true = show only soft-deleted, false = active only (default)
- *   search    matches name / email / phone
- */
+ 
 export const adminGetAllUsers = async (req, res) => {
   try {
     let { page = 1, limit = 10, role, status, deleted = "false", search } = req.query;
@@ -213,15 +202,7 @@ export const adminGetUserById = async (req, res) => {
   }
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
-// UPDATE  —  PATCH /api/admin/users/:id
-// ─────────────────────────────────────────────────────────────────────────────
-/**
- * Updatable fields:
- *   name, email, phone, roles, city, status, password
- *
- * All fields are optional — send only what needs changing.
- */
+
 export const adminUpdateUser = async (req, res) => {
   try {
     const { name, email, phone, roles, city, status, password } = req.body;
@@ -294,9 +275,7 @@ export const adminUpdateUser = async (req, res) => {
   }
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
-// SOFT DELETE  —  DELETE /api/admin/users/:id
-// ─────────────────────────────────────────────────────────────────────────────
+//  
 export const adminDeleteUser = async (req, res) => {
   try {
     const user = await User.findById(req.params.id);
@@ -317,9 +296,7 @@ export const adminDeleteUser = async (req, res) => {
   }
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
-// RESTORE  —  PATCH /api/admin/users/:id/restore
-// ─────────────────────────────────────────────────────────────────────────────
+//  
 export const adminRestoreUser = async (req, res) => {
   try {
     const user = await User.findById(req.params.id);

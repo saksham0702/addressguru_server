@@ -12,7 +12,11 @@ import {
   updateProfile,
   verifyOTP,
 } from "../controller/user.Controller.js";
-import {authenticate} from "../middleware/userAuth.js";
+import {
+  impersonateUser,
+  exitImpersonation,
+} from "../controller/impersonateUser.Controller.js";
+import { authenticate } from "../middleware/userAuth.js";
 import upload from "../middleware/multerConfig.js";
 
 const router = express.Router();
@@ -39,6 +43,8 @@ router.post("/logout", logout);
 router.post("/change-password", authenticate, changePassword);
 router.get("/me", authenticate, getUserDetails);
 
+router.post("/user-login/:userId", authenticate, impersonateUser); // already have this
+router.post("/impersonate/exit", authenticate, exitImpersonation); // add this
 router.post(
   "/update-profile",
   authenticate,
