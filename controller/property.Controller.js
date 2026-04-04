@@ -600,21 +600,21 @@ export const updatePropertyListingStatus = async (req, res) => {
 
     // ── Update fields based on status ─────────────────────────────────────
     if (status === "approved") {
-      listing.status          = "approved";
-      listing.approvedBy      = adminId;
-      listing.rejectedBy      = null;
+      listing.status = "approved";
+      listing.approvedBy = adminId;
+      listing.rejectedBy = null;
       listing.rejectionReason = null;
 
     } else if (status === "rejected") {
-      listing.status          = "rejected";
-      listing.rejectedBy      = adminId;
+      listing.status = "rejected";
+      listing.rejectedBy = adminId;
       listing.rejectionReason = rejectionReason.trim();
-      listing.approvedBy      = null;
+      listing.approvedBy = null;
 
     } else if (status === "unapproved") {
-      listing.status          = "pending";
-      listing.approvedBy      = null;
-      listing.rejectedBy      = null;
+      listing.status = "pending";
+      listing.approvedBy = null;
+      listing.rejectedBy = null;
       listing.rejectionReason = null;
     }
 
@@ -643,11 +643,11 @@ export const updatePropertyListingStatus = async (req, res) => {
       success: true,
       message: `Property listing ${status === "unapproved" ? "moved back to pending" : status} successfully`,
       data: {
-        _id:             listing._id,
-        title:           listing.title,
-        status:          listing.status,
-        approvedBy:      listing.approvedBy,
-        rejectedBy:      listing.rejectedBy,
+        _id: listing._id,
+        title: listing.title,
+        status: listing.status,
+        approvedBy: listing.approvedBy,
+        rejectedBy: listing.rejectedBy,
         rejectionReason: listing.rejectionReason,
       },
     });

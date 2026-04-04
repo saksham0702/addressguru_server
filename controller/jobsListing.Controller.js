@@ -380,9 +380,10 @@ export const saveJobStep = async (req, res) => {
         job.images = [...(job.images || []), ...newImages];
       }
 
-      job.status = "active";
+      job.status = "pending";
+      job.availableStatus = "open";
       job.isActive = true;
-      job.isPublished = true;
+      // job.isPublished = true;
       job.stepCompleted = Math.max(job.stepCompleted || 1, 2);
 
       googleIndexingService.notify(
@@ -429,68 +430,149 @@ export const saveJobStep = async (req, res) => {
 ========================== */
 export const getAllJobsWithPaginationAndFilters = async (req, res) => {
   try {
+    // =========================
+    // Pagination
+    // =========================
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
     const skip = (page - 1) * limit;
 
-    // Base query
+    // ✅ DEBUG: Log what's actually coming in
+    console.log("Query Params Received:", req.query);
+
+    // =========================
+    // Base Filter
+    // =========================
     const filter = {
       isDeleted: false,
     };
 
-    // Public vs Admin filtering
-    const isAdmin = req.user?.roles?.includes(1); // Assuming 1 is admin based on business controller
-    if (!isAdmin) {
-      filter.isActive = true;
-      filter.isPublished = true;
-      filter.status = "active";
-    }
+    // =========================
+    // Role Check
+    // =========================
+    const isAdmin = req.user?.roles?.includes(1);
 
-    // Apply optional string filters
+    // =========================
+    // Query Filters
+    // =========================
     if (req.query.category_id) filter.category = req.query.category_id;
     if (req.query.sub_category_id)
       filter.subCategory = req.query.sub_category_id;
-    if (req.query.status) filter.status = req.query.status;
+
+    // ✅ Status filter with validation
+    const VALID_STATUSES = ["pending", "approved", "rejected"];
+    if (req.query.status) {
+      const statusValue = req.query.status.trim().toLowerCase();
+      if (VALID_STATUSES.includes(statusValue)) {
+        filter.status = statusValue;
+      } else {
+        return errorData(
+          res,
+          400,
+          false,
+          `Invalid status. Must be one of: ${VALID_STATUSES.join(", ")}`,
+        );
+      }
+    }
+
     if (req.query.isVerified !== undefined)
       filter.isVerified = req.query.isVerified === "true";
+
+    if (req.query.isActive !== undefined)
+      filter.isActive = req.query.isActive === "true";
+
+    if (req.query.isPublished !== undefined)
+      filter.isPublished = req.query.isPublished === "true";
+
     if (req.query.isFeatured !== undefined)
       filter.isFeatured = req.query.isFeatured === "true";
+
     if (req.query.isUrgent !== undefined)
       filter.isUrgent = req.query.isUrgent === "true";
+
+    if (req.query.availableStatus !== undefined)
+      filter.availableStatus = req.query.availableStatus;
+
+    if (req.query.userId !== undefined)
+      filter.userId = req.query.userId;
 
     if (req.query.sector) filter.sector = req.query.sector;
     if (req.query.jobType) filter.jobType = req.query.jobType;
     if (req.query.workMode) filter.workMode = req.query.workMode;
     if (req.query.experienceLevel)
       filter.experienceLevel = req.query.experienceLevel;
+
     if (req.query.education) filter.education = req.query.education;
     if (req.query.gender) filter.gender = req.query.gender;
+
     if (req.query.city) filter["location.city"] = req.query.city;
     if (req.query.country) filter["location.country"] = req.query.country;
 
-    // Remote works overrides/adds to workMode
+    // Remote filter
     if (req.query.isRemote === "true") {
       filter["location.isRemote"] = true;
     }
 
-    // Text search filter
-    if (req.query.search) {
-      filter.title = { $regex: req.query.search, $options: "i" };
+    // =========================
+    // Salary Filter (NEW 🔥)
+    // =========================
+    if (req.query.salaryMin || req.query.salaryMax) {
+      filter["salary.to"] = {};
+
+      if (req.query.salaryMin) {
+        filter["salary.to"].$gte = Number(req.query.salaryMin);
+      }
+
+      if (req.query.salaryMax) {
+        filter["salary.to"].$lte = Number(req.query.salaryMax);
+      }
     }
 
-    const [jobs, total] = await Promise.all([
+    // =========================
+    // Search (Improved 🔥)
+    // =========================
+    if (req.query.search) {
+      const searchRegex = new RegExp(req.query.search, "i");
+
+      filter.$or = [
+        { title: searchRegex },
+        { description: searchRegex },
+        { skills: { $in: [searchRegex] } },
+      ];
+    }
+
+    // ✅ DEBUG: Log the final filter being passed to MongoDB
+    console.log("Final MongoDB Filter:", JSON.stringify(filter, null, 2));
+
+    // =========================
+    // Query Execution
+    // =========================
+    const [
+      jobs,
+      total,
+      totalAll,
+      totalPending,
+      totalApproved,
+      totalRejected,
+    ] = await Promise.all([
       Job.find(filter)
         .populate("category", "name")
         .populate("subCategory", "name")
+        .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit)
-        .sort({ createdAt: -1 })
         .lean(),
+
       Job.countDocuments(filter),
+      Job.countDocuments({ isDeleted: false }),
+      Job.countDocuments({ isDeleted: false, status: "pending" }),
+      Job.countDocuments({ isDeleted: false, status: "approved" }),
+      Job.countDocuments({ isDeleted: false, status: "rejected" }),
     ]);
 
-    if (!jobs.length) return errorData(res, 404, false, "No jobs found");
-
+    // =========================
+    // Success Response
+    // =========================
     return successData(res, 200, true, "Jobs fetched successfully", {
       jobs,
       pagination: {
@@ -499,12 +581,19 @@ export const getAllJobsWithPaginationAndFilters = async (req, res) => {
         limit,
         totalPages: Math.ceil(total / limit),
       },
+      totalAll,
+      statusCounts: {
+        pending: totalPending,
+        approved: totalApproved,
+        rejected: totalRejected,
+      },
     });
   } catch (error) {
-    console.warn("Job fetch error:", error);
+    console.error("Job fetch error:", error);
     return errorData(res, 500, false, "Internal server error");
   }
 };
+
 
 /* =========================
    GET ALL JOBS BY USER
@@ -644,7 +733,7 @@ export const deleteJob = async (req, res) => {
 
     const job = await Job.findOneAndUpdate(
       { slug: slug },
-      { isDeleted: true, status: "closed", isActive: false },
+      { isDeleted: true, availableStatus: "closed", isActive: false },
       { new: true },
     );
 
@@ -681,11 +770,30 @@ export const deleteJob = async (req, res) => {
 export const updateJobStatus = async (req, res) => {
   try {
     const { id } = req.params;
-    const { status, rejectionReason } = req.body;
+    let { status, availableStatus, rejectionReason } = req.body;
     const adminId = req.user._id;
 
-    if (!["active", "rejected", "pending", "expired", "closed", "approved", "unapproved"].includes(status)) {
-      return errorData(res, 400, false, "Status must be either 'approved' or 'rejected' or 'unapproved'");
+    const validModerationStatuses = ["pending", "approved", "rejected", "unapproved"];
+    const validAvailableStatuses = ["open", "closed", "expired", "pending"];
+
+    // If frontend sends everything via `status` property, elegantly route it
+    if (status && !availableStatus) {
+      if (["open", "closed", "expired"].includes(status)) {
+        availableStatus = status;
+        status = undefined; // Not a moderation status
+      }
+    }
+
+    if (status && !validModerationStatuses.includes(status)) {
+      return errorData(res, 400, false, "Invalid moderation status value");
+    }
+
+    if (availableStatus && !validAvailableStatuses.includes(availableStatus)) {
+      return errorData(res, 400, false, "Invalid available status value");
+    }
+
+    if (!status && !availableStatus) {
+      return errorData(res, 400, false, "No valid status provided");
     }
 
     if (status === "rejected" && !rejectionReason?.trim()) {
@@ -695,41 +803,52 @@ export const updateJobStatus = async (req, res) => {
     const job = await Job.findById(id);
     if (!job) return errorData(res, 404, false, "Job not found");
 
-    job.status = status;
-    if (status === "active") {
-      job.approvedBy = adminId;
-      job.rejectedBy = null;
-      job.rejectionReason = null;
-    } else if (status === "rejected") {
-      job.rejectedBy = adminId;
-      job.rejectionReason = rejectionReason;
-      job.approvedBy = null;
+    if (status) {
+      job.status = status;
+      if (status === "approved") {
+        job.approvedBy = adminId;
+        job.rejectedBy = null;
+        job.rejectionReason = null;
+        job.isPublished = true;
+      } else if (status === "rejected") {
+        job.rejectedBy = adminId;
+        job.rejectionReason = rejectionReason;
+        job.approvedBy = null;
+        job.isPublished = false;
+      }
+
+      // ── Send Email ──
+      // Note: Only send email for moderation approval/rejection.
+      if (["approved", "rejected"].includes(status)) {
+        try {
+          const categoryDoc = await Category.findById(job.category);
+          const categoryName = categoryDoc?.name || "";
+
+          await sendApprovedAndRejectedListingMail(
+            job.contact?.email || req.user.email,
+            job.contact?.name || "User",
+            status,
+            rejectionReason || `Your job listing has been ${status}.`,
+            {
+              businessName: job.title,
+              category: categoryName,
+              listingUrl: `${APP_BASE_URL}/job/${job.slug}`,
+              dashboardUrl: `${APP_BASE_URL}/dashboard`,
+            }
+          );
+        } catch (mailError) {
+          console.warn("❌ Admin status mail failed:", mailError.message);
+        }
+      }
+    }
+
+    if (availableStatus) {
+      job.availableStatus = availableStatus;
     }
 
     await job.save();
 
-    // ── Send Email ──
-    try {
-      const categoryDoc = await Category.findById(job.category);
-      const categoryName = categoryDoc?.name || "";
-
-      await sendApprovedAndRejectedListingMail(
-        job.contact?.email || req.user.email,
-        job.contact?.name || "User",
-        status === "active" ? "approved" : "rejected",
-        rejectionReason || "Your job listing has been approved.",
-        {
-          businessName: job.title,
-          category: categoryName,
-          listingUrl: `${APP_BASE_URL}/job/${job.slug}`,
-          dashboardUrl: `${APP_BASE_URL}/dashboard`,
-        }
-      );
-    } catch (mailError) {
-      console.warn("❌ Admin status mail failed:", mailError.message);
-    }
-
-    return successData(res, 200, true, `Job status updated to ${status}`, { id: job._id });
+    return successData(res, 200, true, `Job status updated`, { id: job._id });
   } catch (error) {
     console.warn("Update job status error:", error);
     return errorData(res, 500, false, "Internal server error");
@@ -750,7 +869,8 @@ export const getJobsByCategoryAndCity = async (req, res) => {
     // 🔹 Base filter
     const filter = {
       isDeleted: false,
-      status: "active",
+      status: "approved",
+      availableStatus: "open",
     };
 
     // =========================

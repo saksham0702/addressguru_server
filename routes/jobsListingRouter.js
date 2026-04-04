@@ -29,7 +29,7 @@ const router = express.Router();
 
 const jobUpload = upload.fields([
   { name: "logo", maxCount: 1 },
-  { name: "images", maxCount: 10 },
+  // { name: "images", maxCount: 10 },
 ]);
 
 router.get("/", (req, res) => {
@@ -64,5 +64,12 @@ router.get("/language", getLanguages);
 router.get("/job-benefit", getJobBenefits);
 router.get("/company-size", getCompanySizes);
 router.get("/monthly-salary", getMonthlySalaryRanges);
+
+// Meta Data Routes
+router.get("/job-type", getJobTypes);
+router.get("/work-mode", getWorkModes);
+router.get("/experience-level", getExperienceLevels);
+router.get("/education-level", getEducationLevels);
+
 
 export default router;

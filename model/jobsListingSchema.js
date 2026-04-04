@@ -198,16 +198,22 @@ const jobSchema = new mongoose.Schema(
 
     applicationDeadline: { type: Date, default: null },
 
+    availableStatus: {
+      type: String,
+      enum: ["open", "closed", "expired", "pending"],
+      default: "open",
+    },
+
     status: {
       type: String,
-      enum: ["pending", "active", "expired", "approved", "rejected", "closed", "unapproved"],
+      enum: ["pending", "approved", "rejected", "unapproved"],
       default: "pending",
     },
 
     isFeatured: { type: Boolean, default: false },
     isUrgent: { type: Boolean, default: false },
     isVerified: { type: Boolean, default: false },
-    isActive: { type: Boolean, default: true },
+    isActive: { type: Boolean, default: false },
     isPublished: { type: Boolean, default: false },
     isDeleted: { type: Boolean, default: false },
     stepCompleted: { type: Number, default: 1 },

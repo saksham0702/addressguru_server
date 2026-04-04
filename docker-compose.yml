@@ -1,0 +1,27 @@
+services:
+  backend:
+    build: .
+    container_name: addressguru_backend
+    ports:
+      - "5001:5001"
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - ./uploads:/app/uploads
+    env_file:
+      - .env.docker
+    # depends_on:
+    #   - mongodb
+    command: npm run dev
+    restart: always
+  # mongodb:
+  #   image: mongo:latest
+  #   container_name: addressguru_mongodb
+  #   ports:
+  #     - "27018:27017"
+  #   volumes:
+  #     - addressguru_mongo_data:/data/db
+  #   restart: always
+
+volumes:
+  addressguru_mongo_data:
