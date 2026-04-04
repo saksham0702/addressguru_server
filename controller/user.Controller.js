@@ -631,10 +631,10 @@ export const updateProfile = async (req, res) => {
 
     // Handle Image Upload
     let imageUrl = null;
-    if (req.file) {
-      const filePath = req.file.path.replace(/\\/g, "/"); // normalize for Windows
-      imageUrl = `${BACKEND_BASE_URL}/${filePath}`;
-      updateData.avatar = imageUrl; // Save to user avatar field
+    if (req?.file) {
+      const filePath = req?.file?.path?.replace(/\\/g, "/"); // normalize for Windows
+      // imageUrl = `${BACKEND_BASE_URL}/${filePath}`;
+      updateData.avatar = filePath; // Save to user avatar field
     }
 
     const updatedUser = await User.findByIdAndUpdate(
