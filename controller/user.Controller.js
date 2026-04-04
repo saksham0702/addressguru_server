@@ -87,7 +87,6 @@ export const login = async (req, res) => {
       }
     }
 
-
     // 📝 Save login log
     try {
       await addUserLog(user, req);

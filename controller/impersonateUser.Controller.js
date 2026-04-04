@@ -20,9 +20,6 @@ const COOKIE_OPTIONS = (maxAge) => ({
 
 // ─── POST /api/user-login/:userId ─────────────────────────────────────────────
 export const impersonateUser = async (req, res) => {
-    console.log("IMPERSONATE USER");
-    console.log("IMPERSONATE USER req.user", req.user);
-    console.log("IMPERSONATE USER req.params", req.params);
   try {
     const admin = req.user; // set by authenticate middleware
       
@@ -57,24 +54,25 @@ export const impersonateUser = async (req, res) => {
         impersonated: true,
         masterAdminId: admin.id,
       },
-      "5m"
+      "24h"
     );
 
     // ✅ Set impersonation token in cookie
     res.cookie("authToken", impersonationToken, COOKIE_OPTIONS(5 * 60 * 1000));
 
     // ✅ Backup admin token in separate cookie (for cookie-based clients)
-    res.cookie("adminBackupToken", adminBackupToken, COOKIE_OPTIONS(5 * 60 * 1000));
+    res.cookie("adminBackupToken", adminBackupToken, COOKIE_OPTIONS(24 * 60 * 60 * 1000));
 
     return successData(res, 200, true, "Impersonation started", {
       authToken: impersonationToken,  // for Bearer clients to switch token
       adminBackupToken,               // for Bearer clients to store and use on exit
-      user: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        roles: user.roles,
-      },
+      // user: {
+      //   id: user._id,
+      //   name: user.name,
+      //   email: user.email,
+      //   roles: user.roles,
+      // },
+      user: user,
     });
   } catch (error) {
     console.warn("Impersonation error:", error);

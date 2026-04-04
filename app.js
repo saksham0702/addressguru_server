@@ -144,9 +144,10 @@ app.use(`/cities`, citiesRouter);
 
 app.use(`/jobs-listing`, jobsListingRouter);
 app.use(`/admin/users`, adminUserRouter);
-app.use(`/features`, featureRouter);
+app.use(`/features`, featureRouter);  
 app.use(`/blogs`, blogRouter);
 app.use(`/property-listings`, propertyRouter);
+
 
 app.use(`/google-listing`, googleListingRoutes);
 
