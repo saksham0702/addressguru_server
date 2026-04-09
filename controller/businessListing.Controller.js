@@ -754,6 +754,7 @@ export const getListingBySlug = async (req, res) => {
       .populate("facilities", "name iconSvg")
       .populate("services", "name iconSvg")
       .populate("paymentModes", "name iconSvg")
+      .populate("courses", "name iconSvg")
       .lean();
     if (!listing) return errorData(res, 404, false, "Listing not found");
     return successData(res, 200, true, "Listing fetched successfully", listing);
