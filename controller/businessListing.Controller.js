@@ -471,6 +471,64 @@ export const getFeaturesAndAdditionalFieldsByCategory = async (req, res) => {
   }
 };
 
+// - get feature and additional fields by category slug
+export const getFeaturesAndAdditionalFieldsByCategorySlug = async (req, res) => {
+  try {
+    const { category_slug } = req.params;
+    const { subcategory_slug } = req.query;
+
+    if (!category_slug) {
+      return errorData(res, 400, false, "Category slug is required");
+    }
+
+    // Step 1: Resolve category slug → _id
+    const category = await Category.findOne({ slug: category_slug }).select("_id");
+    if (!category) {
+      return errorData(res, 404, false, "Category not found");
+    }
+
+    // Step 2: Optionally resolve subcategory slug → _id
+    let subcategoryId = null;
+    if (subcategory_slug) {
+      const subcategory = await SubCategory.findOne({ slug: subcategory_slug }).select("_id");
+      subcategoryId = subcategory?._id || null;
+    }
+
+    const featureFilter = {
+      category: category._id,
+      ...(subcategoryId && { subcategory: subcategoryId }),
+    };
+
+    const additionalFieldFilter = {
+      category_id: category._id,
+      is_deleted: false,
+      ...(subcategoryId && { subcategory_id: subcategoryId }),
+    };
+
+    const [features, additionalFields, paymentModes] = await Promise.all([
+      categoryFeatures
+        .findOne(featureFilter)
+        .populate("facilities", "name icon _id")
+        .populate("services", "name icon _id")
+        .populate("courses", "name icon _id"),
+      AdditionalField.find(additionalFieldFilter).sort({ display_order: 1 }),
+      Feature.find({ type: "payment_mode", isDeleted: false }).select("name icon _id"),
+    ]);
+
+    const { facilities = [], services = [], courses = [] } = features || {};
+
+    return successData(res, 200, true, "Features and additional fields fetched successfully", {
+      features: { facilities, services, courses },
+      payment_modes: paymentModes,
+      additionalFields: additionalFields || [],
+    });
+
+  } catch (error) {
+    console.warn("Features and additional fields fetch error:", error);
+    return errorData(res, 500, false, "Internal server error");
+  }
+};
+
 // ─── GET ALL (paginated + filtered) ───────────────────────────────────────────
 export const getAllListingsWithPaginationAndFilters = async (req, res) => {
   try {
@@ -562,12 +620,22 @@ export const getAllListingsWithPaginationAndFilters = async (req, res) => {
 export const getListingsByCategoryAndCity = async (req, res) => {
   try {
     const { category_slug, city_slug } = req.params;
-    const { page = 1, limit = 10 } = req.query;
-    // 1. Category is REQUIRED
+    const {
+      page = 1,
+      limit = 10,
+      sort_by,
+      ag_verified,
+      facilities_id,
+      services_id,
+      courses_id,
+      payment_mode_id,
+      search,
+    } = req.query;
+
     if (!category_slug) {
       return errorData(res, 400, false, "Category slug is required");
     }
-    // 2. Find category
+
     const category = await Category.findOne({
       slug: category_slug,
       isDeleted: false,
@@ -575,49 +643,93 @@ export const getListingsByCategoryAndCity = async (req, res) => {
     if (!category) {
       return errorData(res, 404, false, "Category not found");
     }
-    // 3. Base filter
+
     const filter = {
       category: category._id,
       isDeleted: false,
       status: "approved",
     };
-    // 4. City filter (skip if "all-cities" or not provided)
+
+    // City filter
     if (city_slug && city_slug.toLowerCase().trim() !== "all-cities") {
-      const city = await CitiesSchema.findOne({
-        slug: city_slug,
-        deletedAt: null,
-      });
+      const city = await CitiesSchema.findOne({ slug: city_slug, deletedAt: null });
       if (!city) {
         return errorData(res, 404, false, "City not found");
       }
       filter.city = city._id;
     }
-    // 5. Pagination
+
+    // Search filter
+    if (search && search.trim()) {
+      filter.$or = [
+        { name: { $regex: search.trim(), $options: "i" } },
+        { description: { $regex: search.trim(), $options: "i" } },
+      ];
+    }
+
+    // AG Verified filter
+    if (ag_verified === "true") {
+      filter.ag_verified = true;
+    }
+
+    // Facilities filter
+    if (facilities_id) {
+      const ids = Array.isArray(facilities_id) ? facilities_id : facilities_id.split(",");
+      if (ids.length > 0) filter.facilities = { $in: ids };
+    }
+
+    // Services filter
+    if (services_id) {
+      const ids = Array.isArray(services_id) ? services_id : services_id.split(",");
+      if (ids.length > 0) filter.services = { $in: ids };
+    }
+
+    // Courses filter
+    if (courses_id) {
+      const ids = Array.isArray(courses_id) ? courses_id : courses_id.split(",");
+      if (ids.length > 0) filter.courses = { $in: ids };
+    }
+
+    // Payment mode filter
+    if (payment_mode_id) {
+      const ids = Array.isArray(payment_mode_id) ? payment_mode_id : payment_mode_id.split(",");
+      if (ids.length > 0) filter.payment_modes = { $in: ids };
+    }
+
+    // Sort
+    let sortOption = { createdAt: -1 }; // default: newest
+    if (sort_by === "oldest") sortOption = { createdAt: 1 };
+    else if (sort_by === "popular") sortOption = { views: -1 };
+
+    // Pagination
     const pageNumber = Number(page);
     const limitNumber = Number(limit);
     const skip = (pageNumber - 1) * limitNumber;
-    // 6. Fetch listings + count
+
     const [listings, total] = await Promise.all([
       BusinessListing.find(filter)
         .populate("category", "name slug")
         .populate("subCategory", "name slug")
         .populate("facilities")
         .populate("city", "name slug")
-        .sort({ createdAt: -1 })
+        .sort(sortOption)
         .skip(skip)
         .limit(limitNumber)
         .lean(),
-
       BusinessListing.countDocuments(filter),
     ]);
-    // 7. Always return 200 with data (even if empty)
+
+    const totalPages = Math.ceil(total / limitNumber);
+
     return successData(res, 200, true, "Listings fetched successfully", {
       listings,
       pagination: {
         total,
         page: pageNumber,
         limit: limitNumber,
-        totalPages: Math.ceil(total / limitNumber),
+        totalPages,
+        hasMore: pageNumber < totalPages,
+        nextPage: pageNumber < totalPages ? pageNumber + 1 : null,
       },
     });
   } catch (error) {
