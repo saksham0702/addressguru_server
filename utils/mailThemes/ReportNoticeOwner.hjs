@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Listing Report Notice — AddressGuru UAE</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background-color: #f4f4f6; font-family: 'DM Sans', sans-serif; color: #2d2d2d; -webkit-font-smoothing: antialiased; }
+    .wrapper { width: 100%; padding: 40px 16px; background-color: #f4f4f6; }
+    .container { max-width: 580px; margin: 0 auto; background: #ffffff; border-radius: 14px; overflow: hidden; box-shadow: 0 2px 20px rgba(0,0,0,0.07); }
+    .header { background: #ffffff; padding: 0 32px; display: flex; align-items: center; justify-content: center; height: 72px; border-bottom: 1px solid #ebebeb; }
+    .header-logo { display: block; height: 40px; width: auto; object-fit: contain; }
+    .status-bar { background: #fee2e2; border-bottom: 2px solid #ef4444; padding: 12px 32px; display: flex; align-items: center; gap: 10px; }
+    .status-dot { width: 8px; height: 8px; border-radius: 50%; background: #ef4444; flex-shrink: 0; }
+    .status-text { font-size: 13px; font-weight: 600; color: #991b1b; letter-spacing: 0.2px; }
+    .content { padding: 28px 32px 32px; }
+    .greeting { font-size: 15px; color: #2d2d2d; line-height: 1.7; margin-bottom: 4px; }
+    .greeting strong { color: #f7941d; }
+    .intro-text { font-size: 13.5px; color: #666; line-height: 1.75; margin-bottom: 24px; }
+    .info-card { background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 12px; padding: 20px; margin-bottom: 24px; }
+    .info-row { display: flex; justify-content: space-between; margin-bottom: 12px; border-bottom: 1px solid #f0f0f0; padding-bottom: 8px; }
+    .info-row:last-child { margin-bottom: 0; border-bottom: none; padding-bottom: 0; }
+    .info-label { font-size: 12px; color: #9ca3af; text-transform: uppercase; font-weight: 600; }
+    .info-value { font-size: 14px; color: #374151; font-weight: 500; }
+    .cta-btn { display: inline-block; background: #f7941d; color: #fff; text-decoration: none; font-size: 13.5px; font-weight: 600; padding: 11px 24px; border-radius: 7px; }
+    .footer { background: #f9fafb; border-top: 1px solid #ebebeb; padding: 18px 32px; text-align: center; }
+    .footer-copy { font-size: 11.5px; color: #aaa; line-height: 1.7; }
+  </style>
+</head>
+<body>
+<div class="wrapper">
+  <div class="container">
+    <div class="header">
+      <img class="header-logo" src="https://www.addressguru.in/images/logopng.png" alt="AddressGuru" />
+    </div>
+    <div class="status-bar">
+      <div class="status-dot"></div>
+      <span class="status-text">Listing Violation Report Received</span>
+    </div>
+    <div class="content">
+      <p class="greeting">Hello, <strong>{{ownerName}}</strong>,</p>
+      <p class="intro-text">
+        We are writing to inform you that your listing <strong>{{businessName}}</strong> has been reported by a member of the community.
+      </p>
+      <div class="info-card">
+        <div class="info-row">
+          <span class="info-label">Report Reason</span>
+          <span class="info-value">{{reason}}</span>
+        </div>
+      </div>
+      <p class="intro-text">
+        Our moderation team is currently investigating the report. We recommend reviewing your listing details to ensure they comply with our community guidelines.
+      </p>
+      <a class="cta-btn" href="https://addressguru.ae/{{listingSlug}}">View Your Listing</a>
+    </div>
+    <div class="footer">
+      <div class="footer-copy">&copy; {{year}} AddressGuru UAE. All rights reserved.</div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

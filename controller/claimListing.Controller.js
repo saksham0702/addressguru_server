@@ -1,7 +1,8 @@
 // controllers/claimController.js
 import ClaimBusiness  from "../model/claimBusinessSchema.js";
 import { resolveListing } from "../utils/resolveListing.js";
-import { sendClaimSubmittedMail } from "../utils/sendMail.js";
+import { sendClaimSubmittedMail, sendClaimReceivedAdminMail, sendClaimNoticeToOwnerMail } from "../utils/sendMail.js";
+import User from "../model/userSchema.js";
 
 // ─── POST /api/:type/:slug/claim ──────────────────────────────────────────────
  
@@ -30,7 +31,7 @@ export const submitClaim = async (req, res) => {
       claimedBy:      req.user?._id,
       fullName,
       email,
-      countryCode:    countryCode || 91,
+      countryCode:    countryCode || 971,
       mobileNumber,
       reasonForClaim,
       ipAddress:      req.ip,
@@ -47,6 +48,40 @@ export const submitClaim = async (req, res) => {
       console.log(`✅ Claim mail sent to ${email}`);
     } catch (mailErr) {
       console.warn("❌ Claim mail failed:", mailErr.message);
+    }
+ 
+    // ── Notify admin about the new claim ──────────────────────────────────
+    try {
+      await sendClaimReceivedAdminMail(
+        { fullName, email, countryCode, mobileNumber, reasonForClaim },
+        listing.businessName || listing.slug,
+        listing.slug,
+      );
+      console.log(`✅ Claim admin alert sent for: ${listing.slug}`);
+    } catch (adminMailErr) {
+      console.warn("❌ Claim admin alert failed:", adminMailErr.message);
+    }
+
+    // ── Notify Listing Owner about the claim ──────────────────────────────
+    try {
+      const owner = listing.createdBy
+        ? await User.findById(listing.createdBy).select("email name").lean()
+        : null;
+      const ownerEmail = listing.email || owner?.email;
+      const ownerName  = listing.contactPersonName || owner?.name || listing.businessName;
+
+      if (ownerEmail) {
+        await sendClaimNoticeToOwnerMail(
+          ownerEmail,
+          ownerName,
+          listing.businessName || listing.slug,
+          fullName,
+          reasonForClaim
+        );
+        console.log(`✅ Claim notice sent to owner: ${ownerEmail}`);
+      }
+    } catch (ownerMailErr) {
+      console.warn("❌ Claim owner notice failed:", ownerMailErr.message);
     }
  
     return res.status(201).json({

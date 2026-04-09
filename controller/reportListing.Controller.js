@@ -1,7 +1,8 @@
 // controllers/reportController.js
 import ReportAd, { REPORT_REASONS } from "../model/reportedListingSchema.js";
 import { resolveListing, MODEL_MAP } from "../utils/resolveListing.js";
-import { sendListingReportedMail } from "../utils/sendMail.js";
+import { sendListingReportedMail, sendReportConfirmationMail, sendReportNoticeToOwnerMail } from "../utils/sendMail.js";
+import User from "../model/userSchema.js";
 
 
 // ─── GET /api/report-reasons  (used by frontend radio list) ──────────────────
@@ -55,6 +56,7 @@ export const submitReport = async (req, res) => {
     // ── Notify admin via email ─────────────────────────────────────────────
     try {
       await sendListingReportedMail(
+        null,
         { reason, description, ipAddress: req.ip },
         listing.businessName || listing.slug,
         listing.slug,
@@ -64,6 +66,43 @@ export const submitReport = async (req, res) => {
       console.log(`✅ Report mail sent to admin for: ${listing.slug}`);
     } catch (mailErr) {
       console.warn("❌ Report mail failed:", mailErr.message);
+    }
+
+    // ── Send confirmation mail to reporter ────────────────────────────────
+    try {
+      const reporterEmail = req.user?.email; // Assumes req.user is populated by auth middleware
+      if (reporterEmail) {
+        await sendReportConfirmationMail(
+          reporterEmail,
+          listing.businessName || listing.slug,
+          reason
+        );
+        console.log(`✅ Report confirmation mail sent to: ${reporterEmail}`);
+      }
+    } catch (repMailErr) {
+      console.warn("❌ Report confirmation mail failed:", repMailErr.message);
+    }
+
+    // ── Notify Listing Owner about the report ─────────────────────────────
+    try {
+      const owner = listing.createdBy
+        ? await User.findById(listing.createdBy).select("email name").lean()
+        : null;
+      const ownerEmail = listing.email || owner?.email;
+      const ownerName  = listing.contactPersonName || owner?.name || listing.businessName;
+
+      if (ownerEmail) {
+        await sendReportNoticeToOwnerMail(
+          ownerEmail,
+          ownerName,
+          listing.businessName || listing.slug,
+          listing.slug,
+          reason
+        );
+        console.log(`✅ Report notice sent to owner: ${ownerEmail}`);
+      }
+    } catch (ownerMailErr) {
+      console.warn("❌ Report owner notice failed:", ownerMailErr.message);
     }
  
     return res.status(201).json({ success: true, message: "Thank you. Your report has been submitted." });

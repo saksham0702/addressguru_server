@@ -2,7 +2,7 @@ import Enquiry from "../model/listingEnquirySchema.js";
 import User from "../model/userSchema.js";
 import ListingStats from "../model/listingStatsSchema.js";
 import { resolveListing } from "../utils/resolveListing.js";
-import { sendEnquiryReceivedMail } from "../utils/sendMail.js";
+import { sendEnquiryReceivedMail, sendEnquiryConfirmationMail } from "../utils/sendMail.js";
 
 // ─── POST /api/:type/:slug/enquiry ────────────────────────────────────────────
 // type = business | job | property | marketplace
@@ -23,7 +23,7 @@ export const sendEnquiry = async (req, res) => {
       listingOwner: listing.createdBy,
       fullName,
       email,
-      countryCode:  countryCode || 91,
+      countryCode:  countryCode || 971,
       mobileNumber,
       message,
       ipAddress:    req.ip,
@@ -73,6 +73,20 @@ export const sendEnquiry = async (req, res) => {
       }
     } catch (mailErr) {
       console.warn("❌ Enquiry mail failed:", mailErr.message);
+    }
+
+    // ── Send mail to enquirer ──────────────────────────────────────────────
+    try {
+      await sendEnquiryConfirmationMail(
+        email,
+        fullName,
+        listing.businessName || listing.slug,
+        listing.slug,
+        message
+      );
+      console.log(`✅ Enquiry confirmation mail sent to enquirer: ${email}`);
+    } catch (confMailErr) {
+      console.warn("❌ Enquiry confirmation mail failed:", confMailErr.message);
     }
  
     return res.status(201).json({

@@ -97,7 +97,7 @@ async function findOrCreateUser({
       if (!user.login_type || user.login_type === "email") {
         user.login_type = provider; // upgrade to social login preference
       }
-      
+
       user.verified_email = true; // Google/Apple emails are verified
       user.lastActive = new Date();
       await user.save();
@@ -395,7 +395,7 @@ router.post("/auth/exchange", async (req, res) => {
 
     return res.status(200).json({
       success: true,
-      data: { user: userData, accessToken: sessionToken },
+      data: { user: user, accessToken: sessionToken },
     });
   } catch (err) {
     console.warn(err.response?.data || err.message);
