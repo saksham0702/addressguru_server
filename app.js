@@ -40,10 +40,16 @@ import statisticsRouter from "./routes/statistics.Routes.js";
 import followUpRouter from "./routes/followUp.Router.js";
 import followUpConfigRouter from "./routes/followUpConfig.Router.js";
 import templateRouter from "./routes/template.Router.js";
-
+import notificationRouter from "./routes/notification.Routes.js";
+import { initializeFirebase } from "./services/firebase.js";
 
 
 var app = express();
+
+// ─── Startup Services ──────────────────────────────────────────────────────
+connectDB();
+initializeFirebase();
+// await seedFeatures();
 
 // view engine setup
 app.set("trust proxy", true);
@@ -159,6 +165,7 @@ app.use(`/statistics`, statisticsRouter);
 app.use(`/follow-ups`, followUpRouter);
 app.use(`/followup-config`, followUpConfigRouter);
 app.use(`/template`, templateRouter);
+app.use(`/notifications`, notificationRouter);
 
 app.get("/test-cookie", (req, res) => {
   console.log("cookies:", req.cookies);
@@ -168,9 +175,6 @@ app.get("/test-cookie", (req, res) => {
 // app.use("/", indexRouter);
 // app.use("/users", usersRouter);
 
-// Connect to Database
-connectDB();
-// await seedFeatures();
 
 // catch 404 and forward to error handler
 app.use(function (req, res, next) {

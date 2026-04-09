@@ -15,6 +15,7 @@ import {
   sendListingSubmittedMail,
 } from "../utils/sendMail.js";
 import googleIndexingService from "../services/googleIndexing.service.js";
+import { sendPushNotification } from "../services/notification.service.js";
 
 // ─── Helper: validate additional fields ───────────────────────────────────────
 // ============================================
@@ -916,17 +917,32 @@ export const updateListingStatus = async (req, res) => {
 
     await listing.save();
 
-    // ── Send mail ────────────────────────────────────────────────────────────
-    try {
-      await sendApprovedAndRejectedListingMail(
-        listing.email,
-        listing.contactPersonName || listing.businessName,
-        status,
-        status === "rejected" ? rejectionReason.trim() : null,
-      );
-      console.log(`✅ Mail sent to ${listing.email} for status: ${status}`);
-    } catch (mailError) {
-      console.warn("❌ Mail send failed:", mailError.message);
+    // ── Send mail & notification ────────────────────────────────────────────
+    if (status !== "unapproved") {
+      try {
+        await sendApprovedAndRejectedListingMail(
+          listing.email,
+          listing.contactPersonName || listing.businessName,
+          status,
+          status === "rejected" ? rejectionReason.trim() : null,
+        );
+        console.log(`✅ Mail sent to ${listing.email} for status: ${status}`);
+
+        if (listing.createdBy) {
+          const title = status === "approved" ? "Listing Approved 🎉" : "Listing Rejected ❌";
+          const body = status === "approved" 
+            ? `Congratulations! Your business listing "${listing.businessName}" has been successfully approved.`
+            : `We're sorry, your business listing "${listing.businessName}" was rejected. ${rejectionReason ? 'Reason: ' + rejectionReason.trim() : ''}`;
+          
+          await sendPushNotification(listing.createdBy, title, body, {
+            type: "BUSINESS_LISTING_STATUS",
+            listingId: listing._id.toString(),
+            status: status
+          });
+        }
+      } catch (mailError) {
+        console.warn("❌ Mail/Notification send failed:", mailError.message);
+      }
     }
 
     // Populate for response

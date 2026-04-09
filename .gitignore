@@ -1,3 +1,7 @@
+# Firebase Service Account (NEVER commit this!)
+config/addressguru-uae-firebase-adminsdk-fbsvc-64db913519.json
+config/addressguru-uae-firebase-adminsdk-fbsvc-e0d2e2f060.json
+
 # Dependencies
 node_modules/
 npm-debug.log
@@ -35,3 +39,5 @@ uploads/
 .env.docker
 Dockerfile
 docker-compose.yml
+*.yml
+postman_collections/
