@@ -162,6 +162,9 @@ const userSchema = new mongoose.Schema(
     login_ipaddress: { type: String },
     login_browser: { type: String },
 
+    // ── Notifications ─────────────────────────────────────────────────────────
+    fcmToken: { type: String, default: null },
+
     // ── Flags ─────────────────────────────────────────────────────────────────
     status: { type: Boolean, default: true },
     lastActive: { type: Date, default: Date.now },

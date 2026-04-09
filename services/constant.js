@@ -101,3 +101,7 @@ export const GOOGLE_API_KEY = process.env.GOOGLE_API_KEY;
 //   LISTPARTNER: "listpartner",
 //   USER: "user",
 // };
+
+
+// Firebase
+export const FIREBASE_SERVICE_ACCOUNT_PATH = process.env.FIREBASE_SERVICE_ACCOUNT_PATH;

@@ -9,6 +9,7 @@ import { successData, errorData } from "../services/helper.js";
 import googleIndexingService from "../services/googleIndexing.service.js";
 import { APP_BASE_URL } from "../services/constant.js";
 import { sendApprovedAndRejectedListingMail } from "../utils/sendMail.js";
+import { sendPushNotification } from "../services/notification.service.js";
 
 // ─── Helper: validate additional fields ──────────────────────────────────────
 const validateAdditionalFields = async (additionalFields = []) => {
@@ -620,8 +621,8 @@ export const updatePropertyListingStatus = async (req, res) => {
 
     await listing.save();
 
-    // ── Send notification mail ────────────────────────────────────────────
-    // Skip mail for "unapproved" (admin internal reset, no user-facing change)
+    // ── Send notification mail & push ────────────────────────────────────
+    // Skip notification for "unapproved" (admin internal reset, no user-facing change)
     if (status !== "unapproved") {
       try {
         await sendApprovedAndRejectedListingMail(
@@ -631,8 +632,21 @@ export const updatePropertyListingStatus = async (req, res) => {
           status === "rejected" ? rejectionReason.trim() : null,
         );
         console.log(`✅ Mail sent to ${listing.email} for status: ${status}`);
+
+        if (listing.createdBy) {
+          const pushTitle = status === "approved" ? "Property Approved 🎉" : "Property Rejected ❌";
+          const pushBody = status === "approved" 
+            ? `Congratulations! Your property listing "${listing.title}" has been successfully approved.`
+            : `We're sorry, your property listing "${listing.title}" was rejected. ${rejectionReason ? 'Reason: ' + rejectionReason.trim() : ''}`;
+          
+          await sendPushNotification(listing.createdBy, pushTitle, pushBody, {
+            type: "PROPERTY_LISTING_STATUS",
+            listingId: listing._id.toString(),
+            status: status
+          });
+        }
       } catch (mailError) {
-        console.error("❌ Mail send failed:", mailError.message);
+        console.error("❌ Mail/Notification send failed:", mailError.message);
       }
     }
 

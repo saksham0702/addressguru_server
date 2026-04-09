@@ -11,6 +11,7 @@ import {
   sendApprovedAndRejectedListingMail,
   sendListingSubmittedMail,
 } from "../utils/sendMail.js";
+import { sendPushNotification } from "../services/notification.service.js";
 
 /* =========================
    SAVE JOB (2-STEP WIZARD)
@@ -817,7 +818,7 @@ export const updateJobStatus = async (req, res) => {
         job.isPublished = false;
       }
 
-      // ── Send Email ──
+      // ── Send Email & Notification ──
       // Note: Only send email for moderation approval/rejection.
       if (["approved", "rejected"].includes(status)) {
         try {
@@ -836,8 +837,21 @@ export const updateJobStatus = async (req, res) => {
               dashboardUrl: `${APP_BASE_URL}/dashboard`,
             }
           );
+
+          if (job.createdBy) {
+            const pushTitle = status === "approved" ? "Job Listing Approved 🎉" : "Job Listing Rejected ❌";
+            const pushBody = status === "approved" 
+              ? `Congratulations! Your job listing "${job.title}" has been successfully approved.`
+              : `We're sorry, your job listing "${job.title}" was rejected. ${rejectionReason ? 'Reason: ' + rejectionReason.trim() : ''}`;
+            
+            await sendPushNotification(job.createdBy, pushTitle, pushBody, {
+              type: "JOB_LISTING_STATUS",
+              listingId: job._id.toString(),
+              status: status
+            });
+          }
         } catch (mailError) {
-          console.warn("❌ Admin status mail failed:", mailError.message);
+          console.warn("❌ Admin status mail/notification failed:", mailError.message);
         }
       }
     }

@@ -24,6 +24,7 @@ import {
 } from "../services/constant.js";
 import { OAuth2Client } from "google-auth-library";
 import appleSignin from "apple-signin-auth";
+import createJwtToken from "../utils/generateToken.js";
 
 const router = express.Router();
 
@@ -60,6 +61,8 @@ async function findOrCreateUser({
   displayName = "",
   avatarUrl,
 }) {
+  const nameToSave = displayName || `${firstName} ${lastName}`.trim();
+
   // 1️⃣ Match by provider (already linked)
   let user = await User.findOne({
     "socialLogins.provider": provider,
@@ -67,7 +70,10 @@ async function findOrCreateUser({
   });
 
   if (user) {
-    user.lastLogin = new Date();
+    // Sync missing info if user exists
+    if (!user.name && nameToSave) user.name = nameToSave;
+    if (!user.avatar && avatarUrl) user.avatar = avatarUrl;
+    user.lastActive = new Date();
     await user.save();
     return user;
   }
@@ -85,7 +91,15 @@ async function findOrCreateUser({
         user.socialLogins.push({ provider, providerId });
       }
 
-      user.lastLogin = new Date();
+      // Sync missing info
+      if (!user.name && nameToSave) user.name = nameToSave;
+      if (!user.avatar && avatarUrl) user.avatar = avatarUrl;
+      if (!user.login_type || user.login_type === "email") {
+        user.login_type = provider; // upgrade to social login preference
+      }
+      
+      user.verified_email = true; // Google/Apple emails are verified
+      user.lastActive = new Date();
       await user.save();
       return user;
     }
@@ -93,19 +107,16 @@ async function findOrCreateUser({
 
   // 3️⃣ Create new user
   user = await User.create({
-    firstName,
-    lastName,
-    displayName,
+    name: nameToSave,
     email,
     login_type: provider,
     username: email?.split("@")[0] || `${provider}_${providerId.slice(0, 6)}`,
-    usernameSetup: false,
-    avatar: avatarUrl ? avatarUrl : undefined,
+    avatar: avatarUrl || undefined,
     socialLogins: [{ provider, providerId }],
     password: null,
-    isVerified: true,
-    createdAt: new Date(),
-    lastLogin: new Date(),
+    verified_email: true,
+    status: true,
+    lastActive: new Date(),
   });
 
   return user;
@@ -308,29 +319,39 @@ router.post("/auth/exchange", async (req, res) => {
 
     /* ===================== GOOGLE ===================== */
     if (provider === "google") {
-      const clientId =
-        platform === "ios"
-          ? GOOGLE_IOS_CLIENT_ID
-          : GOOGLE_CLIENT_ID
-
-      const client = new OAuth2Client(clientId);
-
-      const ticket = await client.verifyIdToken({
-        idToken,
-        audience: clientId,
-      });
-
-      const g = ticket.getPayload();
-
-      userData = {
-        provider: "google",
-        providerId: g?.sub,
-        email: g?.email,
-        firstName: g?.given_name,
-        lastName: g?.family_name,
-        displayName: g?.name,
-        avatarUrl: g?.picture,
-      };
+      if (idToken) {
+        const clientId = platform === "ios" ? GOOGLE_IOS_CLIENT_ID : GOOGLE_CLIENT_ID;
+        const client = new OAuth2Client(clientId);
+        const ticket = await client.verifyIdToken({
+          idToken,
+          audience: clientId,
+        });
+        const g = ticket.getPayload();
+        userData = {
+          provider: "google",
+          providerId: g?.sub,
+          email: g?.email,
+          firstName: g?.given_name,
+          lastName: g?.family_name,
+          displayName: g?.name,
+          avatarUrl: g?.picture,
+        };
+      } else if (accessToken) {
+        // Fetch user info using access token
+        const userInfoResp = await axios.get(GOOGLE_USERINFO_URL, {
+          headers: { Authorization: `Bearer ${accessToken}` },
+        });
+        const g = userInfoResp.data;
+        userData = {
+          provider: "google",
+          providerId: g?.sub || g?.id,
+          email: g?.email,
+          firstName: g?.given_name,
+          lastName: g?.family_name,
+          displayName: g?.name,
+          avatarUrl: g?.picture,
+        };
+      }
     }
 
     /* ===================== APPLE ===================== */
@@ -358,15 +379,23 @@ router.post("/auth/exchange", async (req, res) => {
 
     /* ===================== FINAL LINK / CREATE ===================== */
     const user = await findOrCreateUser(userData);
-    const accessToken = createSessionToken(userData);
+    const sessionToken = createJwtToken(user);
 
+    // 🍪 Set cookie
+    res.cookie("authToken", sessionToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+      path: "/",
+    });
 
     // user.refreshTokens.push({ token: refreshToken });
     // await user.save();
 
     return res.status(200).json({
       success: true,
-      data: { user: userData, accessToken },
+      data: { user: userData, accessToken: sessionToken },
     });
   } catch (err) {
     console.warn(err.response?.data || err.message);
