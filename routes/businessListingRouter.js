@@ -11,6 +11,7 @@ import {
   updateListingStatus,
   getListingsByCategoryAndCity,
   getApprovedListings,
+  getFeaturesAndAdditionalFieldsByCategorySlug,
 } from "../controller/businessListing.Controller.js";
 import { setUploadFolder } from "../middleware/setUploadFolder.js";
 import upload from "../middleware/multerConfig.js";
@@ -70,6 +71,12 @@ router.put("/:id/status", authenticate, updateListingStatus);
 router.get(
   "/get-features/:category_id",
   getFeaturesAndAdditionalFieldsByCategory,
+);
+
+// features by slug
+router.get(
+  "/features/:category_slug",
+  getFeaturesAndAdditionalFieldsByCategorySlug,
 );
 
 export default router;

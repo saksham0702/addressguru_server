@@ -24,7 +24,6 @@ export const impersonateUser = async (req, res) => {
     const admin = req.user; // set by authenticate middleware
       
     const adminRole = await User.findOne({ _id: admin.id, deletedAt: null });
-    console.log("adminRole", adminRole);
     // ✅ Only master admin allowed
     if (!adminRole?.roles?.includes(1)) {
       return errorData(res, 403, false, "Access denied. Admins only.");
@@ -32,7 +31,6 @@ export const impersonateUser = async (req, res) => {
 
     // ✅ Find target user
     const user = await User.findOne({ _id: req.params.userId, deletedAt: null });
-    console.log("USER", user);
     if (!user) {
       return errorData(res, 404, false, "User not found.");
     }

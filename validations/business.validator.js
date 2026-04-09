@@ -172,11 +172,17 @@ const businessStepSchema = {
       "string.max": "Name must not exceed 50 characters",
     }),
 
-    email: Joi.string().email().required().messages({
-      "any.required": "Email is required",
-      "string.empty": "Email is required",
-      "string.email": "Please provide a valid email address",
-    }),
+    email: Joi.string()
+      .email({
+        allowUnicode: false,
+        tlds: { allow: false },
+      })
+      .required()
+      .messages({
+        "any.required": "Email is required",
+        "string.empty": "Email is required",
+        "string.email": "Please provide a valid email address",
+      }),
 
     // String — preserves +971 format and leading zeros
     country_code: Joi.string().allow("", null).optional(),
