@@ -2,6 +2,7 @@ import Enquiry from "../model/listingEnquirySchema.js";
 import User from "../model/userSchema.js";
 import ListingStats from "../model/listingStatsSchema.js";
 import { resolveListing } from "../utils/resolveListing.js";
+import { sendEnquiryReceivedMail } from "../utils/sendMail.js";
 
 // ─── POST /api/:type/:slug/enquiry ────────────────────────────────────────────
 // type = business | job | property | marketplace
@@ -9,53 +10,71 @@ export const sendEnquiry = async (req, res) => {
   try {
     const { type, slug } = req.params;
     const { fullName, email, countryCode, mobileNumber, message } = req.body;
-
-    // Basic validation
+ 
     if (!fullName || !email || !mobileNumber)
       return res.status(422).json({ success: false, message: "fullName, email and mobileNumber are required" });
-
+ 
     const { listing, modelName } = await resolveListing(slug, type);
-
+ 
     const enquiry = await Enquiry.create({
-      listingId: listing._id,
+      listingId:    listing._id,
       listingModel: modelName,
-      listingSlug: listing.slug,
-      listingOwner: listing.createdBy,      // works for BusinessListing & Job
+      listingSlug:  listing.slug,
+      listingOwner: listing.createdBy,
       fullName,
       email,
-      countryCode: countryCode || 91,
+      countryCode:  countryCode || 91,
       mobileNumber,
       message,
-      ipAddress: req.ip,
-      userAgent: req.headers["user-agent"],
+      ipAddress:    req.ip,
+      userAgent:    req.headers["user-agent"],
     });
-
-    // Record the event in ListingStats
+ 
     await ListingStats.create({
-      listingId: listing._id,
+      listingId:    listing._id,
       listingModel: modelName,
-      type: "lead",
-      userId: req.user?.id || null,
-      ipAddress: req.ip,
-      userAgent: req.headers["user-agent"],
+      type:         "lead",
+      userId:       req.user?.id || null,
+      ipAddress:    req.ip,
+      userAgent:    req.headers["user-agent"],
     });
-
-    // Increment user stats
+ 
     if (listing.createdBy) {
       await User.findByIdAndUpdate(listing.createdBy, {
         $inc: { statistics_totalLeads: 1 },
       });
     }
-
-    // Increment enquiry counter on listing (legacy support if field exists)
+ 
     try {
       await listing.constructor.findByIdAndUpdate(listing._id, {
         $inc: { "stats.enquiries": 1 },
       });
-    } catch (e) { }
-
-    // TODO: send email / push notification to listing owner
-
+    } catch (e) {}
+ 
+    // ── Send mail to listing owner ─────────────────────────────────────────
+    try {
+      // Populate owner email if not directly on listing
+      const owner = listing.createdBy
+        ? await User.findById(listing.createdBy).select("email name").lean()
+        : null;
+ 
+      const ownerEmail = listing.email || owner?.email;
+      const ownerName  = listing.contactPersonName || owner?.name || listing.businessName;
+ 
+      if (ownerEmail) {
+        await sendEnquiryReceivedMail(
+          ownerEmail,
+          ownerName,
+          listing.businessName || listing.slug,
+          listing.slug,
+          { fullName, email, countryCode, mobileNumber, message },
+        );
+        console.log(`✅ Enquiry mail sent to owner: ${ownerEmail}`);
+      }
+    } catch (mailErr) {
+      console.warn("❌ Enquiry mail failed:", mailErr.message);
+    }
+ 
     return res.status(201).json({
       success: true,
       message: "Your enquiry has been sent successfully.",

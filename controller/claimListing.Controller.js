@@ -1,27 +1,28 @@
 // controllers/claimController.js
 import ClaimBusiness  from "../model/claimBusinessSchema.js";
 import { resolveListing } from "../utils/resolveListing.js";
+import { sendClaimSubmittedMail } from "../utils/sendMail.js";
 
 // ─── POST /api/:type/:slug/claim ──────────────────────────────────────────────
+ 
+// ─── submitClaim ──────────────────────────────────────────────────────────────
 export const submitClaim = async (req, res) => {
   try {
     const { type, slug } = req.params;
     const { fullName, email, countryCode, mobileNumber, reasonForClaim } = req.body;
-
+ 
     if (!fullName || !email || !mobileNumber || !reasonForClaim)
       return res.status(422).json({ success: false, message: "All fields are required" });
-
+ 
     const { listing, modelName } = await resolveListing(slug, type);
-
-    // Already claimed?
+ 
     if (listing.isClaimed)
       return res.status(400).json({ success: false, message: "This listing is already claimed." });
-
-    // Existing pending claim?
+ 
     const existing = await ClaimBusiness.findOne({ listingId: listing._id, status: "pending" });
     if (existing)
       return res.status(400).json({ success: false, message: "A claim for this listing is already under review." });
-
+ 
     const claim = await ClaimBusiness.create({
       listingId:      listing._id,
       listingModel:   modelName,
@@ -35,9 +36,19 @@ export const submitClaim = async (req, res) => {
       ipAddress:      req.ip,
       userAgent:      req.headers["user-agent"],
     });
-
-    // TODO: notify admin
-
+ 
+    // ── Send confirmation mail to claimant ────────────────────────────────
+    try {
+      await sendClaimSubmittedMail(
+        email,
+        { fullName, email, countryCode, mobileNumber, reasonForClaim },
+        listing.businessName || listing.slug,
+      );
+      console.log(`✅ Claim mail sent to ${email}`);
+    } catch (mailErr) {
+      console.warn("❌ Claim mail failed:", mailErr.message);
+    }
+ 
     return res.status(201).json({
       success: true,
       message: "Your claim has been submitted and is under review.",

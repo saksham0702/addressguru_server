@@ -13,9 +13,12 @@ import CitiesSchema from "../model/CitiesSchema.js";
 import {
   sendApprovedAndRejectedListingMail,
   sendListingSubmittedMail,
+  sendTopBusinessesDigestMail,
 } from "../utils/sendMail.js";
 import googleIndexingService from "../services/googleIndexing.service.js";
 import { sendPushNotification } from "../services/notification.service.js";
+import DigestMailLog from "../model/digestMailLogSchema.js";
+
 
 // ─── Helper: validate additional fields ───────────────────────────────────────
 // ============================================
@@ -986,3 +989,103 @@ export const getApprovedListings = async (req, res) => {
   }
 };
 
+
+// sendBusinessDigestMail controller
+
+
+export const sendBusinessDigestMail = async (req, res) => {
+  try {
+    const { email, name, category_slug } = req.body;
+
+    if (!email || !name || !category_slug) {
+      return errorData(res, 400, false, "Email, name and category_slug are required");
+    }
+
+    const categoryDoc = await Category.findOne({ slug: category_slug, isDeleted: false });
+    if (!categoryDoc) {
+      return errorData(res, 404, false, "Category not found");
+    }
+
+    const listings = await BusinessListing.find({
+      isDeleted: false,
+      status: "approved",
+      category: categoryDoc._id,
+    })
+      .populate("category", "name")
+      .sort({ createdAt: 1 })
+      .limit(10)
+      .lean();
+
+    if (!listings.length) {
+      return errorData(res, 404, false, "No approved listings found for this category");
+    }
+
+    const businesses = listings.map((l) => {
+      const phone = l.mobileNumber
+        ? `${l.countryCode || ""}${l.mobileNumber}`.trim()
+        : null;
+      const listingEmail = l.email || null;
+      return {
+        businessName:  l.businessName      || "NA",
+        businessAddress: l.businessAddress   || "NA",
+        slug:          l.slug              || "",
+        category:      l.category?.name    || "NA",
+        contactPerson: l.contactPersonName || "NA",
+        phone:         phone               || "NA",
+        phoneIsNA:     !phone,
+        listingEmail:  listingEmail        || "NA",
+        emailIsNA:     !listingEmail,
+        logoUrl:       l.logo              || null,
+        initial:       l.businessName ? l.businessName.charAt(0).toUpperCase() : "B",
+      };
+    });
+
+    // ── Fire mail & log result ─────────────────────────────────────────────
+    let mailStatus = "sent";
+    let failureReason = null;
+
+    try {
+      await sendTopBusinessesDigestMail(email, name, categoryDoc.name, businesses);
+      console.log(`✅ Digest mail sent to ${email} for category: ${categoryDoc.name}`);
+    } catch (mailError) {
+      mailStatus = "failed";
+      failureReason = mailError.message;
+      console.warn("❌ Mail send failed:", mailError.message);
+    }
+
+    // ── Save log regardless of mail success/failure ────────────────────────
+    await DigestMailLog.create({
+      sentTo:        email,
+      recipientName: name,
+      categorySlug:  category_slug,
+      categoryName:  categoryDoc.name,
+      categoryId:    categoryDoc._id,
+      listingsCount: businesses.length,
+      listingsSent:  listings.map((l) => ({
+        businessName:  l.businessName      || null,
+        slug:          l.slug              || null,
+        contactPerson: l.contactPersonName || null,
+        phone:         l.mobileNumber ? `${l.countryCode || ""}${l.mobileNumber}`.trim() : null,
+        email:         l.email             || null,
+        logoUrl:       l.logo              || null,
+        listingRef:    l._id,
+      })),
+      status:        mailStatus,
+      failureReason: failureReason,
+      sentBy:        req.user?.id || null,
+    });
+
+    if (mailStatus === "failed") {
+      return errorData(res, 500, false, "Mail sending failed", { reason: failureReason });
+    }
+
+    return successData(res, 200, true, "Digest email sent successfully", {
+      sentTo:        email,
+      category:      categoryDoc.name,
+      listingsCount: businesses.length,
+    });
+  } catch (error) {
+    console.warn("❌ sendBusinessDigestMail error:", error);
+    return errorData(res, 500, false, "Internal server error");
+  }
+};

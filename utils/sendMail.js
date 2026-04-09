@@ -118,6 +118,58 @@ const sendApprovedAndRejectedListingMail = (email, name, status, message, extra 
   return transporter.sendMail(mailOptions);
 };
 
+
+// top business
+
+const sendTopBusinessesDigestMail = (email, name, category, businesses = []) => {
+  
+  console.log(
+    "DIGEST MAIL → EMAIL:", email,
+    "| Name:", name,
+    "| Category:", category,
+    "| Businesses:", businesses.length
+  );
+ 
+  const templatePath = path.resolve("utils/mailThemes/TopBusinessesDigest.hjs");
+  const template = fs.readFileSync(templatePath, "utf-8");
+  const compiledTemplate = Hogan.compile(template);
+ 
+  // Enrich each business with a fallback initial for the logo placeholder
+  const enrichedBusinesses = businesses.map((b) => ({
+    ...b,
+    initial: b.businessName ? b.businessName.charAt(0).toUpperCase() : "B",
+    category: b.category || category,
+  }));
+ 
+  const mailBody = compiledTemplate.render({
+    name,
+    category,
+    businesses: enrichedBusinesses,
+    year: new Date().getFullYear(),
+  });
+ 
+  const transporter = nodemailer.createTransport({
+    host: emailConfig.SMTP_HOST,
+    port: emailConfig.SMTP_PORT,
+    secure: true,
+    auth: {
+      user: emailConfig.SMTP_EMAIL,
+      pass: emailConfig.SMTP_PASS,
+    },
+  });
+ 
+  const mailOptions = {
+    from: '"AddressGuru UAE" <adx.ddn@gmail.com>',
+    to: email,
+    subject: `🏆 Top Businesses in ${category} — AddressGuru UAE`,
+    text: `Check out the top businesses in ${category} on AddressGuru UAE.`,
+    html: mailBody,
+  };
+ 
+  return transporter.sendMail(mailOptions);
+};
+ 
+
 // ─── NEW: Listing submitted / pending mail ────────────────────────────────────
 // Call this after step-6 save in updateListingStep.
 const sendListingSubmittedMail = (email, name, businessName, category, submissionDate, dashboardUrl) => {
@@ -328,6 +380,142 @@ const formatPreferredContactSlot = (datetime) => {
   return new Intl.DateTimeFormat("en-US", options).format(new Date(datetime));
 };
 
+
+// enquiry and all 
+// ─── 1. ENQUIRY RECEIVED — sent to listing owner ──────────────────────────────
+const sendEnquiryReceivedMail = (ownerEmail, ownerName, businessName, listingSlug, enquirer) => {
+  console.log(
+    "ENQUIRY MAIL → EMAIL:", ownerEmail,
+    "| Business:", businessName,
+    "| From:", enquirer.fullName
+  );
+
+  const templatePath = path.resolve("utils/mailThemes/EnquiryReceived.hjs");
+  const template = fs.readFileSync(templatePath, "utf-8");
+  const compiledTemplate = Hogan.compile(template);
+
+  const mailBody = compiledTemplate.render({
+    ownerName,
+    businessName,
+    listingSlug,
+    fullName:     enquirer.fullName,
+    email:        enquirer.email,
+    countryCode:  enquirer.countryCode || "91",
+    mobileNumber: enquirer.mobileNumber,
+    message:      enquirer.message || null,
+    year:         new Date().getFullYear(),
+  });
+
+  const transporter = nodemailer.createTransport({
+    host:   emailConfig.SMTP_HOST,
+    port:   emailConfig.SMTP_PORT,
+    secure: true,
+    auth:   { user: emailConfig.SMTP_EMAIL, pass: emailConfig.SMTP_PASS },
+  });
+
+  const mailOptions = {
+    from:    '"AddressGuru UAE" <adx.ddn@gmail.com>',
+    to:      ownerEmail,
+    subject: `📩 New Enquiry for ${businessName} — AddressGuru UAE`,
+    text:    `You have a new enquiry from ${enquirer.fullName} for your listing ${businessName}.`,
+    html:    mailBody,
+  };
+
+  return transporter.sendMail(mailOptions);
+};
+
+
+// ─── 2. CLAIM SUBMITTED — sent to claimant ────────────────────────────────────
+const sendClaimSubmittedMail = (claimantEmail, claim, businessName) => {
+  console.log(
+    "CLAIM MAIL → EMAIL:", claimantEmail,
+    "| Business:", businessName,
+    "| Claimant:", claim.fullName
+  );
+
+  const templatePath = path.resolve("utils/mailThemes/ClaimSubmitted.hjs");
+  const template = fs.readFileSync(templatePath, "utf-8");
+  const compiledTemplate = Hogan.compile(template);
+
+  const mailBody = compiledTemplate.render({
+    fullName:       claim.fullName,
+    email:          claim.email,
+    countryCode:    claim.countryCode || "91",
+    mobileNumber:   claim.mobileNumber,
+    reasonForClaim: claim.reasonForClaim,
+    businessName,
+    submittedDate:  new Date().toLocaleDateString("en-AE", {
+      day: "numeric", month: "long", year: "numeric",
+    }),
+    year: new Date().getFullYear(),
+  });
+
+  const transporter = nodemailer.createTransport({
+    host:   emailConfig.SMTP_HOST,
+    port:   emailConfig.SMTP_PORT,
+    secure: true,
+    auth:   { user: emailConfig.SMTP_EMAIL, pass: emailConfig.SMTP_PASS },
+  });
+
+  const mailOptions = {
+    from:    '"AddressGuru UAE" <adx.ddn@gmail.com>',
+    to:      claimantEmail,
+    subject: `🔐 Your Claim for ${businessName} is Under Review — AddressGuru UAE`,
+    text:    `Your claim for ${businessName} has been submitted and is under review.`,
+    html:    mailBody,
+  };
+
+  return transporter.sendMail(mailOptions);
+};
+
+
+// ─── 3. LISTING REPORTED — sent to admin ──────────────────────────────────────
+const sendListingReportedMail = (adminEmail, report, businessName, listingSlug, pendingReportCount, isFlagged) => {
+  console.log(
+    "REPORT MAIL → EMAIL:", adminEmail,
+    "| Business:", businessName,
+    "| Reason:", report.reason,
+    "| Flagged:", isFlagged
+  );
+
+  const templatePath = path.resolve("utils/mailThemes/ListingReported.hjs");
+  const template = fs.readFileSync(templatePath, "utf-8");
+  const compiledTemplate = Hogan.compile(template);
+
+  const mailBody = compiledTemplate.render({
+    businessName,
+    listingSlug,
+    reason:            report.reason,
+    description:       report.description || null,
+    ipAddress:         report.ipAddress   || "N/A",
+    reportedAt:        new Date().toLocaleDateString("en-AE", {
+      day: "numeric", month: "long", year: "numeric",
+    }),
+    pendingReportCount,
+    isFlagged:         isFlagged || false,
+    year:              new Date().getFullYear(),
+  });
+
+  const transporter = nodemailer.createTransport({
+    host:   emailConfig.SMTP_HOST,
+    port:   emailConfig.SMTP_PORT,
+    secure: true,
+    auth:   { user: emailConfig.SMTP_EMAIL, pass: emailConfig.SMTP_PASS },
+  });
+
+  const mailOptions = {
+    from:    '"AddressGuru UAE" <adx.ddn@gmail.com>',
+    to:      adminEmail,
+    subject: isFlagged
+      ? `🚨 Auto-Flagged Listing: ${businessName} — AddressGuru UAE`
+      : `⚠️ Listing Reported: ${businessName} — AddressGuru UAE`,
+    text:    `Listing "${businessName}" has been reported. Reason: ${report.reason}`,
+    html:    mailBody,
+  };
+
+  return transporter.sendMail(mailOptions);
+};
+
 export {
   sendMail,
   sendAddMail,
@@ -337,5 +525,9 @@ export {
   sendChangeEMailSuccess,
   sendSuccessMail,
   sendApprovedAndRejectedListingMail,
-  sendListingSubmittedMail,   // ← new export added
+  sendListingSubmittedMail, 
+  sendTopBusinessesDigestMail,
+  sendEnquiryReceivedMail,
+  sendClaimSubmittedMail,
+  sendListingReportedMail,
 };
