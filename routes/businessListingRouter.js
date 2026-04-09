@@ -12,6 +12,8 @@ import {
   getListingsByCategoryAndCity,
   getApprovedListings,
   getFeaturesAndAdditionalFieldsByCategorySlug,
+  sendBusinessDigestMail,
+
 } from "../controller/businessListing.Controller.js";
 import { setUploadFolder } from "../middleware/setUploadFolder.js";
 import upload from "../middleware/multerConfig.js";
@@ -78,6 +80,7 @@ router.get(
   "/features/:category_slug",
   getFeaturesAndAdditionalFieldsByCategorySlug,
 );
+router.post("/send-digest", sendBusinessDigestMail);
 
 export default router;
 

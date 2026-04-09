@@ -1,6 +1,8 @@
 // controllers/reportController.js
 import ReportAd, { REPORT_REASONS } from "../model/reportedListingSchema.js";
 import { resolveListing, MODEL_MAP } from "../utils/resolveListing.js";
+import { sendListingReportedMail } from "../utils/sendMail.js";
+
 
 // ─── GET /api/report-reasons  (used by frontend radio list) ──────────────────
 export const getReportReasons = (_req, res) => {
@@ -12,16 +14,16 @@ export const submitReport = async (req, res) => {
   try {
     const { type, slug } = req.params;
     const { reason, description } = req.body;
-
-    if (!reason) return res.status(422).json({ success: false, message: "Reason is required" });
+ 
+    if (!reason)
+      return res.status(422).json({ success: false, message: "Reason is required" });
     if (!REPORT_REASONS.includes(reason))
       return res.status(422).json({ success: false, message: "Invalid reason" });
     if (description && description.length > 500)
       return res.status(422).json({ success: false, message: "Description max 500 chars" });
-
+ 
     const { listing, modelName } = await resolveListing(slug, type);
-
-    // Rate-limit: 1 report per IP per listing per 24h
+ 
     const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
     const already = await ReportAd.findOne({
       listingId: listing._id,
@@ -30,7 +32,7 @@ export const submitReport = async (req, res) => {
     });
     if (already)
       return res.status(429).json({ success: false, message: "You have already reported this listing recently." });
-
+ 
     await ReportAd.create({
       listingId:    listing._id,
       listingModel: modelName,
@@ -41,13 +43,29 @@ export const submitReport = async (req, res) => {
       ipAddress:    req.ip,
       userAgent:    req.headers["user-agent"],
     });
-
-    // Auto-flag listing after 5 pending reports
+ 
+    // Auto-flag after 5 pending reports
     const pendingCount = await ReportAd.countDocuments({ listingId: listing._id, status: "pending" });
+    let isFlagged = false;
     if (pendingCount >= 5) {
       await listing.constructor.findByIdAndUpdate(listing._id, { flagged: true });
+      isFlagged = true;
     }
-
+ 
+    // ── Notify admin via email ─────────────────────────────────────────────
+    try {
+      await sendListingReportedMail(
+        { reason, description, ipAddress: req.ip },
+        listing.businessName || listing.slug,
+        listing.slug,
+        pendingCount,
+        isFlagged,
+      );
+      console.log(`✅ Report mail sent to admin for: ${listing.slug}`);
+    } catch (mailErr) {
+      console.warn("❌ Report mail failed:", mailErr.message);
+    }
+ 
     return res.status(201).json({ success: true, message: "Thank you. Your report has been submitted." });
   } catch (err) {
     if (err.status) return res.status(err.status).json({ success: false, message: err.message });
