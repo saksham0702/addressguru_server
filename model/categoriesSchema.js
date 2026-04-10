@@ -26,6 +26,7 @@ const categorySchema = new mongoose.Schema(
     seo: {
       title: String,
       description: String,
+      ogImage: String,
     },
 
     isActive: { type: Boolean, default: true },
