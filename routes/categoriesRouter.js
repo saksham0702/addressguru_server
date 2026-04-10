@@ -16,10 +16,7 @@ router.post(
   "/create-category",
   authenticate,
   setUploadFolder("categories"),
-  upload.fields([
-    { name: "iconPng", maxCount: 1 },
-    { name: "ogImage", maxCount: 1 }, 
-  ]),
+  upload.single("ogImage"),
   createCategory,
 );
 
@@ -27,11 +24,8 @@ router.put(
   "/update-category/:id",
   authenticate,
   setUploadFolder("categories"),
-  upload.fields([
-    { name: "iconPng", maxCount: 1 },
-    { name: "ogImage", maxCount: 1 }, 
-  ]),
-  updateCategory,
+  upload.single("ogImage"),
+  updateCategory, 
 );
 router.get("/get-categories", getCategories);
 router.get("/get-categories-by-type/:type", getCategoryByType);
