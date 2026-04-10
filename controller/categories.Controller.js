@@ -4,13 +4,17 @@ import { successData, errorData } from "../services/helper.js";
 
 // ✅ Create Category
 export const createCategory = async (req, res) => {
-
   try {
-    const { name, description, color, type, textColor, iconSvg, iconPng, seo } =
-      req.body;
+    const { name, description, color, type, textColor, iconSvg, iconPng } = req.body;
+
+    let seo = req.body.seo ? JSON.parse(req.body.seo) : {};
+
+    // ✅ handle ogImage upload
+    if (req.files?.ogImage?.[0]) {
+      seo.ogImage = req.files.ogImage[0].path;
+    }
 
     if (!name) return errorData(res, 401, false, "Category name is required");
-
     if (!type) return errorData(res, 401, false, "Category type is required");
 
     const slug = slugify(name, { lower: true });
@@ -30,13 +34,7 @@ export const createCategory = async (req, res) => {
       seo,
     });
 
-    return successData(
-      res,
-      200,
-      true,
-      "Category created successfully",
-      category
-    );
+    return successData(res, 200, true, "Category created successfully", category);
   } catch (error) {
     console.warn(error);
     return errorData(res, 500, false, "Internal server error");
@@ -107,6 +105,18 @@ export const updateCategory = async (req, res) => {
     const { id } = req.params;
     const updateData = { ...req.body };
 
+    // parse seo if coming as string
+    let seo = req.body.seo ? JSON.parse(req.body.seo) : {};
+
+    // ✅ handle ogImage update
+    if (req.files?.ogImage?.[0]) {
+      seo.ogImage = req.files.ogImage[0].path;
+    }
+
+    if (Object.keys(seo).length > 0) {
+      updateData.seo = seo;
+    }
+
     if (updateData.name) {
       updateData.slug = slugify(updateData.name, { lower: true });
     }
@@ -119,13 +129,7 @@ export const updateCategory = async (req, res) => {
 
     if (!updated) return errorData(res, 404, false, "Category not found.");
 
-    return successData(
-      res,
-      200,
-      true,
-      "Category updated successfully",
-      updated
-    );
+    return successData(res, 200, true, "Category updated successfully", updated);
   } catch (error) {
     console.warn(error);
     return errorData(res, 500, false, "Internal server error");

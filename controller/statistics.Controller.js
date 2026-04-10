@@ -12,16 +12,27 @@ export const trackEvent = async (req, res) => {
   try {
     const { type, slug } = req.params;
     const { type: eventType } = req.body;
-
     if (!["view", "call", "website_visit"].includes(eventType)) {
       return errorData(res, 400, false, "Invalid event type");
     }
 
-    // Find the listing
     const { listing, modelName } = await resolveListing(slug, type);
     const listingId = listing._id;
     const listingModel = modelName;
     const ownerId = listing.createdBy;
+
+    // Check if same IP already triggered this event for this listing in the last 8 hours
+    const eightHoursAgo = new Date(Date.now() - 8 * 60 * 60 * 1000);
+    const alreadyTracked = await ListingStats.findOne({
+      listingId,
+      type: eventType,
+      ipAddress: req.ip,
+      createdAt: { $gte: eightHoursAgo },
+    });
+
+    if (alreadyTracked) {
+      return successData(res, 200, true, "Event already tracked");
+    }
 
     // Record the stat
     await ListingStats.create({
@@ -36,8 +47,8 @@ export const trackEvent = async (req, res) => {
     // Increment user stats
     const updateField =
       eventType === "view" ? "statistics_totalViews" :
-        eventType === "call" ? "statistics_totalCalls" :
-          eventType === "website_visit" ? "statistics_totalWebsiteVisits" : null;
+      eventType === "call" ? "statistics_totalCalls" :
+      eventType === "website_visit" ? "statistics_totalWebsiteVisits" : null;
 
     if (updateField && ownerId) {
       await User.findByIdAndUpdate(ownerId, { $inc: { [updateField]: 1 } });
