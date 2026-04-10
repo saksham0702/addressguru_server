@@ -5,13 +5,22 @@ import { successData, errorData } from "../services/helper.js";
 // ✅ Create Category
 export const createCategory = async (req, res) => {
   try {
-    const { name, description, color, type, textColor, iconSvg, iconPng } = req.body;
-
-    let seo = req.body.seo ? JSON.parse(req.body.seo) : {};
+    const {
+      name,
+      description,
+      color,
+      type,
+      textColor,
+      iconSvg,
+      iconPng,
+      metaTitle,
+      metaDescription,
+    } = req.body;
 
     // ✅ handle ogImage upload
+    let ogImage = "";
     if (req.files?.ogImage?.[0]) {
-      seo.ogImage = req.files.ogImage[0].path;
+      ogImage = req.files.ogImage[0].path;
     }
 
     if (!name) return errorData(res, 401, false, "Category name is required");
@@ -31,7 +40,11 @@ export const createCategory = async (req, res) => {
       textColor,
       iconSvg,
       iconPng,
-      seo,
+
+      // ✅ NEW FIELDS
+      metaTitle,
+      metaDescription,
+      ogImage,
     });
 
     return successData(res, 200, true, "Category created successfully", category);
@@ -57,6 +70,37 @@ export const getCategories = async (req, res) => {
       "Get all categories successfully",
       categories // ✅ removed redundant .filter(), already queried isDeleted: false
     );
+  } catch (error) {
+    console.warn(error);
+    return errorData(res, 500, false, "Internal server error");
+  }
+};
+// ✅ Update Category
+export const updateCategory = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const updateData = { ...req.body };
+
+    // ✅ handle ogImage update
+    if (req.files?.ogImage?.[0]) {
+      updateData.ogImage = req.files.ogImage[0].path;
+    }
+
+    // ✅ regenerate slug if name changes
+    if (updateData.name) {
+      updateData.slug = slugify(updateData.name, { lower: true });
+    }
+
+    const updated = await Category.findOneAndUpdate(
+      { _id: id, isDeleted: false },
+      updateData,
+      { new: true }
+    );
+
+    if (!updated) return errorData(res, 404, false, "Category not found.");
+
+    return successData(res, 200, true, "Category updated successfully", updated);
   } catch (error) {
     console.warn(error);
     return errorData(res, 500, false, "Internal server error");
@@ -99,42 +143,7 @@ export const getCategoryById = async (req, res) => {
   }
 };
 
-// ✅ Update Category
-export const updateCategory = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const updateData = { ...req.body };
 
-    // parse seo if coming as string
-    let seo = req.body.seo ? JSON.parse(req.body.seo) : {};
-
-    // ✅ handle ogImage update
-    if (req.files?.ogImage?.[0]) {
-      seo.ogImage = req.files.ogImage[0].path;
-    }
-
-    if (Object.keys(seo).length > 0) {
-      updateData.seo = seo;
-    }
-
-    if (updateData.name) {
-      updateData.slug = slugify(updateData.name, { lower: true });
-    }
-
-    const updated = await Category.findOneAndUpdate(
-      { _id: id, isDeleted: false },
-      updateData,
-      { new: true }
-    );
-
-    if (!updated) return errorData(res, 404, false, "Category not found.");
-
-    return successData(res, 200, true, "Category updated successfully", updated);
-  } catch (error) {
-    console.warn(error);
-    return errorData(res, 500, false, "Internal server error");
-  }
-};
 
 // ✅ Soft Delete Category
 export const deleteCategory = async (req, res) => {
