@@ -737,8 +737,8 @@ export const getListingsByCategoryAndCity = async (req, res) => {
 
     const [listings, total] = await Promise.all([
       BusinessListing.find(filter)
-        .populate("category", "name slug")
-        .populate("subCategory", "name slug")
+        .populate("category", "name slug seo")
+        .populate("subCategory", "name slug seo")
         .populate("facilities")
         .populate("city", "name slug")
         .sort(sortOption)
@@ -776,7 +776,7 @@ export const getListingBySlug = async (req, res) => {
       slug,
       isDeleted: false,
     })
-      .populate("category", "name iconSvg slug")
+      .populate("category", "name iconSvg slug seo")
       .populate("subCategory", "name iconSvg slug")
       .populate("city", "name iconSvg slug")
       .populate("additionalFields.field_id", "field_label field_type")
