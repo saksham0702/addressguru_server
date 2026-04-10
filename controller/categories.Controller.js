@@ -4,6 +4,8 @@ import { successData, errorData } from "../services/helper.js";
 
 // ✅ Create Category
 export const createCategory = async (req, res) => {
+  console.log(req.body);
+  console.log(req.file);
   try {
     const {
       name,
@@ -19,8 +21,8 @@ export const createCategory = async (req, res) => {
 
     // ✅ handle ogImage upload
     let ogImage = "";
-    if (req.files?.ogImage?.[0]) {
-      ogImage = req.files.ogImage[0].path;
+    if (req.file) {
+      ogImage = req.file.path;
     }
 
     if (!name) return errorData(res, 401, false, "Category name is required");
@@ -42,12 +44,20 @@ export const createCategory = async (req, res) => {
       iconPng,
 
       // ✅ NEW FIELDS
-      metaTitle,
-      metaDescription,
-      ogImage,
+      seo:{
+        title:metaTitle,
+        description:metaDescription,
+        ogImage:ogImage,
+      }
     });
 
-    return successData(res, 200, true, "Category created successfully", category);
+    return successData(
+      res,
+      200,
+      true,
+      "Category created successfully",
+      category,
+    );
   } catch (error) {
     console.warn(error);
     return errorData(res, 500, false, "Internal server error");
@@ -68,7 +78,7 @@ export const getCategories = async (req, res) => {
       200,
       true,
       "Get all categories successfully",
-      categories // ✅ removed redundant .filter(), already queried isDeleted: false
+      categories, // ✅ removed redundant .filter(), already queried isDeleted: false
     );
   } catch (error) {
     console.warn(error);
@@ -79,12 +89,13 @@ export const getCategories = async (req, res) => {
 export const updateCategory = async (req, res) => {
   try {
     const { id } = req.params;
-
+    console.log(req.body);
+    console.log(req.file);
     const updateData = { ...req.body };
 
     // ✅ handle ogImage update
-    if (req.files?.ogImage?.[0]) {
-      updateData.ogImage = req.files.ogImage[0].path;
+    if (req.file) {
+      updateData.ogImage = req.file.path;
     }
 
     // ✅ regenerate slug if name changes
@@ -94,13 +105,33 @@ export const updateCategory = async (req, res) => {
 
     const updated = await Category.findOneAndUpdate(
       { _id: id, isDeleted: false },
-      updateData,
-      { new: true }
+      {
+        name:updateData.name,
+        slug:updateData.slug,
+        description:updateData.description,
+        color:updateData.color,
+        type:updateData.type,
+        textColor:updateData.textColor,
+        iconSvg:updateData.iconSvg,
+        iconPng:updateData.iconPng,
+        seo:{
+          title:updateData.metaTitle,
+          description:updateData.metaDescription,
+          ogImage:updateData.ogImage,
+        }
+      },
+      { new: true },
     );
 
     if (!updated) return errorData(res, 404, false, "Category not found.");
 
-    return successData(res, 200, true, "Category updated successfully", updated);
+    return successData(
+      res,
+      200,
+      true,
+      "Category updated successfully",
+      updated,
+    );
   } catch (error) {
     console.warn(error);
     return errorData(res, 500, false, "Internal server error");
@@ -143,8 +174,6 @@ export const getCategoryById = async (req, res) => {
   }
 };
 
-
-
 // ✅ Soft Delete Category
 export const deleteCategory = async (req, res) => {
   try {
@@ -166,7 +195,7 @@ export const deleteCategory = async (req, res) => {
       200,
       true,
       "Category deleted successfully",
-      category
+      category,
     );
   } catch (error) {
     console.warn(error);
