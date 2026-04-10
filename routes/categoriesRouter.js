@@ -7,15 +7,35 @@ import {
   deleteCategory,
   getCategoryByType,
 } from "../controller/categories.Controller.js";
-import verifyAdmin from "../middleware/verifyAdmin.js";
+import { authenticate } from "../middleware/userAuth.js";
+import { setUploadFolder } from "../middleware/setUploadFolder.js";
+import upload from "../middleware/multerConfig.js";
 
 const router = express.Router();
-router.post("/create-category", createCategory);
+router.post(
+  "/create-category",
+  authenticate,
+  setUploadFolder("categories"),
+  upload.fields([
+    { name: "iconPng", maxCount: 1 },
+    { name: "ogImage", maxCount: 1 }, 
+  ]),
+  createCategory,
+);
+
+router.put(
+  "/update-category/:id",
+  authenticate,
+  setUploadFolder("categories"),
+  upload.fields([
+    { name: "iconPng", maxCount: 1 },
+    { name: "ogImage", maxCount: 1 }, 
+  ]),
+  updateCategory,
+);
 router.get("/get-categories", getCategories);
 router.get("/get-categories-by-type/:type", getCategoryByType);
 router.get("/get-category/:id", getCategoryById);
-router.put("/update-category/:id", updateCategory);
 router.delete("/delete-category/:id", deleteCategory);
 
 export default router;
-

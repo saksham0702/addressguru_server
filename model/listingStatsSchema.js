@@ -41,5 +41,5 @@ const listingStatsSchema = new mongoose.Schema(
 
 listingStatsSchema.index({ createdAt: 1 });
 listingStatsSchema.index({ listingId: 1, type: 1, createdAt: 1 });
-
+listingStatsSchema.index({ listingId: 1, type: 1, ipAddress: 1, createdAt: 1 }); // for deduplication lookup
 export default mongoose.model("ListingStats", listingStatsSchema);

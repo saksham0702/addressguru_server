@@ -18,7 +18,7 @@ import {
 import googleIndexingService from "../services/googleIndexing.service.js";
 import { sendPushNotification } from "../services/notification.service.js";
 import DigestMailLog from "../model/digestMailLogSchema.js";
-
+import ListingStats from "../model/listingStatsSchema.js";
 
 // ─── Helper: validate additional fields ───────────────────────────────────────
 // ============================================
@@ -70,10 +70,10 @@ const validateAdditionalFields = async (additionalFields = []) => {
     }
 
     validated.push({
-      field_id:    doc._id,
+      field_id: doc._id,
       field_label: doc.field_label,
-      field_type:  doc.field_type,
-      value:       storedValue,
+      field_type: doc.field_type,
+      value: storedValue,
     });
   }
 
@@ -476,7 +476,10 @@ export const getFeaturesAndAdditionalFieldsByCategory = async (req, res) => {
 };
 
 // - get feature and additional fields by category slug
-export const getFeaturesAndAdditionalFieldsByCategorySlug = async (req, res) => {
+export const getFeaturesAndAdditionalFieldsByCategorySlug = async (
+  req,
+  res,
+) => {
   try {
     const { category_slug } = req.params;
     const { subcategory_slug } = req.query;
@@ -486,7 +489,9 @@ export const getFeaturesAndAdditionalFieldsByCategorySlug = async (req, res) => 
     }
 
     // Step 1: Resolve category slug → _id
-    const category = await Category.findOne({ slug: category_slug }).select("_id");
+    const category = await Category.findOne({ slug: category_slug }).select(
+      "_id",
+    );
     if (!category) {
       return errorData(res, 404, false, "Category not found");
     }
@@ -494,7 +499,9 @@ export const getFeaturesAndAdditionalFieldsByCategorySlug = async (req, res) => 
     // Step 2: Optionally resolve subcategory slug → _id
     let subcategoryId = null;
     if (subcategory_slug) {
-      const subcategory = await SubCategory.findOne({ slug: subcategory_slug }).select("_id");
+      const subcategory = await SubCategory.findOne({
+        slug: subcategory_slug,
+      }).select("_id");
       subcategoryId = subcategory?._id || null;
     }
 
@@ -516,17 +523,24 @@ export const getFeaturesAndAdditionalFieldsByCategorySlug = async (req, res) => 
         .populate("services", "name icon _id")
         .populate("courses", "name icon _id"),
       AdditionalField.find(additionalFieldFilter).sort({ display_order: 1 }),
-      Feature.find({ type: "payment_mode", isDeleted: false }).select("name icon _id"),
+      Feature.find({ type: "payment_mode", isDeleted: false }).select(
+        "name icon _id",
+      ),
     ]);
 
     const { facilities = [], services = [], courses = [] } = features || {};
 
-    return successData(res, 200, true, "Features and additional fields fetched successfully", {
-      features: { facilities, services, courses },
-      payment_modes: paymentModes,
-      additionalFields: additionalFields || [],
-    });
-
+    return successData(
+      res,
+      200,
+      true,
+      "Features and additional fields fetched successfully",
+      {
+        features: { facilities, services, courses },
+        payment_modes: paymentModes,
+        additionalFields: additionalFields || [],
+      },
+    );
   } catch (error) {
     console.warn("Features and additional fields fetch error:", error);
     return errorData(res, 500, false, "Internal server error");
@@ -656,7 +670,10 @@ export const getListingsByCategoryAndCity = async (req, res) => {
 
     // City filter
     if (city_slug && city_slug.toLowerCase().trim() !== "all-cities") {
-      const city = await CitiesSchema.findOne({ slug: city_slug, deletedAt: null });
+      const city = await CitiesSchema.findOne({
+        slug: city_slug,
+        deletedAt: null,
+      });
       if (!city) {
         return errorData(res, 404, false, "City not found");
       }
@@ -678,25 +695,33 @@ export const getListingsByCategoryAndCity = async (req, res) => {
 
     // Facilities filter
     if (facilities_id) {
-      const ids = Array.isArray(facilities_id) ? facilities_id : facilities_id.split(",");
+      const ids = Array.isArray(facilities_id)
+        ? facilities_id
+        : facilities_id.split(",");
       if (ids.length > 0) filter.facilities = { $in: ids };
     }
 
     // Services filter
     if (services_id) {
-      const ids = Array.isArray(services_id) ? services_id : services_id.split(",");
+      const ids = Array.isArray(services_id)
+        ? services_id
+        : services_id.split(",");
       if (ids.length > 0) filter.services = { $in: ids };
     }
 
     // Courses filter
     if (courses_id) {
-      const ids = Array.isArray(courses_id) ? courses_id : courses_id.split(",");
+      const ids = Array.isArray(courses_id)
+        ? courses_id
+        : courses_id.split(",");
       if (ids.length > 0) filter.courses = { $in: ids };
     }
 
     // Payment mode filter
     if (payment_mode_id) {
-      const ids = Array.isArray(payment_mode_id) ? payment_mode_id : payment_mode_id.split(",");
+      const ids = Array.isArray(payment_mode_id)
+        ? payment_mode_id
+        : payment_mode_id.split(",");
       if (ids.length > 0) filter.payment_modes = { $in: ids };
     }
 
@@ -761,6 +786,14 @@ export const getListingBySlug = async (req, res) => {
       .populate("courses", "name iconSvg")
       .lean();
     if (!listing) return errorData(res, 404, false, "Listing not found");
+    // ✅ Get views count
+    const viewsCount = await ListingStats.countDocuments({
+      listingId: listing._id,
+      listingModel: "BusinessListing",
+      type: "view",
+    });
+    // ✅ Attach views to response
+    listing.views = viewsCount;
     return successData(res, 200, true, "Listing fetched successfully", listing);
   } catch (error) {
     console.warn("Listing fetch error:", error);
@@ -932,15 +965,19 @@ export const updateListingStatus = async (req, res) => {
         console.log(`✅ Mail sent to ${listing.email} for status: ${status}`);
 
         if (listing.createdBy) {
-          const title = status === "approved" ? "Listing Approved 🎉" : "Listing Rejected ❌";
-          const body = status === "approved" 
-            ? `Congratulations! Your business listing "${listing.businessName}" has been successfully approved.`
-            : `We're sorry, your business listing "${listing.businessName}" was rejected. ${rejectionReason ? 'Reason: ' + rejectionReason.trim() : ''}`;
-          
+          const title =
+            status === "approved"
+              ? "Listing Approved 🎉"
+              : "Listing Rejected ❌";
+          const body =
+            status === "approved"
+              ? `Congratulations! Your business listing "${listing.businessName}" has been successfully approved.`
+              : `We're sorry, your business listing "${listing.businessName}" was rejected. ${rejectionReason ? "Reason: " + rejectionReason.trim() : ""}`;
+
           await sendPushNotification(listing.createdBy, title, body, {
             type: "BUSINESS_LISTING_STATUS",
             listingId: listing._id.toString(),
-            status: status
+            status: status,
           });
         }
       } catch (mailError) {
@@ -989,19 +1026,24 @@ export const getApprovedListings = async (req, res) => {
   }
 };
 
-
 // sendBusinessDigestMail controller
-
-
 export const sendBusinessDigestMail = async (req, res) => {
   try {
     const { email, name, category_slug } = req.body;
 
     if (!email || !name || !category_slug) {
-      return errorData(res, 400, false, "Email, name and category_slug are required");
+      return errorData(
+        res,
+        400,
+        false,
+        "Email, name and category_slug are required",
+      );
     }
 
-    const categoryDoc = await Category.findOne({ slug: category_slug, isDeleted: false });
+    const categoryDoc = await Category.findOne({
+      slug: category_slug,
+      isDeleted: false,
+    });
     if (!categoryDoc) {
       return errorData(res, 404, false, "Category not found");
     }
@@ -1017,7 +1059,12 @@ export const sendBusinessDigestMail = async (req, res) => {
       .lean();
 
     if (!listings.length) {
-      return errorData(res, 404, false, "No approved listings found for this category");
+      return errorData(
+        res,
+        404,
+        false,
+        "No approved listings found for this category",
+      );
     }
 
     const businesses = listings.map((l) => {
@@ -1026,17 +1073,17 @@ export const sendBusinessDigestMail = async (req, res) => {
         : null;
       const listingEmail = l.email || null;
       return {
-        businessName:  l.businessName      || "NA",
-        businessAddress: l.businessAddress   || "NA",
-        slug:          l.slug              || "",
-        category:      l.category?.name    || "NA",
+        businessName: l.businessName || "NA",
+        businessAddress: l.businessAddress || "NA",
+        slug: l.slug || "",
+        category: l.category?.name || "NA",
         contactPerson: l.contactPersonName || "NA",
-        phone:         phone               || "NA",
-        phoneIsNA:     !phone,
-        listingEmail:  listingEmail        || "NA",
-        emailIsNA:     !listingEmail,
-        logoUrl:       l.logo              || null,
-        initial:       l.businessName ? l.businessName.charAt(0).toUpperCase() : "B",
+        phone: phone || "NA",
+        phoneIsNA: !phone,
+        listingEmail: listingEmail || "NA",
+        emailIsNA: !listingEmail,
+        logoUrl: l.logo || null,
+        initial: l.businessName ? l.businessName.charAt(0).toUpperCase() : "B",
       };
     });
 
@@ -1045,8 +1092,15 @@ export const sendBusinessDigestMail = async (req, res) => {
     let failureReason = null;
 
     try {
-      await sendTopBusinessesDigestMail(email, name, categoryDoc.name, businesses);
-      console.log(`✅ Digest mail sent to ${email} for category: ${categoryDoc.name}`);
+      await sendTopBusinessesDigestMail(
+        email,
+        name,
+        categoryDoc.name,
+        businesses,
+      );
+      console.log(
+        `✅ Digest mail sent to ${email} for category: ${categoryDoc.name}`,
+      );
     } catch (mailError) {
       mailStatus = "failed";
       failureReason = mailError.message;
@@ -1055,33 +1109,37 @@ export const sendBusinessDigestMail = async (req, res) => {
 
     // ── Save log regardless of mail success/failure ────────────────────────
     await DigestMailLog.create({
-      sentTo:        email,
+      sentTo: email,
       recipientName: name,
-      categorySlug:  category_slug,
-      categoryName:  categoryDoc.name,
-      categoryId:    categoryDoc._id,
+      categorySlug: category_slug,
+      categoryName: categoryDoc.name,
+      categoryId: categoryDoc._id,
       listingsCount: businesses.length,
-      listingsSent:  listings.map((l) => ({
-        businessName:  l.businessName      || null,
-        slug:          l.slug              || null,
+      listingsSent: listings.map((l) => ({
+        businessName: l.businessName || null,
+        slug: l.slug || null,
         contactPerson: l.contactPersonName || null,
-        phone:         l.mobileNumber ? `${l.countryCode || ""}${l.mobileNumber}`.trim() : null,
-        email:         l.email             || null,
-        logoUrl:       l.logo              || null,
-        listingRef:    l._id,
+        phone: l.mobileNumber
+          ? `${l.countryCode || ""}${l.mobileNumber}`.trim()
+          : null,
+        email: l.email || null,
+        logoUrl: l.logo || null,
+        listingRef: l._id,
       })),
-      status:        mailStatus,
+      status: mailStatus,
       failureReason: failureReason,
-      sentBy:        req.user?.id || null,
+      sentBy: req.user?.id || null,
     });
 
     if (mailStatus === "failed") {
-      return errorData(res, 500, false, "Mail sending failed", { reason: failureReason });
+      return errorData(res, 500, false, "Mail sending failed", {
+        reason: failureReason,
+      });
     }
 
     return successData(res, 200, true, "Digest email sent successfully", {
-      sentTo:        email,
-      category:      categoryDoc.name,
+      sentTo: email,
+      category: categoryDoc.name,
       listingsCount: businesses.length,
     });
   } catch (error) {
