@@ -27,6 +27,12 @@ const propertyListingSchema = new mongoose.Schema(
     },
     subCategory: { type: mongoose.Schema.Types.ObjectId, ref: "SubCategory" },
 
+    soldBy: {
+      type: String,
+      required:true,
+      enum:["broker","agency","owner"]
+    },
+
     /* =========================
        STEP 1 – PROPERTY INFO
     ========================== */

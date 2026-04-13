@@ -37,6 +37,7 @@ import blogRouter from "./routes/blog.Router.js";
 import propertyRouter from "./routes/property.Router.js";
 import plansRouter from "./routes/plans.Router.js";
 import statisticsRouter from "./routes/statistics.Routes.js";
+import RoomsRouter from "./routes/rooms.Router.js"
 import followUpRouter from "./routes/followUp.Router.js";
 import followUpConfigRouter from "./routes/followUpConfig.Router.js";
 import templateRouter from "./routes/template.Router.js";
@@ -161,6 +162,7 @@ app.use(`/`, listingFeaturesRoutes);
 app.use(`/applications`, jobApplicationRoutes);
 app.use(`/plans`, plansRouter);
 app.use(`/statistics`, statisticsRouter);
+app.use('/rooms', RoomsRouter)
 
 app.use(`/follow-ups`, followUpRouter);
 app.use(`/followup-config`, followUpConfigRouter);
