@@ -61,6 +61,7 @@ export const createPropertyListing = async (req, res) => {
     const {
       category_id,
       sub_category_id,
+      soldBy,
       title,
       description,
       purpose,
@@ -113,6 +114,7 @@ export const createPropertyListing = async (req, res) => {
     const listing = await PropertyListing.create({
       category: category_id,
       subCategory: sub_category_id || null,
+      soldBy,
       title,
       description,
       purpose,
@@ -198,6 +200,7 @@ export const updatePropertyListingStep = async (req, res) => {
         const {
           category_id,
           sub_category_id,
+          soldBy,
           title,
           description,
           purpose,
