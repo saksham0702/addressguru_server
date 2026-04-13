@@ -153,8 +153,6 @@ export const saveJobStep = async (req, res) => {
     const method = req?.method; // POST / PUT
 
     let job = null;
-    console.log("REQQ BODYY :", req.body);
-
     /* =========================
        FIND JOB IF job_id EXISTS
     ========================== */
