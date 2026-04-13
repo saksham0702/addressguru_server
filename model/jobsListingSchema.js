@@ -139,6 +139,7 @@ const jobSchema = new mongoose.Schema(
     contact: {
       name: { type: String },
       email: { type: String },
+      countryCode: { type: String },
       phone: { type: String },
       whatsapp: { type: String },
       website: { type: String }, // apply via external link
