@@ -46,7 +46,7 @@ router
   .put(jobUpload, validateStep(jobStepSchemas), authenticate, saveJobStep);
 
 router.get("/get-all-jobs", getAllJobsWithPaginationAndFilters);
-router.get("/get-jobs-by-user/", authenticate, getAllJobsByUser);
+router.get("/get-jobs-by-user", authenticate, getAllJobsByUser);
 router.get("/get-job/:slug", getJobById);
 router.delete("/delete-job/:slug", deleteJob);
 router.get("/last-company-details", authenticate, getLastJobCompanyDetails);
