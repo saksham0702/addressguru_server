@@ -300,8 +300,8 @@ export const updateListingStep = async (req, res) => {
 
       /* ── STEP 2 – SOCIAL LINKS ── */
       case 2: {
-        listing.websiteLink = req.body.website_link || null;
-        listing.videoLink = req.body.video_link || null;
+        listing.websiteLink = req.body.websiteLink || null;
+        listing.videoLink = req.body.videoLink || null;
         listing.socialLinks = {
           facebook: req.body.facebook || null,
           instagram: req.body.instagram || null,
