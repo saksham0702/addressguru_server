@@ -192,6 +192,9 @@ export const createListing = async (req, res) => {
 };
 
 export const updateListingStep = async (req, res) => {
+  console.log("body for edit", req.body);
+  console.log("files for edit", req.files);
+  console.log("file for edit", req.file);
   try {
     const { slug, step } = req.params;
 
@@ -333,21 +336,46 @@ export const updateListingStep = async (req, res) => {
 
       /* ── STEP 5 – MEDIA ── */
       case 5: {
-        if (!req.files?.logo?.[0] && !req.files?.images?.length) {
-          return errorData(
-            res,
-            400,
-            false,
-            "Please upload at least a logo or one image",
-          );
+        const hasNewLogo = req.files?.logo?.[0];
+        const hasExistingLogo = req.body.existing_logo;
+        const hasNewImages = req.files?.images?.length > 0;
+
+        // Collect existing images sent from frontend (already saved paths)
+        let existingImages = req.body.images
+          ? Array.isArray(req.body.images)
+            ? req.body.images
+            : [req.body.images]
+          : [];
+
+        // Filter to only string paths (existing), not file objects
+        existingImages = existingImages.filter(
+          (img) => typeof img === "string",
+        );
+
+        const hasAnyImages = hasNewImages || existingImages.length > 0;
+
+        if (!hasNewLogo && !hasExistingLogo) {
+          return errorData(res, 400, false, "Please upload a logo");
         }
-        if (req.files?.logo?.[0]) {
+        if (!hasAnyImages) {
+          return errorData(res, 400, false, "Please upload at least one image");
+        }
+
+        // Handle logo
+        if (hasNewLogo) {
           listing.logo = req.files.logo[0].path;
+        } else if (hasExistingLogo) {
+          listing.logo = hasExistingLogo; // keep existing
         }
-        if (req.files?.images?.length > 0) {
-          const newImages = req.files.images.map((img) => img.path);
-          listing.images = [...(listing.images || []), ...newImages];
-        }
+
+        // Handle images — cap at 10 total
+        const newImages = hasNewImages
+          ? req.files.images.map((img) => img.path)
+          : [];
+
+        const combined = [...existingImages, ...newImages];
+        listing.images = combined.slice(0, 10); // enforce max 10
+
         break;
       }
 

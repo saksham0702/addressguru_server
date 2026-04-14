@@ -100,7 +100,7 @@ const businessListingSchema = new mongoose.Schema(
        STEP 5 – MEDIA
     ========================== */
     logo: { type: String, default: null },
-    images: [String],
+    images: [{ type: String, max: 10 }],
 
     /* =========================
        STEP 6 – PLAN & PUBLISH
