@@ -132,11 +132,11 @@ const businessStepSchema = {
      business may not have all
   ========================= */
   2: Joi.object({
-    website_link: Joi.string().uri().allow("", null).optional().messages({
+    websiteLink: Joi.string().uri().allow("", null).optional().messages({
       "string.uri": "Website must be a valid URL (e.g. https://example.com)",
     }),
 
-    video_link: Joi.string().uri().allow("", null).optional().messages({
+    videoLink: Joi.string().uri().allow("", null).optional().messages({
       "string.uri": "Video link must be a valid URL",
     }),
 
