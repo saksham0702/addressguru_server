@@ -30,8 +30,6 @@ const storage = multer.diskStorage({
     console.log("req.params", req.params);
     console.log("req.files", req.files);
     console.log("req._uploadFolder", req._uploadFolder);
-
-
     const type = req._uploadFolder || req.body.folder;
     if (!type) return cb(new Error("Upload folder type is required"), null);
 
