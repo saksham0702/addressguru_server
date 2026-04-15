@@ -8,11 +8,7 @@ import {
 
 const router = express.Router();
 
-/**
- * ============================
- * 🛠️ EDITOR APIs
- * ============================
- */
+// editor api
 
 // Create / Update (Upsert)
 router.post("/upsert", upsertSeoContent);
@@ -24,11 +20,7 @@ router.get("/all", getAllSeoContent);
 router.delete("/delete/:id", deleteSeoContent);
 
 
-/**
- * ============================
- * 🌐 USER API
- * ============================
- */
+// use api
 
 // Get SEO by category_slug & city_slug
 router.get("/", getSeoBySlug);
