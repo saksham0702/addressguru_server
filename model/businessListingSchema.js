@@ -69,7 +69,6 @@ const businessListingSchema = new mongoose.Schema(
       linkedin: { type: String, default: null },
       youtube: { type: String, default: null },
     },
-
     /* =========================
        STEP 3 – CONTACT DETAILS
     ========================== */
