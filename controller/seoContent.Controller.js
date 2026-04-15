@@ -1,6 +1,7 @@
 import SeoContent from "../model/seoContentSchema.js";
 import { successData, errorData } from "../services/helper.js";
 import Category from "../model/categoriesSchema.js";
+import CitiesSchema from "../model/CitiesSchema.js";
 
 export const upsertSeoContent = async (req, res) => {
   try {
@@ -74,6 +75,7 @@ export const deleteSeoContent = async (req, res) => {
 };
 
 export const getSeoBySlug = async (req, res) => {
+
   try {
     const { category_slug, city_slug } = req.query;
 
@@ -93,7 +95,7 @@ export const getSeoBySlug = async (req, res) => {
     let city = null;
 
     if (city_slug) {
-      city = await City.findOne({ slug: city_slug });
+      city = await CitiesSchema.findOne({ slug: city_slug });
     }
 
     let seoContent = null;
