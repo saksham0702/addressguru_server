@@ -16,7 +16,10 @@ async function assertOwnership(listingId, userId) {
   if (!listing) throw { status: 404, message: "Business listing not found." };
 
   if (listing.createdBy.toString() !== userId.toString())
-    throw { status: 403, message: "You are not authorised to manage this listing's rooms." };
+    throw {
+      status: 403,
+      message: "You are not authorised to manage this listing's rooms.",
+    };
 
   return listing;
 }
@@ -55,14 +58,45 @@ function buildTypeSpecificPayload(categoryType, body) {
 }
 
 // ─── CONTROLLERS ──────────────────────────────────────────────────────────────
-
 export const createRoom = async (req, res) => {
+  console.log("req.files", req.files);
+  console.log("req.body", req.body);
   try {
     const userId = req.user.id;
-    const { listingId, roomType, price, capacity, images } = req.body;
+    const { listingId, roomType, price, capacity } = req.body;
+
+    // 🔥 Handle images safely
+    let images = [];
+
+    // ONLY trust multer for files
+    if (req.files && req.files.length > 0) {
+      images = req.files.map((file) => file.path);
+    }
+
+    // ONLY allow URLs if explicitly sent as JSON (not FormData)
+    if (!req.files?.length && typeof req.body.images === "string") {
+      try {
+        const parsed = JSON.parse(req.body.images);
+        if (Array.isArray(parsed)) {
+          images = parsed;
+        }
+      } catch {
+        // ignore invalid JSON
+      }
+    }
+
+    // 🔥 Limit to max 5 images (extra safety)
+    if (images.length > 5) {
+      return errorData(res, 400, false, "Maximum 5 images allowed.");
+    }
 
     if (!listingId || !roomType || price == null || !capacity) {
-      return errorData(res, 400, false, "listingId, roomType, price, and capacity are required.");
+      return errorData(
+        res,
+        400,
+        false,
+        "listingId, roomType, price, and capacity are required.",
+      );
     }
 
     const listing = await assertOwnership(listingId, userId);
@@ -73,7 +107,7 @@ export const createRoom = async (req, res) => {
         res,
         400,
         false,
-        `Rooms are only supported for: ${ALLOWED_TYPES.join(", ")}.`
+        `Rooms are only supported for: ${ALLOWED_TYPES.join(", ")}.`,
       );
     }
 
@@ -87,7 +121,7 @@ export const createRoom = async (req, res) => {
         res,
         400,
         false,
-        "You can only add a maximum of 4 rooms per listing."
+        "You can only add a maximum of 4 rooms per listing.",
       );
     }
 
@@ -100,7 +134,7 @@ export const createRoom = async (req, res) => {
       roomType,
       price,
       capacity,
-      images: images ?? [],
+      images, // ✅ clean usage
       ...typeSpecific,
     });
 
@@ -112,8 +146,7 @@ export const createRoom = async (req, res) => {
   }
 };
 
-// ─────────────────────────────────────────────────────────────
-
+// get rooms by listing
 export const getRoomsByListing = async (req, res) => {
   try {
     const { listingId } = req.params;
@@ -129,23 +162,36 @@ export const getRoomsByListing = async (req, res) => {
     }).sort({ createdAt: 1 });
 
     if (!rooms.length) {
-      return successData(res, 200, true, "No rooms found for this listing.", []);
+      return successData(
+        res,
+        200,
+        true,
+        "No rooms found for this listing.",
+        [],
+      );
     }
 
     const categoryType = rooms[0].categoryType;
-    const startingFrom = Math.min(...rooms.map((r) => r.price));
+
+    // 🔥 safer starting price
+    const prices = rooms
+      .map((r) => r.price)
+      .filter((p) => typeof p === "number");
+
+    const startingFrom = prices.length ? Math.min(...prices) : 0;
 
     let meta = {};
+    const first = rooms[0];
+
     if (categoryType === "Yoga Studio") {
-      const first = rooms[0];
       meta = {
         daysNights: first.yoga?.daysNights ?? null,
         batchSize: first.yoga?.batchSize ?? null,
         language: first.yoga?.language ?? null,
       };
     } else {
-      const first = rooms[0];
       const src = categoryType === "Hotel" ? first.hotel : first.hostel;
+
       meta = {
         checkIn: src?.checkIn ?? null,
         checkOut: src?.checkOut ?? null,
@@ -157,8 +203,12 @@ export const getRoomsByListing = async (req, res) => {
       roomType: r.roomType,
       price: r.price,
       capacity: r.capacity,
-      images: r.images,
+
+      // 🔥 ALWAYS safe array
+      images: Array.isArray(r.images) ? r.images : [],
+
       isActive: r.isActive,
+
       ...(categoryType === "Hotel" && { hotel: r.hotel }),
       ...(categoryType === "Hostel" && { hostel: r.hostel }),
       ...(categoryType === "Yoga Studio" && { yoga: r.yoga }),
@@ -176,8 +226,7 @@ export const getRoomsByListing = async (req, res) => {
   }
 };
 
-// ─────────────────────────────────────────────────────────────
-
+// get room by id
 export const getRoomById = async (req, res) => {
   try {
     const room = await Room.findOne({
@@ -194,25 +243,51 @@ export const getRoomById = async (req, res) => {
   }
 };
 
-// ─────────────────────────────────────────────────────────────
-
+// update room
 export const updateRoom = async (req, res) => {
   try {
     const userId = req.user.id;
 
-    const room = await Room.findOne({ _id: req.params.roomId, isDeleted: false });
+    const room = await Room.findOne({
+      _id: req.params.roomId,
+      isDeleted: false,
+    });
     if (!room) return errorData(res, 404, false, "Room not found.");
 
     await assertOwnership(room.businessListing, userId);
 
-    const { roomType, price, capacity, images, isActive } = req.body;
+    const { roomType, price, capacity, isActive } = req.body;
 
+    // 🔥 HANDLE IMAGES PROPERLY
+    let updatedImages = room.images; // default = keep old
+
+    // Case 1: multer images uploaded
+    if (req.files && req.files.length > 0) {
+      updatedImages = req.files.map((file) => file.path);
+    }
+
+    // Case 2: frontend sends images array (URLs)
+    else if (req.body.images !== undefined) {
+      updatedImages = Array.isArray(req.body.images)
+        ? req.body.images
+        : [req.body.images];
+    }
+
+    // 🔥 Max 5 images check
+    if (updatedImages.length > 5) {
+      return errorData(res, 400, false, "Maximum 5 images allowed.");
+    }
+
+    // 🔥 Update basic fields
     if (roomType !== undefined) room.roomType = roomType;
     if (price !== undefined) room.price = price;
     if (capacity !== undefined) room.capacity = capacity;
-    if (images !== undefined) room.images = images;
     if (isActive !== undefined) room.isActive = isActive;
 
+    // 🔥 Assign images
+    room.images = updatedImages;
+
+    // 🔥 Type specific fields
     const typeSpecific = buildTypeSpecificPayload(room.categoryType, req.body);
 
     if (typeSpecific.hotel) Object.assign(room.hotel, typeSpecific.hotel);
@@ -229,13 +304,16 @@ export const updateRoom = async (req, res) => {
   }
 };
 
-// ─────────────────────────────────────────────────────────────
+// delete room
 
 export const deleteRoom = async (req, res) => {
   try {
     const userId = req.user.id;
 
-    const room = await Room.findOne({ _id: req.params.roomId, isDeleted: false });
+    const room = await Room.findOne({
+      _id: req.params.roomId,
+      isDeleted: false,
+    });
     if (!room) return errorData(res, 404, false, "Room not found.");
 
     await assertOwnership(room.businessListing, userId);
@@ -257,7 +335,10 @@ export const toggleRoomStatus = async (req, res) => {
   try {
     const userId = req.user.id;
 
-    const room = await Room.findOne({ _id: req.params.roomId, isDeleted: false });
+    const room = await Room.findOne({
+      _id: req.params.roomId,
+      isDeleted: false,
+    });
     if (!room) return errorData(res, 404, false, "Room not found.");
 
     await assertOwnership(room.businessListing, userId);
@@ -270,7 +351,7 @@ export const toggleRoomStatus = async (req, res) => {
       200,
       true,
       `Room is now ${room.isActive ? "active" : "inactive"}.`,
-      { isActive: room.isActive }
+      { isActive: room.isActive },
     );
   } catch (err) {
     if (err.status) return errorData(res, err.status, false, err.message);

@@ -84,6 +84,3 @@ router.post("/send-digest", sendBusinessDigestMail);
 
 export default router;
 
-// {status: "approved", 
-//   rejectedReason: ""
-// }
