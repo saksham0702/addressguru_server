@@ -2,11 +2,6 @@ import mongoose from "mongoose";
 
 const courseDetailSchema = new mongoose.Schema(
   {
-    feature: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "features",
-      required: true,
-    },
     listing: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "businesslistings",
@@ -15,6 +10,10 @@ const courseDetailSchema = new mongoose.Schema(
     category: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "categories",
+      required: true,
+    },
+    courseName: {
+      type: String,
       required: true,
     },
     duration: {
