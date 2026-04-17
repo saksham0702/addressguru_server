@@ -32,19 +32,18 @@ export const createCourseDetail = async (req, res) => {
   try {
     const userId = req.user.id;
 
-    const { feature, listing, category, duration, price } = req.body;
+    const { listing, category, courseName, duration, price } = req.body;
 
-    if (!feature || !listing || !category || !duration || price == null) {
+    if (!listing || !category || !courseName || !duration || price == null) {
       return errorData(
         res,
         400,
         false,
-        "feature, listing, category, duration and price are required."
+        "listing, category, courseName, duration and price are required."
       );
     }
 
     if (
-      !mongoose.Types.ObjectId.isValid(feature) ||
       !mongoose.Types.ObjectId.isValid(listing) ||
       !mongoose.Types.ObjectId.isValid(category)
     ) {
@@ -54,9 +53,9 @@ export const createCourseDetail = async (req, res) => {
     await assertOwnership(listing, userId);
 
     const course = await CourseDetail.create({
-      feature,
       listing,
       category,
+      courseName,
       duration,
       price,
     });
@@ -74,7 +73,7 @@ export const createCourseDetail = async (req, res) => {
         res,
         400,
         false,
-        "Duplicate course entry for this feature, listing and category."
+        "Duplicate course entry for this listing and category."
       );
     }
     if (err.status) return errorData(res, err.status, false, err.message);
@@ -102,7 +101,6 @@ export const getCoursesByListingSlug = async (req, res) => {
       listing: listing._id,
       isDeleted: false,
     })
-      .populate("feature")
       .populate("category")
       .sort({ createdAt: 1 });
 
@@ -126,7 +124,6 @@ export const getCourseById = async (req, res) => {
       _id: req.params.id,
       isDeleted: false,
     })
-      .populate("feature")
       .populate("category")
       .populate("listing", "businessName slug");
 
@@ -163,10 +160,10 @@ export const updateCourseDetail = async (req, res) => {
 
     await assertOwnership(course.listing, userId);
 
-    const { feature, category, duration, price } = req.body;
+    const { category, courseName, duration, price } = req.body;
 
-    if (feature !== undefined) course.feature = feature;
     if (category !== undefined) course.category = category;
+    if (courseName !== undefined) course.courseName = courseName;
     if (duration !== undefined) course.duration = duration;
     if (price !== undefined) course.price = price;
 
