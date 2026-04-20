@@ -13,13 +13,23 @@ const deleteFile = (filePath) => {
   const fullPath = path.join(process.cwd(), filePath);
   if (fs.existsSync(fullPath)) fs.unlinkSync(fullPath);
 };
+// ✅ Add this helper at the top of your controller file
+const normalizePath = (filePath) => {
+  if (!filePath) return null;
+  return filePath.replace(/\\/g, "/"); // Replace all backslashes with forward slashes
+};
 
-const safeParse = (val, fallback = []) => {
-  try {
-    return val ? JSON.parse(val) : fallback;
-  } catch {
-    return fallback;
+export const safeParse = (value) => {
+  if (!value) return [];
+  if (typeof value === "string") {
+    try {
+      return JSON.parse(value);
+    } catch {
+      return [];
+    }
   }
+  if (Array.isArray(value)) return value;
+  return [];
 };
 
 // ── Helper: format blog date for frontend ─────────────────────────────────────
@@ -214,7 +224,7 @@ export const createBlog = async (req, res) => {
       authorJobTitle,
       authorTwitter,
       authorLinkedin,
-      authorGithub,
+      authorInstagram,
       authorWebsite,
       seoTitle,
       seoDescription,
@@ -231,15 +241,16 @@ export const createBlog = async (req, res) => {
     let slug = slugify(title, { lower: true, strict: true });
     const existing = await Blog.findOne({ slug });
     if (existing) slug = `${slug}-${Date.now()}`;
+
     // Images from multer .fields()
     const coverImage =
       req.files && req.files.coverImage && req.files.coverImage[0]
-        ? req.files.coverImage[0].path
+        ? normalizePath(req.files.coverImage[0].path) // ✅ Normalize here
         : null;
 
     const authorAvatar =
       req.files && req.files.authorAvatar && req.files.authorAvatar[0]
-        ? req.files.authorAvatar[0].path
+        ? normalizePath(req.files.authorAvatar[0].path) // ✅ Normalize here
         : null;
 
     const blog = await Blog.create({
@@ -262,7 +273,7 @@ export const createBlog = async (req, res) => {
         social: {
           twitter: authorTwitter,
           linkedin: authorLinkedin,
-          github: authorGithub,
+          instagram: authorInstagram,
           website: authorWebsite,
         },
       },
@@ -308,7 +319,7 @@ export const updateBlog = async (req, res) => {
       authorJobTitle,
       authorTwitter,
       authorLinkedin,
-      authorGithub,
+      authorInstagram,
       authorWebsite,
       seoTitle,
       seoDescription,
@@ -319,7 +330,7 @@ export const updateBlog = async (req, res) => {
     // New cover image → delete old
     if (req.files?.coverImage?.[0]) {
       deleteFile(blog.coverImage);
-      blog.coverImage = req.files.coverImage[0].path;
+      blog.coverImage = normalizePath(req.files.coverImage[0].path);  // ✅ Normalize here
     }
 
     // New author avatar → delete old
@@ -327,7 +338,7 @@ export const updateBlog = async (req, res) => {
       deleteFile(blog.author?.avatar);
       blog.author = {
         ...(blog.author?.toObject?.() ?? blog.author),
-        avatar: req.files.authorAvatar[0].path,
+        avatar: normalizePath(req.files.authorAvatar[0].path),  // ✅ Normalize here
       };
     }
 
@@ -338,7 +349,7 @@ export const updateBlog = async (req, res) => {
         slug: newSlug,
         _id: { $ne: blog._id },
       });
-      if (conflict) newSlug = `${newSlug}`;
+      if (conflict) newSlug = `${newSlug}-${Date.now()}`;  // ✅ Fixed from previous issue
       blog.slug = newSlug;
       blog.title = title;
     }
@@ -361,7 +372,7 @@ export const updateBlog = async (req, res) => {
       social: {
         twitter: authorTwitter ?? blog.author?.social?.twitter,
         linkedin: authorLinkedin ?? blog.author?.social?.linkedin,
-        github: authorGithub ?? blog.author?.social?.github,
+        instagram: authorInstagram ?? blog.author?.social?.instagram,
         website: authorWebsite ?? blog.author?.social?.website,
       },
     };
