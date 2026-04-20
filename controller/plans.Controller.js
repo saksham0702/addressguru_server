@@ -1,5 +1,8 @@
-// ─── controller/planController.js ────────────────────────────────────────────
 import Plan from "../model/plansSchema.js";
+import BusinessListing from "../model/businessListingSchema.js";
+import MarketplaceListing from "../model/marketplaceListingSchema.js";
+import PropertyListing from "../model/propertiesListingSchema.js";
+import JobListing from "../model/jobsListingSchema.js";
 import { successData, errorData } from "../services/helper.js";
 import slugify from "slugify";
 
@@ -349,6 +352,50 @@ export const seedDefaultPlans = async (req, res) => {
     );
   } catch (error) {
     console.warn("Seed plans error:", error);
+    return errorData(res, 500, false, "Internal server error");
+  }
+};
+
+// ─── UPGRADE PLAN (simulated payment endpoint) ────────────────────────────────
+export const upgradePlan = async (req, res) => {
+  try {
+    const { type, product_id, plan_id, buyer_name, email, phone } = req.body;
+
+    if (!type || !product_id || !plan_id) {
+      return errorData(res, 400, false, "Missing required fields for upgrade");
+    }
+
+    const plan = await Plan.findById(plan_id);
+    if (!plan) return errorData(res, 404, false, "Plan not found");
+
+    let ModelToUpdate;
+    if (type === "BUSINESS") ModelToUpdate = BusinessListing;
+    else if (type === "MARKETPLACE") ModelToUpdate = MarketplaceListing;
+    else if (type === "PROPERTIES") ModelToUpdate = PropertyListing;
+    else if (type === "JOBS") ModelToUpdate = JobListing;
+    else return errorData(res, 400, false, "Invalid listing type");
+
+    const listing = await ModelToUpdate.findById(product_id);
+    if (!listing) return errorData(res, 404, false, "Listing not found");
+
+    listing.plan = plan_id;
+    // Simulate successful payment action mapping
+    await listing.save();
+
+    // Mock an external payment response for the UI frontend
+    // If the frontend relies on `payUrl` as a return string in `data.results` (seen in CommonPaymentForm)
+    // we can return a dummy success marker URL or null. The UI checks `data?.results`
+    // Alternatively, returning a dummy payURL or a success flag
+    const dummyPayUrl = "SUCCESS_UPGRADE";
+
+    return res.status(200).json({
+      status: true,
+      message: "Plan upgraded successfully",
+      results: dummyPayUrl,
+      data: { plan: plan, upgraded: plan.name }
+    });
+  } catch (error) {
+    console.warn("Upgrade plan error:", error);
     return errorData(res, 500, false, "Internal server error");
   }
 };

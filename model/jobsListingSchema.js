@@ -216,6 +216,7 @@ const jobSchema = new mongoose.Schema(
     isActive: { type: Boolean, default: false },
     isPublished: { type: Boolean, default: false },
     isDeleted: { type: Boolean, default: false },
+    plan: { type: mongoose.Schema.Types.ObjectId, ref: "Plan" },
     stepCompleted: { type: Number, default: 1 },
 
     // ─── SEO ──────────────────────────────────────────────────

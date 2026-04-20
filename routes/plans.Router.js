@@ -8,6 +8,7 @@ import {
   updatePlan,
   deletePlan,
   seedDefaultPlans,
+  upgradePlan,
 } from "../controller/plans.Controller.js";
 import { authenticate } from "../middleware/userAuth.js";
 // import { isAdmin } from "../middleware/roleAuth.js"; // ← uncomment when you add admin role guard
@@ -24,6 +25,9 @@ router.get("/slug/:slug", getPlanBySlug);
 
 // GET  /plans/:id               → single plan by mongo id
 router.get("/:id", getPlanById);
+
+// POST /plans/upgrade           → upgrades listing plan (frontend)
+router.post("/upgrade", authenticate, upgradePlan);
 
 // ─── ADMIN ROUTES ─────────────────────────────────────────────────────────────
 // Add authenticate + isAdmin middleware when your role system is ready.

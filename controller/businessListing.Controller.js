@@ -704,6 +704,8 @@ export const getListingsByCategoryAndCity = async (req, res) => {
     let sortOption = { createdAt: -1 }; // default: newest
     if (sort_by === "oldest") sortOption = { createdAt: 1 };
     else if (sort_by === "popular") sortOption = { views: -1 };
+    else if (sort_by === "rating_desc") sortOption = { rating: -1 };
+    else if (sort_by === "rating_asc") sortOption = { rating: 1 };
 
     // Pagination
     const pageNumber = Number(page);
