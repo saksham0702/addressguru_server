@@ -14,6 +14,14 @@ const deleteFile = (filePath) => {
   if (fs.existsSync(fullPath)) fs.unlinkSync(fullPath);
 };
 
+const safeParse = (val, fallback = []) => {
+  try {
+    return val ? JSON.parse(val) : fallback;
+  } catch {
+    return fallback;
+  }
+};
+
 // ── Helper: format blog date for frontend ─────────────────────────────────────
 const formatBlog = (blog) => {
   const obj = blog.toObject ? blog.toObject() : { ...blog };
@@ -22,10 +30,10 @@ const formatBlog = (blog) => {
     ...obj,
     date: dateSource
       ? new Date(dateSource).toLocaleDateString("en-SG", {
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-      })
+          year: "numeric",
+          month: "long",
+          day: "numeric",
+        })
       : null,
   };
 };
@@ -62,7 +70,8 @@ export const getBlogs = async (req, res) => {
       },
     });
   } catch (error) {
-    return errorData(res, 500, false, "Internal server error");
+    console.error("CREATE BLOG ERROR:", error); // ✅ ADD THIS
+    return errorData(res, 500, false, error.message);
   }
 };
 
@@ -221,11 +230,17 @@ export const createBlog = async (req, res) => {
     // Auto-generate unique slug
     let slug = slugify(title, { lower: true, strict: true });
     const existing = await Blog.findOne({ slug });
-    if (existing) slug = `${slug}`;
-
+    if (existing) slug = `${slug}-${Date.now()}`;
     // Images from multer .fields()
-    const coverImage = req.files?.coverImage?.[0]?.path || null;
-    const authorAvatar = req.files?.authorAvatar?.[0]?.path || null;
+    const coverImage =
+      req.files && req.files.coverImage && req.files.coverImage[0]
+        ? req.files.coverImage[0].path
+        : null;
+
+    const authorAvatar =
+      req.files && req.files.authorAvatar && req.files.authorAvatar[0]
+        ? req.files.authorAvatar[0].path
+        : null;
 
     const blog = await Blog.create({
       title,
@@ -234,10 +249,10 @@ export const createBlog = async (req, res) => {
       excerpt,
       coverImage,
       category_id,
-      tags: tags ? JSON.parse(tags) : [],
+      tags: safeParse(tags),
+      relatedPosts: safeParse(relatedPosts),
       status: status || "draft",
       featured: featured === "true",
-      relatedPosts: relatedPosts ? JSON.parse(relatedPosts) : [],
       author: {
         userId: authorUserId || undefined,
         name: authorName,
@@ -254,13 +269,16 @@ export const createBlog = async (req, res) => {
       seo: {
         title: seoTitle,
         description: seoDescription,
-        keywords: seoKeywords ? JSON.parse(seoKeywords) : [],
+        keywords: safeParse(seoKeywords),
         ogImage: seoOgImage || coverImage,
       },
     });
 
     if (blog.status === "published") {
-      googleIndexingService.notify(`${APP_BASE_URL}/blog/${blog.slug}`, "URL_UPDATED");
+      googleIndexingService.notify(
+        `${APP_BASE_URL}/blog/${blog.slug}`,
+        "URL_UPDATED",
+      );
     }
 
     return successData(res, 201, true, "Blog created successfully", blog);
@@ -358,7 +376,10 @@ export const updateBlog = async (req, res) => {
     await blog.save();
 
     if (blog.status === "published") {
-      googleIndexingService.notify(`${APP_BASE_URL}/blog/${blog.slug}`, "URL_UPDATED");
+      googleIndexingService.notify(
+        `${APP_BASE_URL}/blog/${blog.slug}`,
+        "URL_UPDATED",
+      );
     }
 
     return successData(res, 200, true, "Blog updated successfully", blog);
@@ -422,9 +443,7 @@ export const adminGetAllBlogs = async (req, res) => {
 // GET /blogs/categories
 export const getCategories = async (req, res) => {
   try {
-    const categories = await BlogCategory.find()
-      .sort({ name: 1 })
-      .lean();
+    const categories = await BlogCategory.find().sort({ name: 1 }).lean();
 
     const withCounts = await Promise.all(
       categories.map(async (cat) => ({

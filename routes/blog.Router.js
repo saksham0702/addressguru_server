@@ -23,7 +23,7 @@ const router = express.Router();
 // Multer: two file fields in one request
 const blogUpload = [
   (req, res, next) => {
-    req._uploadFolder = "blogs";
+    const type = req._uploadFolder || req.body.folder || "blogs";
     next();
   },
   upload.fields([
