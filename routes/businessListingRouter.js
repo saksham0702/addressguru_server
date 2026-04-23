@@ -58,11 +58,11 @@ router.get("/", (req, res) => {
   `);
 });
 
-router.get("/get-listing-by-user/",authenticate, getListingByUser);
+router.get("/get-listing-by-user/", authenticate, getListingByUser);
 router.get("/get-listing-by-category-and-city/:category_slug/:city_slug", getListingsByCategoryAndCity);
 router.get("/get-all-listings", getAllListingsWithPaginationAndFilters);
 router.get("/get-listing-by-slug/:slug", getListingBySlug);
-router.delete("/delete-listing/:slug", deleteListing);
+router.delete("/delete-listing/:slug", authenticate, deleteListing);
 
 router.get("/get-approved-listings", getApprovedListings);
 

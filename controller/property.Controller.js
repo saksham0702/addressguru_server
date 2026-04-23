@@ -367,6 +367,70 @@ export const getAllPropertiesWithPaginationAndFilters = async (req, res) => {
       filter.isVerified = req.query.is_verified === "true";
     if (req.query.provider) filter.provider = req.query.provider;
 
+    // ✅ Purpose / Listing Type (Handle numeric IDs or strings)
+    const purposeVal = req.query.purpose || req.query.rent_or_sell;
+    if (purposeVal) {
+      const purposeMap = { "1": "rent", "2": "sale", "3": "lease" };
+      filter.purpose = purposeMap[purposeVal] || purposeVal;
+    }
+
+    // ✅ Price Range Filter
+    if (req.query.price_min || req.query.price_max) {
+      filter["price.amount"] = {};
+      if (req.query.price_min) filter["price.amount"].$gte = Number(req.query.price_min);
+      if (req.query.price_max) filter["price.amount"].$lte = Number(req.query.price_max);
+    }
+
+    // ✅ Beds, Baths, Furnishing (stored in additionalFields)
+    // const additionalFilters = [];
+    // if (req.query.beds) {
+    //   // Handle both "1" and "1 BHK" styles by using regex or direct match if known
+    //   additionalFilters.push({
+    //     additionalFields: {
+    //       $elemMatch: {
+    //         field_label: /bed/i,
+    //         value: { $regex: new RegExp(`^${req.query.beds}`, "i") }
+    //       }
+    //     }
+    //   });
+    // }
+    // if (req.query.baths) {
+    //   additionalFilters.push({
+    //     additionalFields: {
+    //       $elemMatch: {
+    //         field_label: /bath/i,
+    //         value: { $regex: new RegExp(`^${req.query.baths}`, "i") }
+    //       }
+    //     }
+    //   });
+    // }
+    // if (req.query.furnishing) {
+    //   additionalFilters.push({
+    //     additionalFields: {
+    //       $elemMatch: {
+    //         field_label: /furnish/i,
+    //         value: req.query.furnishing
+    //       }
+    //     }
+    //   });
+    // }
+
+    // if (additionalFilters.length > 0) {
+    //   filter.$and = filter.$and || [];
+    //   filter.$and.push(...additionalFilters);
+    // }
+
+    // ✅ Search Filter (Improved)
+    if (req.query.search) {
+      const searchRegex = new RegExp(req.query.search, "i");
+      filter.$or = [
+        { title: searchRegex },
+        { description: searchRegex },
+        { "location.address": searchRegex },
+        { "location.locality": searchRegex },
+      ];
+    }
+
     // ✅ Status filter with validation
     const VALID_STATUSES = ["pending", "approved", "rejected"];
     if (req.query.status) {
@@ -387,7 +451,7 @@ export const getAllPropertiesWithPaginationAndFilters = async (req, res) => {
     console.log("Final MongoDB Filter:", JSON.stringify(filter));
 
     const [
-      properties,
+      listings,
       total,
       totalAll,
       totalPending,
@@ -411,9 +475,16 @@ export const getAllPropertiesWithPaginationAndFilters = async (req, res) => {
       PropertyListing.countDocuments({ isDeleted: false, status: "rejected" }),  // ✅
     ]);
 
+    // console.log("properties", properties);
+    // console.log("total", total);
+    // console.log("totalAll", totalAll);
+    // console.log("totalPending", totalPending);
+    // console.log("totalApproved", totalApproved);
+    // console.log("totalRejected", totalRejected);
+
     // ✅ Return empty array instead of 404 — better UX for filtered results
     return successData(res, 200, true, "Properties fetched successfully", {
-      properties,
+      listings,
       pagination: { total, page, limit, totalPages: Math.ceil(total / limit) },
       totalAll,
       statusCounts: {
@@ -460,20 +531,83 @@ export const getPropertyListingByUser = async (req, res) => {
     const id = req.user?.id;
     if (!id) return errorData(res, 400, false, "Id is required");
 
-    const listing = await PropertyListing.find({
-      createdBy: id,
-      isDeleted: false,
-    })
-      .populate("category", "name")
-      .populate("subCategory", "name")
-      .populate("city", "name")
-      .populate("additionalFields.field_id", "field_label field_type")
-      .lean();
 
-    if (!listing.length)
-      return errorData(res, 404, false, "No listings found");
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 20;
+    const skip = (page - 1) * limit;
 
-    return successData(res, 200, true, "Listings fetched successfully", listing);
+
+    // const listing = await PropertyListing.find({
+    //   createdBy: id,
+    //   isDeleted: false,
+    // })
+    //   .populate("category", "name")
+    //   .populate("subCategory", "name")
+    //   .populate("city", "name")
+    //   .populate("additionalFields.field_id", "field_label field_type")
+    //   .lean();
+
+    const [listings, total, pendingCount, approvedCount, rejectedCount, publishedCount, verifiedCount] = await Promise.all([
+      PropertyListing.find({
+        createdBy: id,
+        isDeleted: false,
+      })
+        .populate("category", "name iconSvg")
+        .populate("subCategory", "name")
+        .populate("city", "name")
+        .populate("plan", "name")
+        .populate("additionalFields.field_id", "field_label field_type")
+        .populate("createdBy", "name email phone avatar") // optional: show owner info
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean(),
+      PropertyListing.countDocuments({
+        createdBy: id,
+        isDeleted: false,
+      }),
+      PropertyListing.countDocuments({
+        createdBy: id,
+        isDeleted: false,
+        status: "pending",
+      }),
+      PropertyListing.countDocuments({
+        createdBy: id,
+        isDeleted: false,
+        status: "approved",
+      }),
+      PropertyListing.countDocuments({
+        createdBy: id,
+        isDeleted: false,
+        status: "rejected",
+      }),
+      PropertyListing.countDocuments({
+        createdBy: id,
+        isDeleted: false,
+        isPublished: true,
+      }),
+      PropertyListing.countDocuments({
+        createdBy: id,
+        isDeleted: false,
+        isVerified: true,
+      }),
+    ]);
+
+    if (!listings.length && page === 1)
+      return errorData(res, 404, false, "No listings found for this user");
+
+    return successData(res, 200, true, "Listings fetched successfully", {
+      total,
+      statistics: {
+        pending: pendingCount,
+        approved: approvedCount,
+        rejected: rejectedCount,
+        published: publishedCount,
+        verified: verifiedCount,
+      },
+      listings,
+    });
+
   } catch (error) {
     console.warn("Property listing fetch error:", error);
     return errorData(res, 500, false, "Internal server error");
@@ -638,10 +772,10 @@ export const updatePropertyListingStatus = async (req, res) => {
 
         if (listing.createdBy) {
           const pushTitle = status === "approved" ? "Property Approved 🎉" : "Property Rejected ❌";
-          const pushBody = status === "approved" 
+          const pushBody = status === "approved"
             ? `Congratulations! Your property listing "${listing.title}" has been successfully approved.`
             : `We're sorry, your property listing "${listing.title}" was rejected. ${rejectionReason ? 'Reason: ' + rejectionReason.trim() : ''}`;
-          
+
           await sendPushNotification(listing.createdBy, pushTitle, pushBody, {
             type: "PROPERTY_LISTING_STATUS",
             listingId: listing._id.toString(),

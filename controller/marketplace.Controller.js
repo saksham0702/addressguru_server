@@ -3,6 +3,7 @@ import AdditionalField from "../model/additionalFieldSchema.js";
 import Category from "../model/categoriesSchema.js";
 import SubCategory from "../model/subCategoriesSchema.js";
 import User from "../model/userSchema.js";
+import City from "../model/CitiesSchema.js";
 import slugify from "slugify";
 import { successData, errorData } from "../services/helper.js";
 import googleIndexingService from "../services/googleIndexing.service.js";
@@ -333,7 +334,22 @@ export const getAllMarketplaceListings = async (req, res) => {
 
     // Optional filters from query params
     if (req.query.condition) filter.condition = req.query.condition;
-    if (req.query.city_id) filter.city = req.query.city_id;
+    
+    // City filter - support city_id or city (slug/name)
+    if (req.query.city_id) {
+      filter.city = req.query.city_id;
+    } else if (req.query.city) {
+      const cityDoc = await City.findOne({
+        $or: [
+          { slug: req.query.city.toLowerCase() },
+          { name: new RegExp(`^${req.query.city}$`, "i") },
+        ],
+      });
+      if (cityDoc) {
+        filter.city = cityDoc._id;
+      }
+    }
+
     if (req.query.category_id) filter.category = req.query.category_id;
     if (req.query.sub_category_id)
       filter.subCategory = req.query.sub_category_id;
@@ -454,24 +470,90 @@ export const getMarketplaceListingByUser = async (req, res) => {
   console.log("req.user get listing by user", req.user);
   try {
     const id = req.user.id;
-    const listings = await MarketplaceListing.find({
-      createdBy: id,
-      isDeleted: false,
-    })
-      .populate("category", "name")
-      .populate("subCategory", "name")
-      .populate("city", "name")
-      .populate("additionalFields.field_id", "field_label field_type")
-      .lean();
-    if (!listings.length)
-      return errorData(res, 404, false, "No listings found");
-    return successData(
-      res,
-      200,
-      true,
-      "Listings fetched successfully",
+
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 20;
+    const skip = (page - 1) * limit;
+
+    // const listings = await MarketplaceListing.find({
+    //   createdBy: id,
+    //   isDeleted: false,
+    // })
+    //   .populate("category", "name")
+    //   .populate("subCategory", "name")
+    //   .populate("city", "name")
+    //   .populate("additionalFields.field_id", "field_label field_type")
+    //   .lean();
+
+    const [
       listings,
-    );
+      total,
+      pendingCount,
+      approvedCount,
+      rejectedCount,
+      publishedCount,
+      verifiedCount,
+    ] = await Promise.all([
+      MarketplaceListing.find({
+        createdBy: id,
+        isDeleted: false,
+      })
+        .populate("category", "name iconSvg")
+        .populate("subCategory", "name")
+        .populate("city", "name")
+        .populate("plan", "name")
+        .populate("additionalFields.field_id", "field_label field_type")
+        .populate("createdBy", "name email phone avatar") // optional: show owner info
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean(),
+      MarketplaceListing.countDocuments({
+        createdBy: id,
+        isDeleted: false,
+      }),
+      MarketplaceListing.countDocuments({
+        createdBy: id,
+        isDeleted: false,
+        status: "pending",
+      }),
+      MarketplaceListing.countDocuments({
+        createdBy: id,
+        isDeleted: false,
+        status: "approved",
+      }),
+      MarketplaceListing.countDocuments({
+        createdBy: id,
+        isDeleted: false,
+        status: "rejected",
+      }),
+      MarketplaceListing.countDocuments({
+        createdBy: id,
+        isDeleted: false,
+        isPublished: true,
+      }),
+      MarketplaceListing.countDocuments({
+        createdBy: id,
+        isDeleted: false,
+        isVerified: true,
+      }),
+    ]);
+
+    if (!listings.length && page === 1)
+      return errorData(res, 404, false, "No listings found for this user");
+
+    return successData(res, 200, true, "Listings fetched successfully", {
+      total,
+      statistics: {
+        pending: pendingCount,
+        approved: approvedCount,
+        rejected: rejectedCount,
+        published: publishedCount,
+        verified: verifiedCount,
+      },
+      listings,
+    });
+
   } catch (error) {
     console.warn("Marketplace listing fetch error:", error);
     return errorData(res, 500, false, "Internal server error");
@@ -647,10 +729,10 @@ export const updateMarketplaceListingStatus = async (req, res) => {
 
         if (listing.createdBy) {
           const pushTitle = status === "approved" ? "Marketplace Listing Approved 🎉" : "Marketplace Listing Rejected ❌";
-          const pushBody = status === "approved" 
+          const pushBody = status === "approved"
             ? `Congratulations! Your marketplace listing "${listing.title}" has been successfully approved.`
             : `We're sorry, your marketplace listing "${listing.title}" was rejected. ${rejectionReason ? 'Reason: ' + rejectionReason.trim() : ''}`;
-          
+
           await sendPushNotification(listing.createdBy, pushTitle, pushBody, {
             type: "MARKETPLACE_LISTING_STATUS",
             listingId: listing._id.toString(),

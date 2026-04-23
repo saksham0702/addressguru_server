@@ -168,6 +168,11 @@ export const getListingStats = async (req, res) => {
     const { type, slug } = req.params;
     const { listing, modelName } = await resolveListing(slug, type);
 
+    // Ownership check: only the creator can see stats
+    if (listing.createdBy && listing.createdBy.toString() !== req.user.id) {
+      return errorData(res, 403, false, "Unauthorized: You do not own this listing");
+    }
+
     // Get aggregated stats for this listing
     const aggregatedStats = await ListingStats.aggregate([
       { $match: { listingId: listing._id } },
@@ -231,9 +236,15 @@ export const getListingStats = async (req, res) => {
     const previousWeekWeekStart = new Date(startOfPreviousWeek);
     const previousWeekData = await getDailyData(previousWeekWeekStart, startOfCurrentWeek);
 
+    // Unify address field for different model structures
+    const listingAddress = listing.businessAddress || listing.location?.address || listing.address || listing?.company?.address || "";
+
     return successData(res, 200, true, "Listing statistics fetched successfully", {
       listingId: listing._id,
       title: listing.businessName || listing.title,
+      businessAddress: listingAddress,
+      slug: listing.slug,
+      stepCompleted: listing.stepCompleted || 0,
       overview: {
         totalViews: statsMap.view,
         totalCalls: statsMap.call,
@@ -242,8 +253,12 @@ export const getListingStats = async (req, res) => {
         websiteVisits: statsMap.website_visit,
       },
       analytics: {
-        currentWeek: currentWeekData,
-        previousWeek: previousWeekData
+        leads: {
+          currentWeek: currentWeekData,
+          previousWeek: previousWeekData,
+          currentTotal: currentWeekData.reduce((acc, curr) => acc + curr.count, 0),
+          previousTotal: previousWeekData.reduce((acc, curr) => acc + curr.count, 0)
+        }
       }
     });
   } catch (err) {

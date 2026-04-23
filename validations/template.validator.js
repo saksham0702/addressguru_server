@@ -25,6 +25,7 @@ export const addTemplateSchema = Joi.object({
       "any.only": "Type must be one of: whatsapp, sms, email",
       "any.required": "Template type is required",
     }),
+  subject: Joi.string().trim().optional(),
   status: Joi.string().valid("active", "inactive").optional(),
 });
 
@@ -32,6 +33,7 @@ export const updateTemplateSchema = Joi.object({
   title: Joi.string().trim().optional(),
   message: Joi.string().trim().optional(),
   type: Joi.string().valid("whatsapp", "sms", "email").optional(),
+  subject: Joi.string().trim().optional(),
   status: Joi.string().valid("active", "inactive").optional(),
 }).min(1);
 

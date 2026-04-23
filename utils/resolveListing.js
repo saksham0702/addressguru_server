@@ -1,6 +1,6 @@
 import BusinessListing from "../model/businessListingSchema.js";
-import Job             from "../model/jobsListingSchema.js";
-import PropertyListing  from "../model/propertiesListingSchema.js";
+import Job from "../model/jobsListingSchema.js";
+import PropertyListing from "../model/propertiesListingSchema.js";
 import MarketplaceListing from "../model/marketplaceListingSchema.js";
 
 /**
@@ -8,11 +8,10 @@ import MarketplaceListing from "../model/marketplaceListingSchema.js";
  * Frontend passes ?type=business | property | marketplace | job
  */
 const MODEL_MAP = {
-  business:    { model: BusinessListing, modelName: "BusinessListing" },
-  job:         { model: Job,             modelName: "Job"             },
-  property:    { model: PropertyListing,  modelName: "PropertyListing"  },
+  business: { model: BusinessListing, modelName: "BusinessListing" },
+  job: { model: Job, modelName: "Job" },
+  property: { model: PropertyListing, modelName: "PropertyListing" },
   marketplace: { model: MarketplaceListing, modelName: "MarketplaceListing" },
-  product:     { model: MarketplaceListing, modelName: "MarketplaceListing" },
 };
 
 /**
