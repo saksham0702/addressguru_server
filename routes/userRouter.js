@@ -16,6 +16,7 @@ import {
   impersonateUser,
   exitImpersonation,
 } from "../controller/impersonateUser.Controller.js";
+import { createTemplateHistory } from "../controller/templateHistory.Controller.js";
 import { authenticate } from "../middleware/userAuth.js";
 import upload from "../middleware/multerConfig.js";
 
@@ -51,5 +52,6 @@ router.post(
   upload.single("image"),
   updateProfile,
 );
+
 
 export default router;

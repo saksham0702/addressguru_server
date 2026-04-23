@@ -9,7 +9,7 @@ import MarketplaceListing from "../model/marketplaceListingSchema.js";
  */
 const MODEL_MAP = {
   business: { model: BusinessListing, modelName: "BusinessListing" },
-  jobs: { model: Job, modelName: "Job" },
+  job: { model: Job, modelName: "Job" },
   property: { model: PropertyListing, modelName: "PropertyListing" },
   marketplace: { model: MarketplaceListing, modelName: "MarketplaceListing" },
 };

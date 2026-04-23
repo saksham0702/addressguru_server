@@ -26,30 +26,33 @@ async function assertOwnership(listingId, userId) {
 
 function buildTypeSpecificPayload(categoryType, body) {
   if (categoryType === "Hotel") {
+    const src = body.hotel || body;
     return {
       hotel: {
-        checkIn: body.checkIn ?? null,
-        checkOut: body.checkOut ?? null,
+        checkIn: src.checkIn ?? null,
+        checkOut: src.checkOut ?? null,
       },
     };
   }
 
   if (categoryType === "Hostel") {
+    const src = body.hostel || body;
     return {
       hostel: {
-        checkIn: body.checkIn ?? null,
-        checkOut: body.checkOut ?? null,
+        checkIn: src.checkIn ?? null,
+        checkOut: src.checkOut ?? null,
       },
     };
   }
 
   if (categoryType === "Yoga Studio") {
+    const src = body.yoga || body;
     return {
       yoga: {
-        batchSize: body.batchSize ?? null,
-        language: body.language ?? null,
-        daysNights: body.daysNights ?? null,
-        mealsIncluded: body.mealsIncluded ?? false,
+        batchSize: src.batchSize ?? null,
+        language: src.language ?? null,
+        daysNights: src.daysNights ?? null,
+        mealsIncluded: src.mealsIncluded ?? false,
       },
     };
   }
@@ -63,7 +66,8 @@ export const createRoom = async (req, res) => {
   console.log("req.body", req.body);
   try {
     const userId = req.user.id;
-    const { listingId, roomType, price, capacity } = req.body;
+    const listingId = req.body.listingId || req.body.businessListing;
+    const { roomType, price, capacity } = req.body;
 
     // 🔥 Handle images safely
     let images = [];
@@ -157,7 +161,7 @@ export const getRoomsByListing = async (req, res) => {
 
     const rooms = await Room.find({
       businessListing: listingId,
-      isActive: true,
+      // isActive: true,
       isDeleted: false,
     }).sort({ createdAt: 1 });
 
@@ -259,18 +263,38 @@ export const updateRoom = async (req, res) => {
     const { roomType, price, capacity, isActive } = req.body;
 
     // 🔥 HANDLE IMAGES PROPERLY
-    let updatedImages = room.images; // default = keep old
+    let updatedImages = [...room.images]; // default = keep old
 
-    // Case 1: multer images uploaded
-    if (req.files && req.files.length > 0) {
-      updatedImages = req.files.map((file) => file.path);
+    // 1. Get existing images from body (these are the ones the user kept)
+    let keptImages = [];
+    if (req.body.images) {
+      try {
+        const parsed = typeof req.body.images === 'string' 
+          ? JSON.parse(req.body.images) 
+          : req.body.images;
+        
+        if (Array.isArray(parsed)) {
+          keptImages = parsed.filter(img => typeof img === 'string');
+        } else if (typeof parsed === 'string') {
+          keptImages = [parsed];
+        }
+      } catch (e) {
+        // If it's not valid JSON, it might just be a single path or comma separated
+        if (typeof req.body.images === 'string') {
+          keptImages = req.body.images.split(',').filter(Boolean);
+        }
+      }
     }
 
-    // Case 2: frontend sends images array (URLs)
-    else if (req.body.images !== undefined) {
-      updatedImages = Array.isArray(req.body.images)
-        ? req.body.images
-        : [req.body.images];
+    // 2. Get new files from multer
+    let newFiles = [];
+    if (req.files && req.files.length > 0) {
+      newFiles = req.files.map((file) => file.path);
+    }
+
+    // 3. Combine if either is provided
+    if (req.body.images !== undefined || newFiles.length > 0) {
+      updatedImages = [...keptImages, ...newFiles];
     }
 
     // 🔥 Max 5 images check
@@ -290,9 +314,15 @@ export const updateRoom = async (req, res) => {
     // 🔥 Type specific fields
     const typeSpecific = buildTypeSpecificPayload(room.categoryType, req.body);
 
-    if (typeSpecific.hotel) Object.assign(room.hotel, typeSpecific.hotel);
-    if (typeSpecific.hostel) Object.assign(room.hostel, typeSpecific.hostel);
-    if (typeSpecific.yoga) Object.assign(room.yoga, typeSpecific.yoga);
+    if (typeSpecific.hotel) {
+      room.hotel = { ...room.hotel.toObject(), ...typeSpecific.hotel };
+    }
+    if (typeSpecific.hostel) {
+      room.hostel = { ...room.hostel.toObject(), ...typeSpecific.hostel };
+    }
+    if (typeSpecific.yoga) {
+      room.yoga = { ...room.yoga.toObject(), ...typeSpecific.yoga };
+    }
 
     await room.save();
 

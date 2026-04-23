@@ -6,6 +6,7 @@ import {
   deleteTemplate,
 } from "../controller/template.Controller.js";
 import { authenticate } from "../middleware/userAuth.js";
+import { createTemplateHistory, getTemplateHistory } from "../controller/templateHistory.Controller.js";
 
 const router = express.Router();
 
@@ -13,5 +14,8 @@ router.get("/", authenticate, getTemplates);
 router.post("/add", authenticate, addTemplate);
 router.put("/update/:id", authenticate, updateTemplate);
 router.delete("/delete/:id", authenticate, deleteTemplate);
+router.post("/history/create", authenticate, createTemplateHistory);
+router.get("/history", authenticate, getTemplateHistory);
+
 
 export default router;

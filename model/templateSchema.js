@@ -17,6 +17,11 @@ const templateSchema = new mongoose.Schema(
       required: true,
       lowercase: true,
     },
+    subject: {
+      type: String,
+      required: false,
+      trim: true,
+    },
     createdBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",

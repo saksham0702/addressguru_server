@@ -617,21 +617,43 @@ export const getAllJobsByUser = async (req, res) => {
       filter.status = req.query.status;
     }
 
-    const [jobs, total] = await Promise.all([
+    const [
+      jobs,
+      total,
+      pendingCount,
+      approvedCount,
+      rejectedCount,
+      publishedCount,
+      verifiedCount,
+    ] = await Promise.all([
       Job.find(filter)
         .populate("category", "name")
         .populate("subCategory", "name")
+        .populate("plan", "name")
         .skip(skip)
         .limit(limit)
         .sort({ createdAt: -1 })
         .lean(),
       Job.countDocuments(filter),
+      Job.countDocuments({ ...filter, status: "pending" }),
+      Job.countDocuments({ ...filter, status: "approved" }),
+      Job.countDocuments({ ...filter, status: "rejected" }),
+      Job.countDocuments({ ...filter, isPublished: true }),
+      Job.countDocuments({ ...filter, isVerified: true }),
     ]);
 
-    if (!jobs.length)
+    if (!jobs.length && page === 1)
       return errorData(res, 404, false, "No jobs found for this user");
 
     return successData(res, 200, true, "User jobs fetched successfully", {
+      total,
+      statistics: {
+        pending: pendingCount,
+        approved: approvedCount,
+        rejected: rejectedCount,
+        published: publishedCount,
+        verified: verifiedCount,
+      },
       jobs,
       pagination: {
         total,

@@ -547,7 +547,7 @@ export const getPropertyListingByUser = async (req, res) => {
     //   .populate("additionalFields.field_id", "field_label field_type")
     //   .lean();
 
-    const [listings, total] = await Promise.all([
+    const [listings, total, pendingCount, approvedCount, rejectedCount, publishedCount, verifiedCount] = await Promise.all([
       PropertyListing.find({
         createdBy: id,
         isDeleted: false,
@@ -555,6 +555,7 @@ export const getPropertyListingByUser = async (req, res) => {
         .populate("category", "name iconSvg")
         .populate("subCategory", "name")
         .populate("city", "name")
+        .populate("plan", "name")
         .populate("additionalFields.field_id", "field_label field_type")
         .populate("createdBy", "name email phone avatar") // optional: show owner info
         .sort({ createdAt: -1 })
@@ -565,6 +566,31 @@ export const getPropertyListingByUser = async (req, res) => {
         createdBy: id,
         isDeleted: false,
       }),
+      PropertyListing.countDocuments({
+        createdBy: id,
+        isDeleted: false,
+        status: "pending",
+      }),
+      PropertyListing.countDocuments({
+        createdBy: id,
+        isDeleted: false,
+        status: "approved",
+      }),
+      PropertyListing.countDocuments({
+        createdBy: id,
+        isDeleted: false,
+        status: "rejected",
+      }),
+      PropertyListing.countDocuments({
+        createdBy: id,
+        isDeleted: false,
+        isPublished: true,
+      }),
+      PropertyListing.countDocuments({
+        createdBy: id,
+        isDeleted: false,
+        isVerified: true,
+      }),
     ]);
 
     if (!listings.length && page === 1)
@@ -572,6 +598,13 @@ export const getPropertyListingByUser = async (req, res) => {
 
     return successData(res, 200, true, "Listings fetched successfully", {
       total,
+      statistics: {
+        pending: pendingCount,
+        approved: approvedCount,
+        rejected: rejectedCount,
+        published: publishedCount,
+        verified: verifiedCount,
+      },
       listings,
     });
 

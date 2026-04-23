@@ -19,6 +19,7 @@ import googleIndexingService from "../services/googleIndexing.service.js";
 import { sendPushNotification } from "../services/notification.service.js";
 import DigestMailLog from "../model/digestMailLogSchema.js";
 import ListingStats from "../model/listingStatsSchema.js";
+import ReviewListing from "../model/reviewListingSchema.js";
 
 // ─── Helper: validate additional fields ───────────────────────────────────────
 // ============================================
@@ -147,6 +148,10 @@ export const createListing = async (req, res) => {
     const { errors, validated } = await validateAdditionalFields(
       Array.isArray(parsedAdditionalFields) ? parsedAdditionalFields : [],
     );
+
+    console.log("validated", validated);
+    console.log("errors", errors);
+
     if (errors.length)
       return errorData(res, 400, false, "Validation failed", { errors });
 
@@ -782,6 +787,67 @@ export const getListingsByCategoryAndCity = async (req, res) => {
     ]);
 
     const totalPages = Math.ceil(total / limitNumber);
+    const listingIds = listings.map((l) => l._id);
+
+    // ✅ Aggregate stats for the current page of listings
+    const statsData = await ListingStats.aggregate([
+      { $match: { listingId: { $in: listingIds } } },
+      {
+        $group: {
+          _id: { listingId: "$listingId", type: "$type" },
+          count: { $sum: 1 },
+        },
+      },
+    ]);
+
+    // Create a mapping for quick lookup
+    const statsMap = {};
+    statsData.forEach((s) => {
+      const lid = s._id.listingId.toString();
+      if (!statsMap[lid]) statsMap[lid] = {};
+      statsMap[lid][s._id.type] = s.count;
+    });
+
+    // ✅ Aggregate review stats (average rating and count)
+    const reviewStatsData = await ReviewListing.aggregate([
+      {
+        $match: {
+          listingId: { $in: listingIds },
+          status: "approved",
+          isDeleted: false,
+        },
+      },
+      {
+        $group: {
+          _id: "$listingId",
+          averageRating: { $avg: "$rating" },
+          reviewCount: { $sum: 1 },
+        },
+      },
+    ]);
+
+    const reviewStatsMap = {};
+    reviewStatsData.forEach((rs) => {
+      reviewStatsMap[rs._id.toString()] = rs;
+    });
+
+    // Attach stats to each listing
+    listings.forEach((l) => {
+      const lid = l._id.toString();
+      const s = statsMap[lid] || {};
+      const rs = reviewStatsMap[lid] || {};
+
+      l.statistics = {
+        totalViews: s.view || 0,
+        totalCalls: s.call || 0,
+        websiteVisits: s.website_visit || 0,
+        totalLeads: s.lead || 0,
+        totalReviews: rs.reviewCount || 0,
+        averageRating: rs.averageRating ? Number(rs.averageRating.toFixed(1)) : 0,
+      };
+      // Keep backward compatibility
+      l.views = s.view || 0;
+    });
 
     return successData(res, 200, true, "Listings fetched successfully", {
       listings,
@@ -819,15 +885,62 @@ export const getListingBySlug = async (req, res) => {
       .populate("courses", "name iconSvg")
       .lean();
     if (!listing) return errorData(res, 404, false, "Listing not found");
-    // ✅ Get views count
-    const viewsCount = await ListingStats.countDocuments({
-      listingId: listing._id,
-      listingModel: "BusinessListing",
-      type: "view",
+
+    // ✅ Get aggregated stats for this listing
+    const aggregatedStats = await ListingStats.aggregate([
+      { $match: { listingId: listing._id } },
+      { $group: { _id: "$type", count: { $sum: 1 } } },
+    ]);
+
+    const statsMap = {
+      view: 0,
+      call: 0,
+      website_visit: 0,
+      lead: 0,
+      review: 0,
+    };
+    aggregatedStats.forEach((s) => {
+      statsMap[s._id] = s.count;
     });
-    // ✅ Attach views to response
-    listing.views = viewsCount;
-    return successData(res, 200, true, "Listing fetched successfully", listing);
+
+    // ✅ Attach stats to response
+    listing.statistics = {
+      totalViews: statsMap.view,
+      totalCalls: statsMap.call,
+      totalLeads: statsMap.lead,
+      websiteVisits: statsMap.website_visit,
+    };
+
+    // ✅ Get review stats & reviews
+    const reviews = await ReviewListing.find({
+      listingId: listing._id,
+      status: "approved",
+      isDeleted: false,
+    })
+      .select("-email -ipAddress -userAgent")
+      .sort({ createdAt: -1 })
+      .populate("reviewer", "name avatar");
+
+    const reviewCount = reviews.length;
+    const averageRating =
+      reviewCount > 0
+        ? reviews.reduce((acc, r) => acc + r.rating, 0) / reviewCount
+        : 0;
+
+    listing.statistics.totalReviews = reviewCount;
+    listing.statistics.averageRating = Number(averageRating.toFixed(1));
+    listing.reviews = reviews;
+
+    // Keep backward compatibility
+    listing.views = statsMap.view;
+
+    return successData(
+      res,
+      200,
+      true,
+      "Listing fetched successfully",
+      listing,
+    );
   } catch (error) {
     console.warn("Listing fetch error:", error);
     return errorData(res, 500, false, "Internal server error");
@@ -843,7 +956,15 @@ export const getListingByUser = async (req, res) => {
     const limit = parseInt(req.query.limit) || 20;
     const skip = (page - 1) * limit;
 
-    const [listings, total] = await Promise.all([
+    const [
+      listings,
+      total,
+      pendingCount,
+      approvedCount,
+      rejectedCount,
+      publishedCount,
+      verifiedCount,
+    ] = await Promise.all([
       BusinessListing.find({
         createdBy: id,
         isDeleted: false,
@@ -851,6 +972,7 @@ export const getListingByUser = async (req, res) => {
         .populate("category", "name iconSvg")
         .populate("subCategory", "name")
         .populate("city", "name")
+        .populate("plan", "name")
         .populate("createdBy", "name email phone avatar") // optional: show owner info
         .sort({ createdAt: -1 })
         .skip(skip)
@@ -860,7 +982,96 @@ export const getListingByUser = async (req, res) => {
         createdBy: id,
         isDeleted: false,
       }),
+      BusinessListing.countDocuments({
+        createdBy: id,
+        isDeleted: false,
+        status: "pending",
+      }),
+      BusinessListing.countDocuments({
+        createdBy: id,
+        isDeleted: false,
+        status: "approved",
+      }),
+      BusinessListing.countDocuments({
+        createdBy: id,
+        isDeleted: false,
+        status: "rejected",
+      }),
+      BusinessListing.countDocuments({
+        createdBy: id,
+        isDeleted: false,
+        isPublished: true,
+      }),
+      BusinessListing.countDocuments({
+        createdBy: id,
+        isDeleted: false,
+        isVerified: true,
+      }),
     ]);
+
+    const listingIds = listings.map((l) => l._id);
+
+    // ✅ Aggregate stats for the user's listings
+    const [statsData, reviewStatsData] = await Promise.all([
+      ListingStats.aggregate([
+        { $match: { listingId: { $in: listingIds } } },
+        {
+          $group: {
+            _id: { listingId: "$listingId", type: "$type" },
+            count: { $sum: 1 },
+          },
+        },
+      ]),
+      ReviewListing.aggregate([
+        {
+          $match: {
+            listingId: { $in: listingIds },
+            status: "approved",
+            isDeleted: false,
+          },
+        },
+        {
+          $group: {
+            _id: "$listingId",
+            averageRating: { $avg: "$rating" },
+            reviewCount: { $sum: 1 },
+          },
+        },
+      ]),
+    ]);
+
+    // Create mappings for quick lookup
+    const statsMap = {};
+    statsData.forEach((s) => {
+      const lid = s._id.listingId.toString();
+      if (!statsMap[lid]) statsMap[lid] = {};
+      statsMap[lid][s._id.type] = s.count;
+    });
+
+    const reviewStatsMap = {};
+    reviewStatsData.forEach((rs) => {
+      reviewStatsMap[rs._id.toString()] = rs;
+    });
+
+    // Attach stats to each listing
+    listings.forEach((l) => {
+      const lid = l._id.toString();
+      const s = statsMap[lid] || {};
+      const rs = reviewStatsMap[lid] || {};
+
+      l.statistics = {
+        totalViews: s.view || 0,
+        totalCalls: s.call || 0,
+        websiteVisits: s.website_visit || 0,
+        totalLeads: s.lead || 0,
+        totalReviews: rs.reviewCount || 0,
+        averageRating: rs.averageRating
+          ? Number(rs.averageRating.toFixed(1))
+          : 0,
+      };
+      // Keep backward compatibility
+      l.views = s.view || 0;
+    });
 
     // Only return 404 if it's the first page and absolutely no listings exist.
     // If it's page 2+ and empty, frontend pagination usually expects an empty array rather than a 404 error.
@@ -869,6 +1080,13 @@ export const getListingByUser = async (req, res) => {
 
     return successData(res, 200, true, "Listings fetched successfully", {
       total,
+      statistics: {
+        pending: pendingCount,
+        approved: approvedCount,
+        rejected: rejectedCount,
+        published: publishedCount,
+        verified: verifiedCount,
+      },
       listings,
     });
   } catch (error) {

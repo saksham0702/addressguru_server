@@ -13,7 +13,7 @@ const ListingEnquirySchema = new mongoose.Schema(
     listingModel: {
       type: String,
       required: true,   
-      enum: ["BusinessListing", "Job", "Property", "Marketplace"],
+      enum: ["BusinessListing", "Job", "PropertyListing", "MarketplaceListing"],
     },
     listingSlug: {
       type: String,
