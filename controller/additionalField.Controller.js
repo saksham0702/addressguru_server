@@ -9,50 +9,44 @@ const CREATABLE_FIELDS = [
   "subcategory_id",
   "field_label",
   "field_type",
+  "is_logo",
+  "is_quickinfo",
+  "is_description",
+  "is_additional",
   "checkbox_items",
   "dropdown_items",
   "is_required",
-  "min_length",
-  "max_length",
-  "min_value",
-  "max_value",
-  "error_message",
   "placeholder",
-  "help_text",
-  "default_value",
-  "display_order",
-  "show_in_filter",
 ];
 
 const UPDATABLE_FIELDS = [
   "field_label",
   "field_type",
+  "is_logo",
+  "is_quickinfo",
+  "is_description",
+  "is_additional",
   "checkbox_items",
   "dropdown_items",
   "is_required",
-  "min_length",
-  "max_length",
-  "min_value",
-  "max_value",
-  "error_message",
   "placeholder",
-  "help_text",
-  "default_value",
-  "display_order",
   "is_active",
-  "show_in_filter",
 ];
 
-// ============================================
-// CREATE
-// ============================================
+// create field
 export const createField = async (req, res) => {
-  console.log("req.body", req.body);
   try {
     const { category_id, field_label, field_type } = req.body;
 
     if (!category_id || !field_label || !field_type) {
-      return errorData(res, 400, false, "category_id, field_label and field_type are required", null, null);
+      return errorData(
+        res,
+        400,
+        false,
+        "category_id, field_label and field_type are required",
+        null,
+        null,
+      );
     }
 
     // Build the document from allowed fields only
@@ -72,10 +66,19 @@ export const createField = async (req, res) => {
     return successData(res, 201, true, "Field created successfully", field);
   } catch (error) {
     if (error.code === 11000) {
-      return errorData(res, 409, false, "A field already exists for the given category/subcategory", null, error.message);
+      return errorData(
+        res,
+        409,
+        false,
+        "A field already exists for the given category/subcategory",
+        null,
+        error.message,
+      );
     }
     if (error.name === "ValidationError") {
-      const message = Object.values(error.errors).map((e) => e.message).join(", ");
+      const message = Object.values(error.errors)
+        .map((e) => e.message)
+        .join(", ");
       return errorData(res, 400, false, message, null, error.message);
     }
 
@@ -91,12 +94,10 @@ export const createField = async (req, res) => {
   }
 };
 
-// ============================================
-// GET ALL (by category_id / subcategory_id)
-// ============================================
+// get fields by category
 export const getFields = async (req, res) => {
   try {
-    const { category_id, subcategory_id, show_in_filter, is_active } = req.query;
+    const { category_id, subcategory_id, is_active } = req.query;
 
     if (!category_id) {
       return errorData(res, 400, false, "category_id is required", null, null);
@@ -108,10 +109,13 @@ export const getFields = async (req, res) => {
       is_deleted: false,
     };
 
-    if (show_in_filter !== undefined) filter.show_in_filter = show_in_filter === "true";
-    if (is_active !== undefined) filter.is_active = is_active === "true";
+    if (is_active !== undefined) {
+      filter.is_active = is_active === "true";
+    }
 
-    const fields = await AdditionalField.find(filter).sort({ display_order: 1 });
+    const fields = await AdditionalField.find(filter).sort({
+      createdAt: 1, // ✅ replaced display_order
+    });
 
     if (fields.length > 0) {
       return successData(res, 200, true, "Fields fetched successfully", fields);
@@ -120,20 +124,10 @@ export const getFields = async (req, res) => {
     }
   } catch (error) {
     console.warn("Get fields error:", error);
-    return errorData(
-      res,
-      500,
-      false,
-      "Internal server error",
-      null,
-      error.message,
-    );
+    return errorData(res, 500, false, "Internal server error", null, error.message);
   }
 };
-
-// ============================================
-// GET ONE BY ID
-// ============================================
+// get single field by id
 export const getField = async (req, res) => {
   try {
     const { id } = req.params;
@@ -162,9 +156,7 @@ export const getField = async (req, res) => {
   }
 };
 
-// ============================================
-// UPDATE
-// ============================================
+// update field by id
 export const updateField = async (req, res) => {
   try {
     const { id } = req.params;
@@ -191,7 +183,9 @@ export const updateField = async (req, res) => {
     return successData(res, 200, true, "Field updated successfully", field);
   } catch (error) {
     if (error.name === "ValidationError") {
-      const message = Object.values(error.errors).map((e) => e.message).join(", ");
+      const message = Object.values(error.errors)
+        .map((e) => e.message)
+        .join(", ");
       return errorData(res, 400, false, message, null, error.message);
     }
 
@@ -207,9 +201,7 @@ export const updateField = async (req, res) => {
   }
 };
 
-// ============================================
-// SOFT DELETE
-// ============================================
+// soft delete field by id
 export const deleteField = async (req, res) => {
   try {
     const { id } = req.params;

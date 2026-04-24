@@ -197,9 +197,6 @@ export const createListing = async (req, res) => {
 };
 
 export const updateListingStep = async (req, res) => {
-  console.log("body for edit", req.body);
-  console.log("files for edit", req.files);
-  console.log("file for edit", req.file);
   try {
     const { slug, step } = req.params;
 
@@ -843,7 +840,9 @@ export const getListingsByCategoryAndCity = async (req, res) => {
         websiteVisits: s.website_visit || 0,
         totalLeads: s.lead || 0,
         totalReviews: rs.reviewCount || 0,
-        averageRating: rs.averageRating ? Number(rs.averageRating.toFixed(1)) : 0,
+        averageRating: rs.averageRating
+          ? Number(rs.averageRating.toFixed(1))
+          : 0,
       };
       // Keep backward compatibility
       l.views = s.view || 0;
@@ -879,6 +878,10 @@ export const getListingBySlug = async (req, res) => {
       .populate("subCategory", "name iconSvg slug")
       .populate("city", "name iconSvg slug")
       .populate("additionalFields.field_id", "field_label field_type")
+      .populate(
+        "additionalFields.field_id",
+        "field_label field_type is_logo is_quickinfo is_description is_additional",
+      )
       .populate("facilities", "name iconSvg")
       .populate("services", "name iconSvg")
       .populate("paymentModes", "name iconSvg")
@@ -933,14 +936,26 @@ export const getListingBySlug = async (req, res) => {
 
     // Keep backward compatibility
     listing.views = statsMap.view;
+    const groupedFields = {
+      logo: [],
+      quickinfo: [],
+      description: [],
+      additional: [],
+    };
 
-    return successData(
-      res,
-      200,
-      true,
-      "Listing fetched successfully",
-      listing,
-    );
+    listing.additionalFields.forEach((field) => {
+      const loc = field.field_id;
+
+      if (loc?.is_logo) groupedFields.logo.push(field);
+      else if (loc?.is_quickinfo) groupedFields.quickinfo.push(field);
+      else if (loc?.is_description) groupedFields.description.push(field);
+      else groupedFields.additional.push(field);
+    });
+
+    // attach to response
+    listing.groupedFields = groupedFields;
+
+    return successData(res, 200, true, "Listing fetched successfully", listing);
   } catch (error) {
     console.warn("Listing fetch error:", error);
     return errorData(res, 500, false, "Internal server error");
