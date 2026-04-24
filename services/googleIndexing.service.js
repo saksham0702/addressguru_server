@@ -1,10 +1,7 @@
 import { google } from 'googleapis';
 import fs from 'fs';
 import path from 'path';
-import { fileURLToPath } from 'url';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+import { GOOGLE_INDEXING_SERVICE_PATH } from './constant.js';
 
 /**
  * Service to handle Google Indexing API notifications.
@@ -19,31 +16,37 @@ class GoogleIndexingService {
 
   async init() {
     if (this.isInitialized) return;
-
     try {
-      const configDir = path.join(__dirname, '../config');
-      const keyPath = path.join(configDir, 'service-account.json');
+
+
+      const serviceAccountPath =
+        GOOGLE_INDEXING_SERVICE_PATH ||
+        path.join(process.cwd(), "config/service-account.json");
+
+      if (!fs.existsSync(serviceAccountPath)) {
+        console.warn("⚠️ Google indexing service account file not found");
+        return null;
+      }
+
 
       let credentials = null;
 
-      if (fs.existsSync(keyPath)) {
-        const keyFileContent = fs.readFileSync(keyPath, 'utf8');
-        credentials = JSON.parse(keyFileContent);
-      } else if (process.env.GOOGLE_INDEXING_EMAIL && process.env.GOOGLE_INDEXING_PRIVATE_KEY) {
-        credentials = {
-          client_email: process.env.GOOGLE_INDEXING_EMAIL,
-          private_key: process.env.GOOGLE_INDEXING_PRIVATE_KEY.replace(/\\n/g, '\n')
-        };
-      }
+      if (fs.existsSync(serviceAccountPath)) {
+        const keyFileContent = fs.readFileSync(serviceAccountPath, 'utf8');
+        const credentials = JSON.parse(keyFileContent);
+        this.jwtClient = google.auth.fromJSON(credentials);
+        this.jwtClient.scopes = ['https://www.googleapis.com/auth/indexing'];
 
-      if (credentials) {
+        await this.jwtClient.authorize();
+        this.isInitialized = true;
+      } else if (process.env.GOOGLE_INDEXING_EMAIL && process.env.GOOGLE_INDEXING_PRIVATE_KEY) {
         this.jwtClient = new google.auth.JWT(
-          credentials.client_email,
+          process.env.GOOGLE_INDEXING_EMAIL,
           null,
-          credentials.private_key,
-          ['https://www.googleapis.com/auth/indexing'],
-          null
+          process.env.GOOGLE_INDEXING_PRIVATE_KEY.replace(/\\n/g, '\n'),
+          ['https://www.googleapis.com/auth/indexing']
         );
+        await this.jwtClient.authorize();
         this.isInitialized = true;
       } else {
         console.warn('[GoogleIndexingService] Credentials not found. Service will not be active.');
@@ -86,6 +89,41 @@ class GoogleIndexingService {
       const errorMessage = error.response?.data?.error?.message || error.message;
       console.warn(`[GoogleIndexingService] Error for ${url}:`, errorMessage);
       // We don't necessarily want to crash the whole request if indexing fails
+      return null;
+    }
+  }
+
+  /**
+   * Check the status of a URL in the Indexing API.
+   * This returns metadata about the last time Google was notified about this URL.
+   * Note: This does NOT tell you if the page is currently indexed in Search results,
+   * only if the API has received notifications for it.
+   * @param {string} url The URL to check.
+   */
+  async getStatus(url) {
+    if (!this.isInitialized) {
+      await this.init();
+    }
+
+    if (!this.jwtClient) {
+      console.warn(`[GoogleIndexingService] Service not active. Cannot check status for: ${url}`);
+      return null;
+    }
+
+    try {
+      console.log(`[GoogleIndexingService] Checking status for: ${url}`);
+
+      const indexing = google.indexing('v3');
+      const response = await indexing.urlNotifications.getMetadata({
+        auth: this.jwtClient,
+        url: url,
+      });
+
+      console.log(`[GoogleIndexingService] Status for ${url}:`, response.data);
+      return response.data;
+    } catch (error) {
+      const errorMessage = error.response?.data?.error?.message || error.message;
+      console.warn(`[GoogleIndexingService] Error checking status for ${url}:`, errorMessage);
       return null;
     }
   }

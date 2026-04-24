@@ -397,7 +397,7 @@ export const updateListingStep = async (req, res) => {
         listing.plan = req.body.plan_id || null;
         listing.isPublished = true;
         googleIndexingService.notify(
-          `${APP_BASE_URL}/business/${listing.slug}`,
+          `${APP_BASE_URL}/${listing.slug}`,
           "URL_UPDATED",
         );
         break;
@@ -1125,7 +1125,7 @@ export const deleteListing = async (req, res) => {
     await listing.save();
 
     googleIndexingService.notify(
-      `${APP_BASE_URL}/business/${listing.slug}`,
+      `${APP_BASE_URL}/${listing.slug}`,
       "URL_DELETED",
     );
 

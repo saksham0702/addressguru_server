@@ -106,3 +106,6 @@ export const GOOGLE_API_KEY = process.env.GOOGLE_API_KEY;
 
 // Firebase
 export const FIREBASE_SERVICE_ACCOUNT_PATH = process.env.FIREBASE_SERVICE_ACCOUNT_PATH;
+
+// Google Indexing API
+export const GOOGLE_INDEXING_SERVICE_PATH = process.env.GOOGLE_INDEXING_SERVICE_PATH

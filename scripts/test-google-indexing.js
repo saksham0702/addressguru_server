@@ -7,18 +7,25 @@ async function testIndexing() {
 
   const testUrls = [
     { url: "https://addressguru.ae/blog/test-blog-post", type: "URL_UPDATED" },
-    { url: "https://addressguru.ae/business/test-business-listing", type: "URL_UPDATED" },
-    { url: "https://addressguru.ae/job/test-job-listing", type: "URL_DELETED" }
+    // { url: "https://addressguru.ae/business/test-business-listing", type: "URL_UPDATED" },
+    // { url: "https://addressguru.ae/job/test-job-listing", type: "URL_DELETED" }
   ];
 
   for (const item of testUrls) {
-    console.log(`\nTesting ${item.type} for: ${item.url}`);
+    console.log(`\n--- Testing URL: ${item.url} ---`);
     try {
-      const result = await googleIndexingService.notify(item.url, item.type);
-      if (result) {
-        console.log("Result:", result);
-      } else {
-        console.log("Check logs above for reasons why it skipped or failed.");
+      // 1. Notify Google
+      console.log(`Notifying Google: ${item.type}...`);
+      const notifyResult = await googleIndexingService.notify(item.url, item.type);
+      if (notifyResult) {
+        console.log("Notification Success:", notifyResult);
+      }
+
+      // 2. Check Status
+      console.log(`Checking Status...`);
+      const statusResult = await googleIndexingService.getStatus(item.url);
+      if (statusResult) {
+        console.log("Status Metadata:", statusResult);
       }
     } catch (error) {
       console.warn("Test failed with error:", error.message);
