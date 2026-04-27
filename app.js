@@ -43,6 +43,7 @@ import followUpConfigRouter from "./routes/followUpConfig.Router.js";
 import templateRouter from "./routes/template.Router.js";
 import notificationRouter from "./routes/notification.Routes.js";
 import seoContentRouter from "./routes/seoContent.Router.js";
+import sitemapRouter from "./routes/sitemap.Router.js";
 import { initializeFirebase } from "./services/firebase.js";
 
 
@@ -163,6 +164,7 @@ app.use(`/plans`, plansRouter);
 app.use(`/statistics`, statisticsRouter);
 app.use('/rooms', RoomsRouter)
 app.use('/seo-content', seoContentRouter)
+app.use('/sitemap', sitemapRouter)
 
 app.use(`/follow-ups`, followUpRouter);
 app.use(`/followup-config`, followUpConfigRouter);
