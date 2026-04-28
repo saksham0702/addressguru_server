@@ -83,7 +83,9 @@ class GoogleIndexingService {
         },
       });
 
-      console.log(`[GoogleIndexingService] Success for ${url}:`, response.data);
+      if (process.env.DEBUG_GOOGLE_INDEXING) {
+        console.log(`[GoogleIndexingService] Raw Response for ${url}:`, JSON.stringify(response.data, null, 2));
+      }
       return response.data;
     } catch (error) {
       const errorMessage = error.response?.data?.error?.message || error.message;
@@ -119,7 +121,9 @@ class GoogleIndexingService {
         url: url,
       });
 
-      console.log(`[GoogleIndexingService] Status for ${url}:`, response.data);
+      if (process.env.DEBUG_GOOGLE_INDEXING) {
+        console.log(`[GoogleIndexingService] Raw Status for ${url}:`, JSON.stringify(response.data, null, 2));
+      }
       return response.data;
     } catch (error) {
       const errorMessage = error.response?.data?.error?.message || error.message;

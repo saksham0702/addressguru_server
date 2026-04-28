@@ -45,6 +45,7 @@ export const getRootSitemap = async (req, res) => {
           section,
           url_count: count,
           last_updated: latest?.updatedAt?.toISOString() || new Date().toISOString(),
+          image: latest?.coverImage || latest?.logo || (latest?.images && latest.images[0]) || null,
         });
       }
     }
@@ -59,7 +60,6 @@ export const getRootSitemap = async (req, res) => {
 export const getSectionSitemap = async (req, res) => {
   try {
     const { section } = req.params;
-    const { flat } = req.query;
     const Model = getModelBySection(section);
 
     if (!Model) {
@@ -69,12 +69,13 @@ export const getSectionSitemap = async (req, res) => {
     const filter = getBaseFilter();
     if (section === "blogs") delete filter.status;
 
-    // For blogs, or if flat=true is requested, we just return all URLs
-    if (section === "blogs" || flat === "true") {
-      const items = await Model.find(filter).select("slug updatedAt").sort({ updatedAt: -1 }).lean();
-      const result = items.map(item => ({
-        slug: item.slug,
-        last_updated: item.updatedAt?.toISOString() || new Date().toISOString()
+    // For blogs, we don't have categories/cities nesting usually, so we can just return all URLs
+    if (section === "blogs") {
+      const blogs = await Model.find(filter).select("slug updatedAt coverImage").sort({ updatedAt: -1 }).lean();
+      const result = blogs.map(b => ({
+        slug: b.slug,
+        last_updated: b.updatedAt?.toISOString() || new Date().toISOString(),
+        image: b.coverImage || null
       }));
       return res.status(200).json({ success: true, result });
     }
@@ -103,7 +104,8 @@ export const getSectionSitemap = async (req, res) => {
           _id: 0,
           slug: "$categoryDoc.slug",
           url_count: 1,
-          last_updated: 1
+          last_updated: 1,
+          image: "$categoryDoc.iconPng"
         }
       }
     ];
@@ -202,11 +204,12 @@ export const getCityListingsSitemap = async (req, res) => {
     filter.category = category._id;
     filter.city = city._id;
 
-    const listings = await Model.find(filter).select("slug updatedAt").sort({ updatedAt: -1 }).lean();
+    const listings = await Model.find(filter).select("slug updatedAt logo images").sort({ updatedAt: -1 }).lean();
 
     const result = listings.map(l => ({
       slug: l.slug,
-      last_updated: l.updatedAt ? new Date(l.updatedAt).toISOString() : new Date().toISOString()
+      last_updated: l.updatedAt ? new Date(l.updatedAt).toISOString() : new Date().toISOString(),
+      image: l.logo || (l.images && l.images[0]) || null
     }));
 
     return res.status(200).json({ success: true, result });
