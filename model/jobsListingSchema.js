@@ -5,7 +5,7 @@ const jobSchema = new mongoose.Schema(
   {
     // ─── Core Info ───────────────────────────────────────────
     title: { type: String, required: true, trim: true },
-    slug: { type: String, unique: true },
+    slug: { type: String, unique: true, index: true },
 
     category: {
       type: mongoose.Schema.Types.ObjectId,

@@ -1413,3 +1413,97 @@ export const sendBusinessDigestMail = async (req, res) => {
     return errorData(res, 500, false, "Internal server error");
   }
 };
+
+// ─── PUBLISH LISTING BY USER/ADMIN ───────────────────────────────────────────
+export const publishListing = async (req, res) => {
+  try {
+    const { identifier } = req.params;
+    const isObjectId = identifier.match(/^[0-9a-fA-F]{24}$/);
+
+    const listing = await BusinessListing.findOne({
+      $or: [
+        { _id: isObjectId ? identifier : undefined },
+        { slug: identifier }
+      ].filter(Boolean),
+      isDeleted: false
+    });
+
+    if (!listing) return errorData(res, 404, false, "Listing not found");
+
+    // Ownership check
+    const userRole = req.user?.roles?.includes(1);
+    if (
+      listing.createdBy &&
+      req.user?.id &&
+      listing.createdBy.toString() !== req.user.id.toString() &&
+      !userRole
+    ) {
+      return errorData(res, 403, false, "Forbidden: you do not own this listing");
+    }
+
+    listing.isPublished = true;
+    await listing.save();
+
+    // Notify Google indexing (Keeping commented as per user's manual edits)
+    // try {
+    //   googleIndexingService.notify(`${APP_BASE_URL}/${listing.slug}`, "URL_UPDATED");
+    // } catch (err) {
+    //   console.warn("Google Indexing notify failed:", err);
+    // }
+
+    return successData(res, 200, true, "Listing published successfully", {
+      id: listing._id,
+      isPublished: listing.isPublished,
+    });
+  } catch (error) {
+    console.warn("Listing publish error:", error);
+    return errorData(res, 500, false, "Internal server error");
+  }
+};
+
+// ─── UNPUBLISH LISTING BY USER/ADMIN ─────────────────────────────────────────
+export const unpublishListing = async (req, res) => {
+  try {
+    const { identifier } = req.params;
+    const isObjectId = identifier.match(/^[0-9a-fA-F]{24}$/);
+
+    const listing = await BusinessListing.findOne({
+      $or: [
+        { _id: isObjectId ? identifier : undefined },
+        { slug: identifier }
+      ].filter(Boolean),
+      isDeleted: false
+    });
+
+    if (!listing) return errorData(res, 404, false, "Listing not found");
+
+    // Ownership check
+    const userRole = req.user?.roles?.includes(1);
+    if (
+      listing.createdBy &&
+      req.user?.id &&
+      listing.createdBy.toString() !== req.user.id.toString() &&
+      !userRole
+    ) {
+      return errorData(res, 403, false, "Forbidden: you do not own this listing");
+    }
+
+    listing.isPublished = false;
+    await listing.save();
+
+    // Notify Google indexing (Keeping commented as per user's manual edits)
+    // try {
+    //   googleIndexingService.notify(`${APP_BASE_URL}/${listing.slug}`, "URL_DELETED");
+    // } catch (err) {
+    //   console.warn("Google Indexing notify failed:", err);
+    // }
+
+    return successData(res, 200, true, "Listing unpublished successfully", {
+      id: listing._id,
+      isPublished: listing.isPublished,
+    });
+  } catch (error) {
+    console.warn("Listing unpublish error:", error);
+    return errorData(res, 500, false, "Internal server error");
+  }
+};

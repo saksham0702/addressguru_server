@@ -10,6 +10,8 @@ import {
   getLastJobCompanyDetails,
   updateJobStatus,
   getJobsByCategoryAndCity,
+  unpublishListing,
+  publishListing,
 } from "../controller/jobsListing.Controller.js";
 import upload from "../middleware/multerConfig.js";
 import { authenticate } from "../middleware/userAuth.js";
@@ -53,6 +55,8 @@ router.get("/last-company-details", authenticate, getLastJobCompanyDetails);
 
 router.get("/get-listing-by-category-and-city/:category_slug/:city_slug", getJobsByCategoryAndCity);
 router.put("/:id/status", authenticate, updateJobStatus);
+router.patch("/:identifier/unpublish", authenticate, unpublishListing);
+router.patch("/:identifier/publish", authenticate, publishListing);
 
 // Meta Data Routes
 router.get("/job-type", getJobTypes);
@@ -65,11 +69,6 @@ router.get("/job-benefit", getJobBenefits);
 router.get("/company-size", getCompanySizes);
 router.get("/monthly-salary", getMonthlySalaryRanges);
 
-// Meta Data Routes
-router.get("/job-type", getJobTypes);
-router.get("/work-mode", getWorkModes);
-router.get("/experience-level", getExperienceLevels);
-router.get("/education-level", getEducationLevels);
 
 
 export default router;

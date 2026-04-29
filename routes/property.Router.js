@@ -10,6 +10,8 @@ import {
   getPropertyListingByUser,
   updatePropertyListingStatus,
   getApprovedListings,
+  unpublishListing,
+  publishListing,
 } from "../controller/property.Controller.js";
 import { setUploadFolder } from "../middleware/setUploadFolder.js";
 import upload from "../middleware/multerConfig.js";
@@ -49,6 +51,8 @@ router.put(
   authenticate,
   updatePropertyListingStatus
 );
+router.patch("/:identifier/unpublish", authenticate, unpublishListing);
+router.patch("/:identifier/publish", authenticate, publishListing);
 
 router.get("/get-approved-listings", getApprovedListings);
 
