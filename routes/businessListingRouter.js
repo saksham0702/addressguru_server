@@ -13,7 +13,8 @@ import {
   getApprovedListings,
   getFeaturesAndAdditionalFieldsByCategorySlug,
   sendBusinessDigestMail,
-
+  unpublishListing,
+  publishListing,
 } from "../controller/businessListing.Controller.js";
 import { setUploadFolder } from "../middleware/setUploadFolder.js";
 import upload from "../middleware/multerConfig.js";
@@ -68,6 +69,8 @@ router.get("/get-approved-listings", getApprovedListings);
 
 // in your listing routes file
 router.put("/:id/status", authenticate, updateListingStatus);
+router.patch("/:identifier/unpublish", authenticate, unpublishListing);
+router.patch("/:identifier/publish", authenticate, publishListing);
 
 // Features + additional fields by category (used to build step 1 form)
 router.get(
