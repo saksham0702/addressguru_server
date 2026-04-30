@@ -120,8 +120,8 @@ export const getMyLeads = async (req, res) => {
   try {
     const { category, listingId, page = 1, limit = 20 } = req.query;
 
-    // console.log("category = ", category);
-    // console.log("listingId = ", listingId);
+    console.log("category = ", category);
+    console.log("listingId = ", listingId);
 
 
     const type = normalizeCategory(category);
@@ -148,11 +148,11 @@ export const getMyLeads = async (req, res) => {
       // Find all listings belonging to this category for the user
       const listingIds = await model.find({
         createdBy: req.user.id,
-        category: listingId,
+        _id: listingId,
         isDeleted: false
       }).distinct("_id");
 
-      // console.log("listingIds = ", listingIds);
+      console.log("listingIds = ", listingIds);
 
       filter.listingId = { $in: listingIds };
     }
