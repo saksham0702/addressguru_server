@@ -194,14 +194,41 @@ export const getAllApplications = async (req, res) => {
 
     const filter = { isDeleted: false };
 
-    // if (req.query.status) filter.status = req.query.status;
+    // ── 1. Owner Filter (Mandatory for non-admins) ─────────────
+    // If user is not admin, restrict to their own jobs' applications
+    if (user?.role !== "admin") {
+      const myJobs = await Job.find({ createdBy: user.id, isDeleted: false }).select("_id").lean();
+      const jobIds = myJobs.map(j => j._id);
+      filter.job = { $in: jobIds };
+    } else if (req.query.createdBy) {
+      // Admins can optionally filter by a specific creator
+      const theirJobs = await Job.find({ createdBy: req.query.createdBy, isDeleted: false }).select("_id").lean();
+      const jobIds = theirJobs.map(j => j._id);
+      filter.job = { $in: jobIds };
+    }
 
-    // if (req.query.category) filter.category = req.query.category;
+    // ── 2. Category Filter ────────────────────────────────────
+    if (req.query.category) {
+      const categoryJobs = await Job.find({ category: req.query.category, isDeleted: false }).select("_id").lean();
+      const categoryJobIds = categoryJobs.map(j => j._id);
+      
+      if (filter.job) {
+        const existingIds = filter.job.$in.map(id => id.toString());
+        const newIds = categoryJobIds.map(id => id.toString());
+        const intersection = existingIds.filter(id => newIds.includes(id));
+        filter.job = { $in: intersection };
+      } else {
+        filter.job = { $in: categoryJobIds };
+      }
+    }
 
-    // if (req.query.search) {
-    //   const regex = { $regex: req.query.search, $options: "i" };
-    //   filter.$or = [{ fullName: regex }, { email: regex }];
-    // }
+    // ── 3. Basic Filters ──────────────────────────────────────
+    if (req.query.status) filter.status = req.query.status;
+
+    if (req.query.search) {
+      const regex = { $regex: req.query.search, $options: "i" };
+      filter.$or = [{ fullName: regex }, { email: regex }];
+    }
 
     const [applications, total] = await Promise.all([
       JobApplication.find(filter)
