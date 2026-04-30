@@ -19,7 +19,7 @@ export const applyForJob = async (req, res) => {
       slug,
       isDeleted: false,
       isActive: true,
-      status: "active",
+      status: "approved",
     }).lean();
 
     if (!job) return errorData(res, 404, false, "Job not found or no longer active");
