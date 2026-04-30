@@ -1,14 +1,15 @@
 // routes/jobApplicationRoutes.js
 import express from "express";
 import {
-  applyForJob,
-  getApplicationsByJob,
-  getApplicationById,
-  updateApplicationStatus,
-  withdrawApplication,
-  getMyApplications,
-  deleteApplication,
-  getApplicationStats,
+   applyForJob,
+   getApplicationsByJob,
+   getApplicationById,
+   updateApplicationStatus,
+   withdrawApplication,
+   getMyApplications,
+   deleteApplication,
+   getApplicationStats,
+   getAllApplications,
 } from "../controller/jobApplicationController.js";
 
 import { handleResumeUpload, uploadResume } from "../middleware/resumeUpload.js";
@@ -24,15 +25,18 @@ const router = express.Router();
 // Apply for a job  (auth optional — guests can apply via email)
 // POST /api/applications/:slug/apply
 router.post(
-  "/:slug/apply",
-  optionalAuth,           // sets req.user if token present, else null
-  upload.single("resume"), // handle file upload (field name = "resume")
-  applyForJob
+   "/:slug/apply",
+   optionalAuth,           // sets req.user if token present, else null
+   upload.single("resume"), // handle file upload (field name = "resume")
+   applyForJob
 );
 
 /* ──────────────────────────────────────────────────────────
    AUTHENTICATED USER ROUTES
 ────────────────────────────────────────────────────────── */
+
+router.get("/get-all-applications", authenticate, getAllApplications);
+
 
 // Get logged-in user's own applications
 // GET /api/applications/my?page=1&limit=10&status=pending

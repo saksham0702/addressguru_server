@@ -180,6 +180,56 @@ export const getApplicationsByJob = async (req, res) => {
 
 
 /* ═══════════════════════════════════════════════════════════
+   GET ALL APPLICATIONS (Admin only)
+   GET /api/applications/all
+   Query: page, limit, status, search (applicant name/email)
+═══════════════════════════════════════════════════════════ */
+export const getAllApplications = async (req, res) => {
+  try {
+    const user = req.user;
+
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
+
+    const filter = { isDeleted: false };
+
+    // if (req.query.status) filter.status = req.query.status;
+
+    // if (req.query.category) filter.category = req.query.category;
+
+    // if (req.query.search) {
+    //   const regex = { $regex: req.query.search, $options: "i" };
+    //   filter.$or = [{ fullName: regex }, { email: regex }];
+    // }
+
+    const [applications, total] = await Promise.all([
+      JobApplication.find(filter)
+        .populate("job", "title category slug company location")
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean(),
+      JobApplication.countDocuments(filter),
+    ]);
+
+    return successData(res, 200, true, "All applications fetched successfully", {
+      applications,
+      pagination: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      },
+    });
+  } catch (error) {
+    console.warn("Get all applications error:", error);
+    return errorData(res, 500, false, "Internal server error");
+  }
+};
+
+
+/* ═══════════════════════════════════════════════════════════
    GET SINGLE APPLICATION  (Admin / Job Owner)
    GET /api/applications/detail/:applicationId
 ═══════════════════════════════════════════════════════════ */
