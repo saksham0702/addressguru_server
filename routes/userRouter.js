@@ -46,7 +46,7 @@ router.get("/me", authenticate, getUserDetails);
 
 router.post("/user-login/:userId", authenticate, impersonateUser); // already have this
 router.post("/impersonate/exit", authenticate, exitImpersonation); // add this
-router.post(
+router.put(
   "/update-profile",
   authenticate,
   upload.single("image"),

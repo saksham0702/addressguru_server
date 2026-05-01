@@ -46,9 +46,9 @@ router.get("/my", authenticate, getMyApplications);
 // PATCH /api/applications/:applicationId/withdraw
 router.patch("/:applicationId/withdraw", authenticate, withdrawApplication);
 
-/* ──────────────────────────────────────────────────────────
+/* 
    ADMIN / JOB-OWNER ROUTES
-────────────────────────────────────────────────────────── */
+ */
 
 // Get all applications for a job
 // GET /api/applications/:slug?page=1&limit=10&status=pending&search=john

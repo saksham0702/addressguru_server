@@ -604,6 +604,7 @@ export const updateProfile = async (req, res) => {
       "city",
       "profile_bio",
       "profile_website",
+      "socialLinks",
       "profile_location_emirate",
       "profile_location_area",
       "whatsapp_same",
