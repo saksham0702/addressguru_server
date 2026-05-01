@@ -405,6 +405,7 @@ export const updateListingStep = async (req, res) => {
     }
 
     listing.stepCompleted = Math.max(listing.stepCompleted, Number(step));
+    listing.status = "pending";
     await listing.save();
 
     // ── Send submitted mail when step 6 is completed ──
@@ -1423,9 +1424,9 @@ export const publishListing = async (req, res) => {
     const listing = await BusinessListing.findOne({
       $or: [
         { _id: isObjectId ? identifier : undefined },
-        { slug: identifier }
+        { slug: identifier },
       ].filter(Boolean),
-      isDeleted: false
+      isDeleted: false,
     });
 
     if (!listing) return errorData(res, 404, false, "Listing not found");
@@ -1438,7 +1439,12 @@ export const publishListing = async (req, res) => {
       listing.createdBy.toString() !== req.user.id.toString() &&
       !userRole
     ) {
-      return errorData(res, 403, false, "Forbidden: you do not own this listing");
+      return errorData(
+        res,
+        403,
+        false,
+        "Forbidden: you do not own this listing",
+      );
     }
 
     listing.isPublished = true;
@@ -1470,9 +1476,9 @@ export const unpublishListing = async (req, res) => {
     const listing = await BusinessListing.findOne({
       $or: [
         { _id: isObjectId ? identifier : undefined },
-        { slug: identifier }
+        { slug: identifier },
       ].filter(Boolean),
-      isDeleted: false
+      isDeleted: false,
     });
 
     if (!listing) return errorData(res, 404, false, "Listing not found");
@@ -1485,7 +1491,12 @@ export const unpublishListing = async (req, res) => {
       listing.createdBy.toString() !== req.user.id.toString() &&
       !userRole
     ) {
-      return errorData(res, 403, false, "Forbidden: you do not own this listing");
+      return errorData(
+        res,
+        403,
+        false,
+        "Forbidden: you do not own this listing",
+      );
     }
 
     listing.isPublished = false;
