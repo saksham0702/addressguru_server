@@ -98,6 +98,15 @@ const userSchema = new mongoose.Schema(
       },
     ],
 
+    socialLinks: [
+      {
+        facebook: String,
+        linkedin: String,
+        telegram: String,
+        instagram: String,
+      },
+    ],
+
     refreshTokenEncrypted: {
       type: String,
     },
