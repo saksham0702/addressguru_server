@@ -603,7 +603,8 @@ export const getAllListingsWithPaginationAndFilters = async (req, res) => {
       filter.isVerified = req.query.is_verified === "true";
 
     if (req.query.provider) filter.provider = req.query.provider;
-
+    if (req.query.isDeleted == "true") filter.isDeleted = true;
+    
     // ✅ Status filter with validation
     const VALID_STATUSES = ["pending", "approved", "rejected"];
     if (req.query.status) {

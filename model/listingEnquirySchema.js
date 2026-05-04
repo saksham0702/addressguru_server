@@ -55,8 +55,8 @@ const ListingEnquirySchema = new mongoose.Schema(
     // ─── Status ───────────────────────────────────────────────────────────
     status: {
       type: String,
-      enum: ["new", "read", "replied"],
-      default: "new",
+      // enum: ["new", "read", "replied"],
+      default: null ,
     },
 
     // ─── Meta ─────────────────────────────────────────────────────────────
