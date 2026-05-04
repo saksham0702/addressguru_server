@@ -286,8 +286,8 @@ export const getEnquiries = async (req, res) => {
 export const updateEnquiryStatus = async (req, res) => {
   try {
     const { status } = req.body;
-    if (!["new", "read", "replied"].includes(status))
-      return res.status(422).json({ success: false, message: "Invalid status" });
+    // if (!["new", "read", "replied"].includes(status))
+    //   return res.status(422).json({ success: false, message: "Invalid status" });
 
     const enquiry = await Enquiry.findByIdAndUpdate(
       req.params.enquiryId,

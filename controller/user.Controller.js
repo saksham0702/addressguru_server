@@ -589,52 +589,90 @@ export const getUserDetails = async (req, res) => {
 
 export const updateProfile = async (req, res) => {
   try {
-    console.log("UPDATE PROFILE BODY ::", req?.body);
-    console.log("UPDATE PROFILE FILE ::", req?.file);
-
     const userId = req.user?.id;
     if (!userId) {
       return errorData(res, 401, false, "Unauthorized");
     }
 
+    const user = await User.findById(userId);
+    if (!user) {
+      return errorData(res, 404, false, "User not found.");
+    }
+
+    const updateData = {};
+
+    // ✅ Parse JSON fields FIRST
+    if (req.body.socialLinks) {
+      try {
+        const parsed = JSON.parse(req.body.socialLinks);
+        // Remove _id if it exists
+        delete parsed._id;
+        updateData.socialLinks = parsed;
+      } catch {
+        return errorData(res, 400, false, "Invalid socialLinks format");
+      }
+    }
+
+    if (req.body.hobbies) {
+      try {
+        updateData.hobbies = JSON.parse(req.body.hobbies);
+      } catch {
+        return errorData(res, 400, false, "Invalid hobbies format");
+      }
+    }
+
+    // ✅ Only NON-JSON fields here
     const allowedFields = [
       "name",
       "phone",
       "dob",
       "city",
+      "designation",
       "profile_bio",
-      "profile_website",
-      "socialLinks",
-      "profile_location_emirate",
-      "profile_location_area",
+      "country_code",
       "whatsapp_same",
     ];
 
-    const updateData = {};
     for (let key of allowedFields) {
       if (req.body[key] !== undefined) {
         updateData[key] = req.body[key];
       }
     }
 
-    // Handle check if email update is allowed (if provided in body)
+    // ✅ EMAIL
     if (req.body.email) {
+      const email = req.body.email.trim().toLowerCase();
       const existingUser = await User.findOne({
-        email: req.body.email,
+        email,
         _id: { $ne: userId },
       });
       if (existingUser) {
         return errorData(res, 400, false, "Email already in use.");
       }
-      updateData.email = req.body.email;
+      updateData.email = email;
     }
 
-    // Handle Image Upload
-    let imageUrl = null;
+    // ✅ PASSWORD
+    if (req.body.newPassword) {
+      const { oldPassword, newPassword } = req.body;
+      if (!oldPassword) {
+        return errorData(res, 400, false, "Old password required");
+      }
+      const isMatch = await bcrypt.compare(oldPassword, user.password);
+      if (!isMatch) {
+        return errorData(res, 400, false, "Old password incorrect");
+      }
+      const salt = await bcrypt.genSalt(10);
+      updateData.password = await bcrypt.hash(newPassword, salt);
+    }
+
+    // ✅ IMAGE
     if (req?.file) {
-      const filePath = req?.file?.path?.replace(/\\/g, "/"); // normalize for Windows
-      // imageUrl = `${BACKEND_BASE_URL}/${filePath}`;
-      updateData.avatar = filePath; // Save to user avatar field
+      const allowedMimeTypes = ["image/jpeg", "image/png", "image/webp"];
+      if (!allowedMimeTypes.includes(req.file.mimetype)) {
+        return errorData(res, 400, false, "Invalid image format.");
+      }
+      updateData.avatar = req.file.path.replace(/\\/g, "/");
     }
 
     const updatedUser = await User.findByIdAndUpdate(
@@ -643,17 +681,7 @@ export const updateProfile = async (req, res) => {
       { new: true, runValidators: true },
     ).select("-password -otp -otpCreatedAt");
 
-    if (!updatedUser) {
-      return errorData(res, 404, false, "User not found.");
-    }
-
-    return successData(
-      res,
-      200,
-      true,
-      "Profile updated successfully.",
-      updatedUser,
-    );
+    return successData(res, 200, true, "Profile updated", updatedUser);
   } catch (err) {
     console.warn("Update profile error:", err);
     return errorData(res, 500, false, "Server Error", null, err?.message);

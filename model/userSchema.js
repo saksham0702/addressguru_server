@@ -9,10 +9,6 @@ const userSchema = new mongoose.Schema(
       trim: true,
     },
 
-    dob: {
-      type: Date,
-    },
-
     email: {
       type: String,
       unique: true,
@@ -42,26 +38,12 @@ const userSchema = new mongoose.Schema(
       type: String,
     },
 
-    // ── Role & Permissions ────────────────────────────────────────────────────
-    /**
-     * Numeric role hierarchy:
-     *   1 = Admin  (highest authority)
-     *   2 = Editor
-     *   3 = Agent
-     *   4 = BDE
-     *   5 = User   (lowest authority)
-     */
     roles: {
       type: [Number],
       enum: VALID_ROLES,
       default: [ROLES.USER],
     },
 
-    /**
-     * Fine-grained permission string or JSON blob.
-     * Only relevant for non-admin staff accounts created by admin.
-     * e.g. "listings:read,listings:write"
-     */
     permission: {
       type: [String],
       default: null,
@@ -77,6 +59,12 @@ const userSchema = new mongoose.Schema(
       enum: ["google", "apple", "email"],
       default: "email",
     },
+    hobbies: {
+      type: [String],
+    },
+    dob: {
+      type: Date,
+    },
 
     provider: {
       type: String,
@@ -87,7 +75,10 @@ const userSchema = new mongoose.Schema(
     providerId: {
       type: String,
     },
-
+    country_code: {
+      type: String,
+      default: "+971",
+    },
     socialLogins: [
       {
         provider: {
@@ -98,14 +89,12 @@ const userSchema = new mongoose.Schema(
       },
     ],
 
-    socialLinks: [
-      {
-        facebook: String,
-        linkedin: String,
-        telegram: String,
-        instagram: String,
-      },
-    ],
+    socialLinks: {
+      facebook: { type: String, default: "" },
+      linkedin: { type: String, default: "" },
+      telegram: { type: String, default: "" },
+      instagram: { type: String, default: "" },
+    },
 
     refreshTokenEncrypted: {
       type: String,
@@ -126,6 +115,7 @@ const userSchema = new mongoose.Schema(
 
     // ── Profile ───────────────────────────────────────────────────────────────
     profile_bio: { type: String },
+    designation: { type: String },
     profile_website: { type: String },
     profile_location_emirate: { type: String },
     profile_location_area: { type: String },
