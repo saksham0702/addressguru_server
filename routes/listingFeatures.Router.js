@@ -27,6 +27,8 @@ import {
 import {
   submitReview,
   getReviews,
+  getMyReviews,
+  getMyReviewsStats,
   adminReviewAction,
   deleteReview,
 } from "../controller/reviewListing.Controller.js";
@@ -104,6 +106,12 @@ router.post("/:type/:slug/review", submitReview);
 
 // Get all reviews + rating stats for a listing
 router.get("/:type/:slug/reviews", getReviews);
+
+// Dashboard: list all reviews for owner's listings
+router.get("/my-reviews", authenticate, getMyReviews);
+
+// Dashboard: get stats for owner's reviews
+router.get("/my-reviews/stats", authenticate, getMyReviewsStats);
 
 // Admin: approve / reject a review
 router.patch("/admin/reviews/:reviewId", adminReviewAction);

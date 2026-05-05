@@ -1,8 +1,9 @@
 import Review             from "../model/reviewListingSchema.js";
 import User               from "../model/userSchema.js";
 import ListingStats       from "../model/listingStatsSchema.js";
-import { resolveListing } from "../utils/resolveListing.js";
+import { resolveListing, MODEL_MAP } from "../utils/resolveListing.js";
 import { sendReviewReceivedMail, sendReviewConfirmationMail } from "../utils/sendMail.js";
+import { successData, errorData } from "../services/helper.js";
 
 // ─── Helper: recalculate & save rating on listing ─────────────────────────────
 async function syncRating(listingId, ListingModel) {
@@ -166,6 +167,141 @@ export const getReviews = async (req, res) => {
   } catch (err) {
     if (err.status) return res.status(err.status).json({ success: false, message: err.message });
     return res.status(500).json({ success: false, message: "Server error" });
+  }
+};
+
+/**
+ * ─── GET /api/listing-features/my-reviews  (Dashboard Reviews) ──────────────
+ * Fetches all reviews for listings owned by the current user.
+ */
+export const getMyReviews = async (req, res) => {
+  try {
+    const { page = 1, limit = 20, sort = "newest" } = req.query;
+
+    // 1. Get all listing IDs belonging to the user across all models
+    const listingIds = [];
+    const userId = req.user.id || req.user._id;
+    await Promise.all(
+      Object.values(MODEL_MAP).map(async ({ model }) => {
+        const ids = await model.find({ createdBy: userId, isDeleted: false }).distinct("_id");
+        listingIds.push(...ids);
+      })
+    );
+
+    if (listingIds.length === 0) {
+      return successData(res, 200, true, "No reviews found", {
+        listings: [],
+        total: 0,
+        statistics: { total: 0, approved: 0, pending: 0, rejected: 0 },
+        pagination: { total: 0, page: +page, limit: +limit, pages: 0 }
+      });
+    }
+
+    const sortMap = {
+      newest:  { createdAt: -1 },
+      oldest:  { createdAt:  1 },
+      highest: { rating: -1 },
+      lowest:  { rating:  1 },
+    };
+
+    const filter = { listingId: { $in: listingIds }, isDeleted: false };
+
+    const [reviews, total, stats] = await Promise.all([
+      Review.find(filter)
+        .populate({
+          path: "listingId",
+          select: "businessName title slug",
+        })
+        .sort(sortMap[sort] || sortMap.newest)
+        .skip((+page - 1) * +limit)
+        .limit(+limit)
+        .lean(),
+      Review.countDocuments(filter),
+      Review.aggregate([
+        { $match: filter },
+        { $group: { _id: "$status", count: { $sum: 1 } } }
+      ])
+    ]);
+
+    const statistics = {
+      total: 0,
+      approved: 0,
+      pending: 0,
+      rejected: 0
+    };
+
+    stats.forEach(s => {
+      if (s._id === "approved") statistics.approved = s.count;
+      if (s._id === "pending") statistics.pending = s.count;
+      if (s._id === "rejected") statistics.rejected = s.count;
+      statistics.total += s.count;
+    });
+
+    // Transform for frontend expectations
+    const result = reviews.map(rev => ({
+      ...rev,
+      id: rev._id,
+      title: rev.listingId?.businessName || rev.listingId?.title || rev.listingSlug,
+      // Map schema fields to what CardReview2 expects:
+      name: rev.fullName,
+      rating_email: rev.email,
+      message: rev.reviewText,
+      created_at: new Date(rev.createdAt).toLocaleDateString(),
+    }));
+
+    return successData(res, 200, true, "Reviews fetched successfully", {
+      listings: result,
+      total,
+      statistics,
+      pagination: { total, page: +page, limit: +limit, pages: Math.ceil(total / +limit) },
+    });
+  } catch (err) {
+    console.error("getMyReviews Error:", err);
+    return errorData(res, 500, false, "Server error");
+  }
+};
+
+/**
+ * ─── GET /api/listing-features/my-reviews/stats  (Dashboard Header Stats) ──────
+ */
+export const getMyReviewsStats = async (req, res) => {
+  try {
+    const listingIds = [];
+    const userId = req.user.id || req.user._id;
+    await Promise.all(
+      Object.values(MODEL_MAP).map(async ({ model }) => {
+        const ids = await model.find({ createdBy: userId, isDeleted: false }).distinct("_id");
+        listingIds.push(...ids);
+      })
+    );
+
+    const filter = { listingId: { $in: listingIds }, isDeleted: false };
+
+    const stats = await Review.aggregate([
+      { $match: filter },
+      { $group: { _id: "$status", count: { $sum: 1 } } }
+    ]);
+
+    const result = {
+      total: 0,
+      approved: 0,
+      pending: 0,
+      rejected: 0
+    };
+
+    stats.forEach(s => {
+      if (s._id === "approved") result.approved = s.count;
+      if (s._id === "pending") result.pending = s.count;
+      if (s._id === "rejected") result.rejected = s.count;
+      result.total += s.count;
+    });
+
+    return successData(res, 200, true, "Review stats fetched", {
+      statistics: result
+    });
+  } catch (err) {
+    console.error("getMyReviewsStats Error:", err);
+    return errorData(res, 500, false, "Server error");
   }
 };
 
