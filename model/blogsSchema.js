@@ -1,23 +1,6 @@
 // models/blog.model.js
 import mongoose from "mongoose";
 
-const authorSchema = new mongoose.Schema(
-  {
-    userId: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
-    name: { type: String, required: true },
-    avatar: { type: String }, // path from multer e.g. "uploads/authors/2026/March/16/..."
-    bio: { type: String, maxlength: 500 },
-    jobTitle: { type: String },
-    social: {
-      twitter: { type: String },
-      linkedin: { type: String },
-      github: { type: String },
-      website: { type: String },
-    },
-  },
-  { _id: false },
-);
-
 const blogSchema = new mongoose.Schema(
   {
     title: { type: String, required: true, trim: true },
@@ -35,7 +18,11 @@ const blogSchema = new mongoose.Schema(
     category_id: { type: mongoose.Schema.Types.ObjectId, ref: "BlogCategory" },
     tags: { type: [String], default: [] },
 
-    author: { type: authorSchema, required: true },
+    author: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+    },
 
     status: {
       type: String,
@@ -62,7 +49,7 @@ const blogSchema = new mongoose.Schema(
 // Indexes
 blogSchema.index({ slug: 1 });
 blogSchema.index({ status: 1, publishedAt: -1 });
-blogSchema.index({ "author.userId": 1 });
+blogSchema.index({ author: 1 });
 blogSchema.index({ category_id: 1 });
 blogSchema.index({ featured: 1, publishedAt: -1 });
 blogSchema.index({ views: -1 });

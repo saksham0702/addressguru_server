@@ -65,6 +65,7 @@ export const getBlogs = async (req, res) => {
     const total = await Blog.countDocuments(query);
     const blogs = await Blog.find(query)
       .populate("category_id", "name slug")
+      .populate("author", "name avatar designation profile_bio socialLinks")
       .sort({ publishedAt: -1 })
       .skip((Number(page) - 1) * Number(limit))
       .limit(Number(limit))
@@ -90,6 +91,7 @@ export const getRecentBlogs = async (req, res) => {
   try {
     const { limit = 6 } = req.query;
     const blogs = await Blog.find({ status: "published" })
+      .populate("author", "name avatar designation profile_bio socialLinks")
       .populate("category_id", "name slug")
       .sort({ publishedAt: -1 })
       .limit(Number(limit))
@@ -108,6 +110,7 @@ export const getMostViewedBlogs = async (req, res) => {
   try {
     const { limit = 5 } = req.query;
     const blogs = await Blog.find({ status: "published" })
+      .populate("author", "name avatar designation profile_bio socialLinks")
       .populate("category_id", "name slug")
       .sort({ views: -1 })
       .limit(Number(limit))
@@ -131,6 +134,7 @@ export const getMostViewedBlogs = async (req, res) => {
 export const getFeaturedBlogs = async (req, res) => {
   try {
     const blogs = await Blog.find({ status: "published", featured: true })
+      .populate("author", "name avatar designation profile_bio socialLinks")
       .populate("category_id", "name slug")
       .sort({ publishedAt: -1 })
       .limit(6)
@@ -153,6 +157,7 @@ export const getBlogsByCategory = async (req, res) => {
     const total = await Blog.countDocuments(query);
     const blogs = await Blog.find(query)
       .populate("category_id", "name slug")
+      .populate("author", "name avatar designation profile_bio socialLinks")
       .sort({ publishedAt: -1 })
       .skip((Number(page) - 1) * Number(limit))
       .limit(Number(limit))
@@ -186,6 +191,7 @@ export const getBlogBySlug = async (req, res) => {
       status: "published",
     })
       .populate("category_id", "name slug")
+      .populate("author", "name avatar designation profile_bio socialLinks")
       .populate("relatedPosts", "title slug coverImage publishedAt")
       .lean();
 
@@ -218,23 +224,16 @@ export const createBlog = async (req, res) => {
       status,
       featured,
       relatedPosts,
-      authorUserId,
-      authorName,
-      authorBio,
-      authorJobTitle,
-      authorTwitter,
-      authorLinkedin,
-      authorInstagram,
-      authorWebsite,
       seoTitle,
       seoDescription,
       seoKeywords,
       seoOgImage,
     } = req.body;
 
+    if (!req.user?.id) {
+      return errorData(res, 401, false, "Unauthorized: user missing");
+    }
     if (!title) return errorData(res, 400, false, "Title is required");
-    if (!authorName)
-      return errorData(res, 400, false, "Author name is required");
     if (!content) return errorData(res, 400, false, "Content is required");
 
     // Auto-generate unique slug
@@ -248,11 +247,6 @@ export const createBlog = async (req, res) => {
         ? normalizePath(req.files.coverImage[0].path) // ✅ Normalize here
         : null;
 
-    const authorAvatar =
-      req.files && req.files.authorAvatar && req.files.authorAvatar[0]
-        ? normalizePath(req.files.authorAvatar[0].path) // ✅ Normalize here
-        : null;
-
     const blog = await Blog.create({
       title,
       slug,
@@ -264,19 +258,7 @@ export const createBlog = async (req, res) => {
       relatedPosts: safeParse(relatedPosts),
       status: status || "draft",
       featured: featured === "true",
-      author: {
-        userId: authorUserId || undefined,
-        name: authorName,
-        avatar: authorAvatar,
-        bio: authorBio,
-        jobTitle: authorJobTitle,
-        social: {
-          twitter: authorTwitter,
-          linkedin: authorLinkedin,
-          instagram: authorInstagram,
-          website: authorWebsite,
-        },
-      },
+      author: req.user.id,
       seo: {
         title: seoTitle,
         description: seoDescription,
@@ -313,14 +295,6 @@ export const updateBlog = async (req, res) => {
       status,
       featured,
       relatedPosts,
-      authorUserId,
-      authorName,
-      authorBio,
-      authorJobTitle,
-      authorTwitter,
-      authorLinkedin,
-      authorInstagram,
-      authorWebsite,
       seoTitle,
       seoDescription,
       seoKeywords,
@@ -330,16 +304,7 @@ export const updateBlog = async (req, res) => {
     // New cover image → delete old
     if (req.files?.coverImage?.[0]) {
       deleteFile(blog.coverImage);
-      blog.coverImage = normalizePath(req.files.coverImage[0].path);  // ✅ Normalize here
-    }
-
-    // New author avatar → delete old
-    if (req.files?.authorAvatar?.[0]) {
-      deleteFile(blog.author?.avatar);
-      blog.author = {
-        ...(blog.author?.toObject?.() ?? blog.author),
-        avatar: normalizePath(req.files.authorAvatar[0].path),  // ✅ Normalize here
-      };
+      blog.coverImage = normalizePath(req.files.coverImage[0].path); // ✅ Normalize here
     }
 
     // Re-slug only if title changed
@@ -349,7 +314,7 @@ export const updateBlog = async (req, res) => {
         slug: newSlug,
         _id: { $ne: blog._id },
       });
-      if (conflict) newSlug = `${newSlug}-${Date.now()}`;  // ✅ Fixed from previous issue
+      if (conflict) newSlug = `${newSlug}-${Date.now()}`; // ✅ Fixed from previous issue
       blog.slug = newSlug;
       blog.title = title;
     }
@@ -357,30 +322,15 @@ export const updateBlog = async (req, res) => {
     if (content !== undefined) blog.content = content;
     if (excerpt !== undefined) blog.excerpt = excerpt;
     if (category_id !== undefined) blog.category_id = category_id;
-    if (tags !== undefined) blog.tags = JSON.parse(tags);
+    if (tags !== undefined) blog.tags = safeParse(tags);
     if (status !== undefined) blog.status = status;
     if (featured !== undefined) blog.featured = featured === "true";
-    if (relatedPosts !== undefined)
-      blog.relatedPosts = JSON.parse(relatedPosts);
-
-    blog.author = {
-      userId: authorUserId ?? blog.author?.userId,
-      name: authorName ?? blog.author?.name,
-      avatar: blog.author?.avatar,
-      bio: authorBio ?? blog.author?.bio,
-      jobTitle: authorJobTitle ?? blog.author?.jobTitle,
-      social: {
-        twitter: authorTwitter ?? blog.author?.social?.twitter,
-        linkedin: authorLinkedin ?? blog.author?.social?.linkedin,
-        instagram: authorInstagram ?? blog.author?.social?.instagram,
-        website: authorWebsite ?? blog.author?.social?.website,
-      },
-    };
+    if (relatedPosts !== undefined) blog.relatedPosts = safeParse(relatedPosts);
 
     blog.seo = {
       title: seoTitle ?? blog.seo?.title,
       description: seoDescription ?? blog.seo?.description,
-      keywords: seoKeywords ? JSON.parse(seoKeywords) : blog.seo?.keywords,
+      keywords: seoKeywords ? safeParse(seoKeywords) : blog.seo?.keywords,
       ogImage: seoOgImage ?? blog.seo?.ogImage,
     };
 
@@ -406,7 +356,6 @@ export const deleteBlog = async (req, res) => {
     if (!blog) return errorData(res, 404, false, "Blog not found");
 
     deleteFile(blog.coverImage);
-    deleteFile(blog.author?.avatar);
     const blogUrl = `${APP_BASE_URL}/blog/${blog.slug}`;
     await blog.deleteOne();
 
@@ -430,6 +379,7 @@ export const adminGetAllBlogs = async (req, res) => {
     const total = await Blog.countDocuments(query);
     const blogs = await Blog.find(query)
       .populate("category_id", "name")
+      .populate("author", "name avatar bio designation socialLinks profile_bio")
       .sort({ createdAt: -1 })
       .skip((Number(page) - 1) * Number(limit))
       .limit(Number(limit))
