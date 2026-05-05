@@ -17,6 +17,7 @@ import {
   updateCategory,
   deleteCategory,
 } from "../controller/blog.Controller.js";
+import { authenticate } from "../middleware/userAuth.js";
 
 const router = express.Router();
 
@@ -43,12 +44,12 @@ router.get("/get-blog-categories", getCategories);
 
 // ── Admin ─────────────────────────────────────────────────────────────────────
 router.get("/admin/get-all-blogs", adminGetAllBlogs);
-router.post("/admin/create-blog", ...blogUpload, createBlog);
-router.put("/admin/update-blog/:id", ...blogUpload, updateBlog);
+router.post("/admin/create-blog", authenticate, ...blogUpload, createBlog);
+router.put("/admin/update-blog/:id", authenticate, ...blogUpload, updateBlog);
 router.delete("/admin/delete-blog/:id", deleteBlog);
 
-router.post("/admin/create-category", createCategory);
-router.put("/admin/update-category/:id", updateCategory);
-router.delete("/admin/delete-category/:id", deleteCategory);
+router.post("/admin/create-category",  createCategory);
+router.put("/admin/update-category/:id",  updateCategory);
+router.delete("/admin/delete-category/:id",  deleteCategory);
 
 export default router;
