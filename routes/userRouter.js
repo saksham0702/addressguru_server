@@ -49,9 +49,12 @@ router.post("/impersonate/exit", authenticate, exitImpersonation); // add this
 router.put(
   "/update-profile",
   authenticate,
+  (req, res, next) => {
+    req._uploadFolder = "user-profile";
+    next();
+  },
   upload.single("image"),
   updateProfile,
 );
-
 
 export default router;

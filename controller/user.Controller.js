@@ -688,8 +688,6 @@ export const updateProfile = async (req, res) => {
   }
 };
 
-////////////////////////////////////////////////////////////
-
 /// MASTER ADMIN ///////
 
 // ✅ GET ALL USERS (with pagination & filters)
