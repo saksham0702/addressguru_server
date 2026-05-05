@@ -94,7 +94,7 @@ export const jobStepSchemas = {
 
     // Location (JSON object parsed by middleware)
     location: Joi.object({
-      country: Joi.string().optional().default("Pakistan"),
+      country: Joi.string().optional().default("UAE"),
 
       city: Joi.object({
         _id: Joi.string().required(),
