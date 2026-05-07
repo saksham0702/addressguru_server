@@ -77,6 +77,12 @@ const businessListingSchema = new mongoose.Schema(
 
     // fixed: was required:true — city is set in step 3, not step 1
     city: { type: mongoose.Schema.Types.ObjectId, ref: "City" },
+    // Add this field to your schema
+    cityNameLower: {
+      type: String,
+      index: true,
+      default: "",
+    },
 
     // fixed: all were Number — changed to String
     countryCode: { type: String },
@@ -145,9 +151,13 @@ const businessListingSchema = new mongoose.Schema(
       default: null,
     },
 
-    /* =========================
-       SOFT DELETE
-    ========================== */
+    // added for search
+    searchText: {
+      type: String,
+      index: true,
+    },
+
+    /* SOFT DELETE */
     isDeleted: { type: Boolean, default: false },
   },
   { timestamps: true },
