@@ -14,6 +14,7 @@ import {
   getFeaturesAndAdditionalFieldsByCategorySlug,
   sendBusinessDigestMail,
   unpublishListing,
+  upsertAdditionalFields,
   publishListing,
 } from "../controller/businessListing.Controller.js";
 import { setUploadFolder } from "../middleware/setUploadFolder.js";
@@ -50,7 +51,6 @@ router.put(
   updateListingStep,
 );
 
-
 router.get("/", (req, res) => {
   res.send(`
     <h1 style="text-align:center;">
@@ -60,10 +60,19 @@ router.get("/", (req, res) => {
 });
 
 router.get("/get-listing-by-user/", authenticate, getListingByUser);
-router.get("/get-listing-by-category-and-city/:category_slug/:city_slug", getListingsByCategoryAndCity);
+router.get(
+  "/get-listing-by-category-and-city/:category_slug/:city_slug",
+  getListingsByCategoryAndCity,
+);
 router.get("/get-all-listings", getAllListingsWithPaginationAndFilters);
 router.get("/get-listing-by-slug/:slug", getListingBySlug);
 router.delete("/delete-listing/:slug", authenticate, deleteListing);
+
+router.put(
+  "/business-listings/:listingId/additional-fields",
+  authenticate,
+  upsertAdditionalFields,
+);
 
 router.get("/get-approved-listings", getApprovedListings);
 
@@ -86,4 +95,3 @@ router.get(
 router.post("/send-digest", sendBusinessDigestMail);
 
 export default router;
-

@@ -20,13 +20,7 @@ import { sendPushNotification } from "../services/notification.service.js";
 import DigestMailLog from "../model/digestMailLogSchema.js";
 import ListingStats from "../model/listingStatsSchema.js";
 import ReviewListing from "../model/reviewListingSchema.js";
-
-// ─── Helper: validate additional fields ───────────────────────────────────────
-// ============================================
-// HELPER — validate & normalize additional fields
-// Drop this into your listing controller file,
-// replacing the existing validateAdditionalFields function
-// ============================================
+import { buildSearchText } from "../modules/search/search.utils.js";
 
 const validateAdditionalFields = async (additionalFields = []) => {
   if (!additionalFields.length) return { errors: [], validated: [] };
@@ -177,6 +171,43 @@ export const createListing = async (req, res) => {
       isPublished: false,
       createdBy: req.user.id,
     });
+    // 🔥 BUILD SEARCH TEXT
+
+    // 1. Get features
+    const featureDocs = await Feature.find({
+      _id: {
+        $in: [
+          ...listing.facilities,
+          ...listing.services,
+          ...listing.courses,
+          ...listing.paymentModes,
+        ],
+      },
+    }).select("name");
+
+    const featureNames = featureDocs.map((f) => f.name);
+
+    // 2. Category name
+    const categoryName = category.name.toLowerCase();
+
+    // 3. City name (might be null in step 1)
+    let cityName = "";
+    let cityDoc = null;
+    if (listing.city) {
+      cityDoc = await CitiesSchema.findById(listing.city);
+      cityName = cityDoc?.name || "";
+    }
+    listing.cityNameLower = cityName.toLowerCase(); // cityName already has the value
+    listing.searchText = buildSearchText({
+      businessName: listing.businessName,
+      description: listing.description,
+      categoryName,
+      featureNames,
+    });
+
+
+    // 5. Save again
+    await listing.save();
 
     // Update User statistics
     await User.findByIdAndUpdate(req.user.id, {
@@ -408,6 +439,45 @@ export const updateListingStep = async (req, res) => {
     listing.status = "pending";
     await listing.save();
 
+    // 🔥 REBUILD SEARCH TEXT AFTER UPDATE
+
+    const featureDocs = await Feature.find({
+      _id: {
+        $in: [
+          ...listing.facilities,
+          ...listing.services,
+          ...listing.courses,
+          ...listing.paymentModes,
+        ],
+      },
+    }).select("name");
+
+    const featureNames = featureDocs.map((f) => f.name);
+
+    // category
+    const categoryDoc = await Category.findById(listing.category);
+    const categoryName = categoryDoc?.name?.toLowerCase() || "";
+
+    // city
+    // ✅ Fixed
+    let cityName = "";
+    let cityDoc = null;
+    if (listing.city) {
+      cityDoc = await CitiesSchema.findById(listing.city);
+      cityName = cityDoc?.name || "";
+    }
+    listing.cityNameLower = cityName.toLowerCase(); // cityName already has the value
+    listing.searchText = buildSearchText({
+      businessName: listing.businessName,
+      description: listing.description,
+      categoryName,
+      featureNames,
+    });
+
+
+
+    await listing.save();
+
     // ── Send submitted mail when step 6 is completed ──
     if (Number(step) === 6) {
       try {
@@ -442,6 +512,83 @@ export const updateListingStep = async (req, res) => {
     });
   } catch (error) {
     console.warn("Update listing step error:", error);
+    return errorData(res, 500, false, "Internal server error");
+  }
+};
+
+// PUT /business-listings/:listingId/additional-fields
+
+export const upsertAdditionalFields = async (req, res) => {
+  try {
+    const { listingId } = req.params;
+    const { additional_fields = [], category_id } = req.body;
+
+    // ── Find listing ──
+    const listing = await BusinessListing.findOne({
+      _id: listingId,
+      isDeleted: false,
+    });
+
+    if (!listing) {
+      return errorData(res, 404, false, "Listing not found");
+    }
+
+    // ── Ownership check ──
+    const user = await User.findById(req.user.id);
+    const isAdmin = user?.roles?.includes(1);
+
+    if (listing.createdBy?.toString() !== req.user.id.toString() && !isAdmin) {
+      return errorData(res, 403, false, "Forbidden");
+    }
+
+    // ── Optional: Validate category match ──
+    if (category_id && listing.category.toString() !== category_id) {
+      return errorData(res, 400, false, "Category mismatch");
+    }
+
+    // ── Parse safely ──
+    const parsedAdditionalFields = parseJSON(additional_fields, []);
+
+    // ── Validate using your existing helper ──
+    const { errors, validated } = await validateAdditionalFields(
+      Array.isArray(parsedAdditionalFields) ? parsedAdditionalFields : [],
+    );
+
+    if (errors.length) {
+      return errorData(res, 400, false, "Validation failed", { errors });
+    }
+
+    // ── UPSERT LOGIC ──
+    // Option 1: Replace completely (simplest & cleanest)
+    listing.additionalFields = validated;
+
+    // Option 2 (advanced): Merge with existing (uncomment if needed)
+    /*
+    const existingMap = new Map(
+      (listing.additionalFields || []).map(f => [f.field_id.toString(), f])
+    );
+
+    for (const field of validated) {
+      existingMap.set(field.field_id.toString(), field);
+    }
+
+    listing.additionalFields = Array.from(existingMap.values());
+    */
+
+    await listing.save();
+
+    return successData(
+      res,
+      200,
+      true,
+      "Additional fields updated successfully",
+      {
+        listingId: listing._id,
+        additionalFields: listing.additionalFields,
+      },
+    );
+  } catch (error) {
+    console.warn("Upsert additional fields error:", error);
     return errorData(res, 500, false, "Internal server error");
   }
 };
@@ -604,7 +751,7 @@ export const getAllListingsWithPaginationAndFilters = async (req, res) => {
 
     if (req.query.provider) filter.provider = req.query.provider;
     if (req.query.isDeleted == "true") filter.isDeleted = true;
-    
+
     // ✅ Status filter with validation
     const VALID_STATUSES = ["pending", "approved", "rejected"];
     if (req.query.status) {
