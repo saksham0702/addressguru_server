@@ -19,47 +19,51 @@ const run = async () => {
     const listings = await BusinessListing.find({ isDeleted: false });
     console.log(`🔍 Found ${listings.length} listings`);
 
+    let updated = 0;
+    let failed = 0;
+
     for (const listing of listings) {
       try {
+        // ── Only services + courses (NO facilities, NO paymentModes) ──────
         const featureDocs = await Feature.find({
           _id: {
-            $in: [
-              ...listing.facilities,
-              ...listing.services,
-              ...listing.courses,
-              ...listing.paymentModes,
-            ],
+            $in: [...listing.services, ...listing.courses],
           },
         }).select("name");
 
-        const featureNames = featureDocs.map((f) => f.name);
+        const serviceAndCourseNames = featureDocs.map((f) => f.name);
 
+        // ── Category name ─────────────────────────────────────────────────
         const categoryDoc = await Category.findById(listing.category);
         const categoryName = categoryDoc?.name?.toLowerCase() || "";
 
+        // ── City (stored separately, NOT inside searchText) ───────────────
         let cityName = "";
         if (listing.city) {
           const cityDoc = await CitiesSchema.findById(listing.city);
           cityName = cityDoc?.name || "";
         }
 
+        // ── Build searchText: name + category + services/courses only ─────
         listing.searchText = buildSearchText({
           businessName: listing.businessName,
-          description: listing.description,
+          description: "", // ← removed
           categoryName,
-          featureNames,
+          featureNames: serviceAndCourseNames,
         });
 
+        // ── City stored separately for strict city filtering ──────────────
         listing.cityNameLower = cityName.toLowerCase();
 
         await listing.save();
-        console.log(`✅ Updated: ${listing.businessName}`);
+        console.log(`✅ [${++updated}] ${listing.businessName}`);
       } catch (err) {
-        console.error(`❌ Failed: ${listing._id}`, err.message);
+        failed++;
+        console.error(`❌ Failed: ${listing._id} — ${err.message}`);
       }
     }
 
-    console.log("🎉 DONE");
+    console.log(`\n🎉 DONE — ${updated} updated, ${failed} failed`);
     process.exit();
   } catch (error) {
     console.error("💥 Script error:", error);

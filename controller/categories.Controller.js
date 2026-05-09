@@ -19,6 +19,17 @@ export const createCategory = async (req, res) => {
       metaDescription,
     } = req.body;
 
+    // parse tags safely
+    let tags = [];
+
+    if (req.body.tags) {
+      try {
+        tags = JSON.parse(req.body.tags);
+      } catch (err) {
+        tags = [];
+      }
+    }
+
     // ✅ handle ogImage upload
     let ogImage = "";
     if (req.file) {
@@ -43,12 +54,14 @@ export const createCategory = async (req, res) => {
       iconSvg,
       iconPng,
 
+      tags: Array.isArray(tags) ? tags.map((t) => t.toLowerCase().trim()) : [],
+
       // ✅ NEW FIELDS
-      seo:{
-        title:metaTitle,
-        description:metaDescription,
-        ogImage:ogImage,
-      }
+      seo: {
+        title: metaTitle,
+        description: metaDescription,
+        ogImage: ogImage,
+      },
     });
 
     return successData(
@@ -89,41 +102,69 @@ export const getCategories = async (req, res) => {
 export const updateCategory = async (req, res) => {
   try {
     const { id } = req.params;
-    console.log(req.body);
-    console.log(req.file);
-    const updateData = { ...req.body };
 
-    // ✅ handle ogImage update
-    if (req.file) {
-      updateData.ogImage = req.file.path;
+    const existingCategory = await Category.findOne({
+      _id: id,
+      isDeleted: false,
+    });
+
+    if (!existingCategory) {
+      return errorData(res, 404, false, "Category not found.");
     }
 
-    // ✅ regenerate slug if name changes
-    if (updateData.name) {
-      updateData.slug = slugify(updateData.name, { lower: true });
+    const {
+      name,
+      description,
+      color,
+      type,
+      textColor,
+      iconSvg,
+      iconPng,
+      metaTitle,
+      metaDescription,
+      } = req.body;
+
+    // parse tags safely
+    let tags = existingCategory.tags || [];
+
+    if (req.body.tags) {
+      try {
+        tags = JSON.parse(req.body.tags);
+      } catch (err) {
+        tags = existingCategory.tags || [];
+      }
     }
 
-    const updated = await Category.findOneAndUpdate(
-      { _id: id, isDeleted: false },
+    // preserve old image if no new upload
+    const ogImage = req.file
+      ? req.file.path
+      : existingCategory?.seo?.ogImage || "";
+
+    const updated = await Category.findByIdAndUpdate(
+      id,
       {
-        name:updateData.name,
-        slug:updateData.slug,
-        description:updateData.description,
-        color:updateData.color,
-        type:updateData.type,
-        textColor:updateData.textColor,
-        iconSvg:updateData.iconSvg,
-        iconPng:updateData.iconPng,
-        seo:{
-          title:updateData.metaTitle,
-          description:updateData.metaDescription,
-          ogImage:updateData.ogImage,
-        }
+        name,
+        slug: name ? slugify(name, { lower: true }) : existingCategory.slug,
+
+        description,
+        color,
+        type,
+        textColor,
+        iconSvg,
+        iconPng,
+
+        tags: Array.isArray(tags)
+          ? tags.map((t) => t.toLowerCase().trim())
+          : existingCategory.tags,
+
+        seo: {
+          title: metaTitle,
+          description: metaDescription,
+          ogImage,
+        },
       },
       { new: true },
     );
-
-    if (!updated) return errorData(res, 404, false, "Category not found.");
 
     return successData(
       res,

@@ -12,10 +12,19 @@ const categorySchema = new mongoose.Schema(
       type: String,
       enum: ["business", "marketplace", "job", "property"],
     },
-    hasSubCategories :{
+    hasSubCategories: {
       type: Boolean,
-      default:false
+      default: false,
     },
+
+    // NEW
+    tags: [
+      {
+        type: String,
+        lowercase: true,
+        trim: true,
+      },
+    ],
 
     color: String,
     textColor: String,
@@ -34,5 +43,13 @@ const categorySchema = new mongoose.Schema(
   },
   { timestamps: true },
 );
+
+
+categorySchema.index({ slug: 1 });
+
+categorySchema.index({
+  name: "text",
+  tags: "text",
+});
 
 export default mongoose.model("Category", categorySchema);
