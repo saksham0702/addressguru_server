@@ -5,7 +5,6 @@ import CitiesSchema from "../model/CitiesSchema.js";
 
 // CREATE / UPDATE SEO CONTENT
 export const upsertSeoContent = async (req, res) => {
-  console.log("req.body", req.body);
   try {
     const {
       category_id,
@@ -133,51 +132,20 @@ export const getSeoBySlug = async (req, res) => {
   try {
     const { category_slug, city_slug } = req.query;
 
-    if (!category_slug || !city_slug) {
-      return errorData(
-        res,
-        400,
-        false,
-        "Category slug and city slug are required",
-      );
-    }
+    const category = await Category.findOne({ slug: category_slug });
+    if (!category) return errorData(res, 404, false, "Category not found");
 
-    const category = await Category.findOne({
-      slug: category_slug,
-      isDeleted: false,
-    });
+    const city = await CitiesSchema.findOne({ slug: city_slug });
+    if (!city) return errorData(res, 404, false, "City not found");
 
-    if (!category) {
-      return errorData(res, 404, false, "Category not found");
-    }
-
-    const city = await CitiesSchema.findOne({
-      slug: city_slug,
-      isDeleted: false,
-    });
-
-    if (!city) {
-      return errorData(res, 404, false, "City not found");
-    }
-
-    const seoContent = await SeoContent.findOne({
+    const seo = await SeoContent.findOne({
       category_id: category._id,
       city_id: city._id,
       isDeleted: false,
     });
 
-    if (!seoContent) {
-      return successData(res, 200, true, "Fallback", {
-        city_content: "",
-        seo_content: "",
-        pricing_content: "",
-        faq_content: [],
-      });
-    }
-
-    return successData(res, 200, true, "Fetched", seoContent);
+    return successData(res, 200, true, "SEO fetched", seo);
   } catch (err) {
-    console.error("GET BY SLUG ERROR:", err);
     return errorData(res, 500, false, err.message);
   }
 };
