@@ -3,84 +3,143 @@ import { successData, errorData } from "../services/helper.js";
 import Category from "../model/categoriesSchema.js";
 import CitiesSchema from "../model/CitiesSchema.js";
 
+// CREATE / UPDATE SEO CONTENT
 export const upsertSeoContent = async (req, res) => {
+  console.log("req.body", req.body);
   try {
     const {
       category_id,
-      city_ids = [], // array
-      title,
-      content,
-      meta_title,
-      meta_description,
+      city_id,
+      city_content,
+      seo_content,
+      pricing_content,
+      faq_content,
     } = req.body;
 
-    if (!category_id || !content) {
-      return errorData(res, 400, false, "Category & content required");
+    // VALIDATION
+    if (!category_id || !city_id) {
+      return errorData(res, 400, false, "Category & city is required");
     }
 
-    // prevent duplicate (same category + same cities)
-    const existing = await SeoContent.findOne({
-      category_id,
-      city_ids: { $all: city_ids, $size: city_ids.length },
+    // CHECK CATEGORY
+    const categoryExists = await Category.findOne({
+      _id: category_id,
       isDeleted: false,
     });
+
+    if (!categoryExists) {
+      return errorData(res, 404, false, "Category not found");
+    }
+
+    // CHECK CITY
+    const cityExists = await CitiesSchema.findOne({
+      _id: city_id,
+      deletedAt: null,
+    });
+
+    if (!cityExists) {
+      return errorData(res, 404, false, "City not found");
+    }
+
+    // 🧠 HANDLE FAQ (STRING → ARRAY)
+    let parsedFaq = [];
+
+    if (typeof faq_content === "string" && faq_content.trim()) {
+      try {
+        parsedFaq = JSON.parse(faq_content);
+      } catch {
+        return errorData(res, 400, false, "Invalid FAQ format");
+      }
+    } else if (Array.isArray(faq_content)) {
+      parsedFaq = faq_content;
+    }
+
+    // CHECK EXISTING
+    const existing = await SeoContent.findOne({
+      category_id,
+      city_id,
+      isDeleted: false,
+    });
+
+    const payload = {
+      category_id,
+      city_id,
+      city_content,
+      seo_content: seo_content || "",
+      pricing_content: pricing_content || "",
+      faq_content: parsedFaq,
+    };
 
     let data;
 
     if (existing) {
-      data = await SeoContent.findByIdAndUpdate(
-        existing._id,
-        { title, content, meta_title, meta_description },
-        { new: true }
-      );
-    } else {
-      data = await SeoContent.create({
-        category_id,
-        city_ids,
-        title,
-        content,
-        meta_title,
-        meta_description,
+      data = await SeoContent.findByIdAndUpdate(existing._id, payload, {
+        new: true,
       });
+    } else {
+      data = await SeoContent.create(payload);
     }
 
-    return successData(res, 200, true, "Saved", data);
+    return successData(res, 200, true, existing ? "Updated" : "Created", data);
   } catch (err) {
+    console.error("UPSERT ERROR:", err);
     return errorData(res, 500, false, err.message);
   }
 };
 
+// GET ALL SEO CONTENT
 export const getAllSeoContent = async (req, res) => {
   try {
-    const data = await SeoContent.find({ isDeleted: false })
+    const data = await SeoContent.find({
+      isDeleted: false,
+    })
       .populate("category_id", "name slug")
-      .populate("city_ids", "name slug");
+      .populate("city_id", "name slug")
+      .sort({ updatedAt: -1 });
 
     return successData(res, 200, true, "All SEO content", data);
   } catch (err) {
+    console.error("GET ALL SEO ERROR:", err);
+
     return errorData(res, 500, false, err.message);
   }
 };
 
+// DELETE SEO CONTENT
 export const deleteSeoContent = async (req, res) => {
   try {
     const { id } = req.params;
 
-    await SeoContent.findByIdAndUpdate(id, { isDeleted: true });
+    const existing = await SeoContent.findById(id);
 
-    return successData(res, 200, true, "Deleted");
+    if (!existing) {
+      return errorData(res, 404, false, "SEO content not found");
+    }
+
+    await SeoContent.findByIdAndUpdate(id, {
+      isDeleted: true,
+    });
+
+    return successData(res, 200, true, "SEO content deleted");
   } catch (err) {
+    console.error("DELETE SEO ERROR:", err);
+
     return errorData(res, 500, false, err.message);
   }
 };
 
+// GET SEO BY SLUG
 export const getSeoBySlug = async (req, res) => {
-
   try {
     const { category_slug, city_slug } = req.query;
 
-    if (!category_slug) {
-      return errorData(res, 400, false, "Category slug required");
+    if (!category_slug || !city_slug) {
+      return errorData(
+        res,
+        400,
+        false,
+        "Category slug and city slug are required",
+      );
     }
 
     const category = await Category.findOne({
@@ -92,90 +151,33 @@ export const getSeoBySlug = async (req, res) => {
       return errorData(res, 404, false, "Category not found");
     }
 
-    let city = null;
-
-    if (city_slug) {
-      city = await CitiesSchema.findOne({ slug: city_slug });
-    }
-
-    let seoContent = null;
-
-    // 1️⃣ Try city-specific
-    if (city) {
-      seoContent = await SeoContent.findOne({
-        category_id: category._id,
-        city_ids: city._id,
-        isDeleted: false,
-        isActive: true,
-      });
-    }
-
-    // 2️⃣ fallback to default (no city assigned)
-    if (!seoContent) {
-      seoContent = await SeoContent.findOne({
-        category_id: category._id,
-        city_ids: { $size: 0 },
-        isDeleted: false,
-        isActive: true,
-      });
-    }
-
-    return successData(res, 200, true, "SEO data", {
-      title: seoContent?.title || category?.seo?.title || category?.name,
-
-      content: seoContent?.content || "",
-
-      meta_title:
-        seoContent?.meta_title || category?.seo?.title,
-
-      meta_description:
-        seoContent?.meta_description ||
-        category?.seo?.description,
+    const city = await CitiesSchema.findOne({
+      slug: city_slug,
+      isDeleted: false,
     });
+
+    if (!city) {
+      return errorData(res, 404, false, "City not found");
+    }
+
+    const seoContent = await SeoContent.findOne({
+      category_id: category._id,
+      city_id: city._id,
+      isDeleted: false,
+    });
+
+    if (!seoContent) {
+      return successData(res, 200, true, "Fallback", {
+        city_content: "",
+        seo_content: "",
+        pricing_content: "",
+        faq_content: [],
+      });
+    }
+
+    return successData(res, 200, true, "Fetched", seoContent);
   } catch (err) {
+    console.error("GET BY SLUG ERROR:", err);
     return errorData(res, 500, false, err.message);
   }
 };
-
-// export const getSeoContent = async (req, res) => {
-//   try {
-//     const { category_id, city_id } = req.query;
-
-//     if (!category_id) {
-//       return errorData(res, 400, false, "Category id is required");
-//     }
-
-//     // 1️⃣ Try city-specific content
-//     let seoContent = await SeoContent.findOne({
-//       category_id,
-//       city_id,
-//       isDeleted: false,
-//       isActive: true,
-//     });
-
-//     // 2️⃣ Fallback to default
-//     if (!seoContent) {
-//       seoContent = await SeoContent.findOne({
-//         category_id,
-//         city_id: null,
-//         isDeleted: false,
-//         isActive: true,
-//       });
-//     }
-
-//     // 3️⃣ Get category SEO fallback
-//     const category = await Category.findById(category_id).select("seo name");
-
-//     return successData(res, 200, true, "SEO content fetched", {
-//       title: seoContent?.title || category?.seo?.title || category?.name,
-//       content: seoContent?.content || "",
-//       meta_title: seoContent?.meta_title || category?.seo?.title,
-//       meta_description:
-//         seoContent?.meta_description || category?.seo?.description,
-//     });
-//   } catch (error) {
-//     console.error("SEO Fetch Error:", error);
-//     return errorData(res, 500, false, "Internal server error");
-//   }
-// };
-

@@ -4,60 +4,70 @@ import { parseSearchQuery } from "./search.utils.js";
 export const searchListingsService = async (query, page = 1, limit = 20) => {
   if (!query) return { results: [], total: 0, page: 1, totalPages: 0 };
 
-  const { topicKeywords, detectedCity, normalizedQuery } = await parseSearchQuery(
-    query,
-  );
+  const {
+    topicKeywords,
+    detectedCity,
+    detectedCategory,
+    categoryKeywords,
+    normalizedQuery,
+  } = await parseSearchQuery(query);
 
-  if (!topicKeywords.length)
+  // Nothing useful parsed → bail
+  if (!detectedCity && !detectedCategory && !topicKeywords.length) {
     return { results: [], total: 0, page: 1, totalPages: 0 };
+  }
 
   const skip = (page - 1) * limit;
-
   const escape = (k) => k.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  const escapedTopics = topicKeywords.map(escape);
 
-  // Matches any topic keyword as a whole word in content
-  const topicRegex = new RegExp(`\\b(${escapedTopics.join("|")})\\b`, "i");
+  // ─── Build regexes ────────────────────────────────────────────────────────
+
+  // Category regex: matches ANY keyword belonging to the detected category
+  const escapedCategoryKws = categoryKeywords.map(escape);
+  const categoryRegex =
+    detectedCategory && escapedCategoryKws.length
+      ? new RegExp(`\\b(${escapedCategoryKws.join("|")})\\b`, "i")
+      : null;
+
+  // Topic regex: used only when no category detected (free-text mode)
+  const escapedTopics = topicKeywords.map(escape);
+  const topicRegex =
+    !detectedCategory && topicKeywords.length
+      ? new RegExp(`\\b(${escapedTopics.join("|")})\\b`, "i")
+      : null;
+
+  // City regex: exact match against city name
+  const cityRegex = detectedCity
+    ? new RegExp(`^${escape(detectedCity)}$`, "i")
+    : null;
+
+  // ─── Stage 1: Hard content filter ────────────────────────────────────────
+  // CATEGORY MODE  → searchText must match a category keyword (strict)
+  // KEYWORD MODE   → searchText must match a topic keyword
+  const stage1ContentFilter = detectedCategory
+    ? { searchText: { $regex: categoryRegex } }
+    : { searchText: { $regex: topicRegex } };
 
   const pipeline = [
-    // ─── Stage 1: Gate on topic match (NOT city) ─────────────────────────
+    // ── Stage 1: Base hard filter ─────────────────────────────────────────
     {
       $match: {
         isDeleted: false,
         isPublished: true,
         status: "approved",
-        // City is excluded from searchText now — this only matches real content
-        searchText: { $regex: topicRegex },
+        ...stage1ContentFilter,
       },
     },
 
-    // ─── Stage 2: Lowercase fields for scoring ────────────────────────────
+    // ── Stage 2: Lowercase fields for later scoring ───────────────────────
     {
       $addFields: {
         businessNameLower: { $toLower: "$businessName" },
-        descriptionLower: { $toLower: { $ifNull: ["$description", ""] } },
         searchTextLower: { $toLower: { $ifNull: ["$searchText", ""] } },
       },
     },
 
-    // ─── Stage 3: Count how many topic keywords matched ───────────────────
-    {
-      $addFields: {
-        topicMatchCount: {
-          $size: {
-            $filter: {
-              input: topicKeywords,
-              as: "kw",
-              cond: {
-                $regexMatch: { input: "$searchTextLower", regex: "$$kw" },
-              },
-            },
-          },
-        },
-      },
-    },
-
-    // ─── Stage 4: Lookup category ─────────────────────────────────────────
+    // ── Stage 3: Lookup + join category ──────────────────────────────────
     {
       $lookup: {
         from: "categories",
@@ -69,200 +79,227 @@ export const searchListingsService = async (query, page = 1, limit = 20) => {
     { $unwind: { path: "$categoryDoc", preserveNullAndEmptyArrays: true } },
     {
       $addFields: {
-        categoryNameLower: {
-          $toLower: { $ifNull: ["$categoryDoc.name", ""] },
-        },
+        categoryNameLower: { $toLower: { $ifNull: ["$categoryDoc.name", ""] } },
       },
     },
 
-    // ─── Stage 5: Require meaningful topic match ──────────────────────────
-    // Must match in name, category, or have 2+ topic keyword hits in searchText
+    // ── Stage 4: Lookup + join city ───────────────────────────────────────
     {
-      $match: {
-        $or: [
-          { businessNameLower: { $regex: topicRegex } },
-          { categoryNameLower: { $regex: topicRegex } },
+      $lookup: {
+        from: "cities",
+        localField: "city",
+        foreignField: "_id",
+        as: "cityDoc",
+      },
+    },
+    { $unwind: { path: "$cityDoc", preserveNullAndEmptyArrays: true } },
+    {
+      $addFields: {
+        resolvedCityNameLower: { $toLower: { $ifNull: ["$cityDoc.name", ""] } },
+      },
+    },
+
+    // ── Stage 5: STRICT CITY FILTER ───────────────────────────────────────
+    // If user mentioned a city → ONLY listings in that city pass. No exceptions.
+    ...(detectedCity
+      ? [{ $match: { resolvedCityNameLower: { $regex: cityRegex } } }]
+      : []),
+
+    // ── Stage 6: STRICT CATEGORY FILTER ──────────────────────────────────
+    // If category detected → listing's category name OR searchText must
+    // match a category keyword. This is a hard gate, not a boost.
+    ...(detectedCategory && categoryRegex
+      ? [
           {
-            topicMatchCount: {
-              $gte: topicKeywords.length > 1 ? 2 : 1,
+            $match: {
+              $or: [
+                { categoryNameLower: { $regex: categoryRegex } },
+                { searchTextLower: { $regex: categoryRegex } },
+              ],
             },
           },
-        ],
-      },
-    },
+        ]
+      : []),
 
-    // ─── Stage 6: Score ───────────────────────────────────────────────────
+    // ── Stage 7: Scoring ──────────────────────────────────────────────────
+    // Priority order: category match > business name match > description match
     {
       $addFields: {
         score: {
           $add: [
-            // Category exact match = strongest signal (+500)
-            {
-              $cond: [{ $eq: ["$categoryNameLower", normalizedQuery] }, 500, 0],
-            },
+            // ── CATEGORY SIGNALS (highest priority) ───────────────────────
 
-            // Business name contains topic keyword (+300)
-            {
-              $cond: [
-                {
-                  $regexMatch: {
-                    input: "$businessNameLower",
-                    regex: topicRegex,
-                  },
-                },
-                300,
-                0,
-              ],
-            },
-
-            // Category name contains topic keyword (+150)
-            {
-              $cond: [
-                {
-                  $regexMatch: {
-                    input: "$categoryNameLower",
-                    regex: topicRegex,
-                  },
-                },
-                150,
-                0,
-              ],
-            },
-
-            // Per-keyword match in business name (+25 each)
-            {
-              $multiply: [
-                {
-                  $size: {
-                    $filter: {
-                      input: topicKeywords,
-                      as: "kw",
-                      cond: {
-                        $regexMatch: {
-                          input: "$businessNameLower",
-                          regex: "$$kw",
-                        },
-                      },
-                    },
-                  },
-                },
-                25,
-              ],
-            },
-
-            // Business name starts with first keyword (+50)
-            {
-              $cond: [
-                {
-                  $regexMatch: {
-                    input: "$businessNameLower",
-                    regex: `^${escapedTopics[0]}`,
-                  },
-                },
-                50,
-                0,
-              ],
-            },
-
-            // ─── City boost (BONUS, not a gate) ──────────────────────────
-            // If user mentioned a city and this listing is in that city: +200
-            ...(detectedCity
+            // Category name exactly equals the detected category key (+600)
+            ...(detectedCategory
               ? [
                   {
                     $cond: [
                       {
                         $regexMatch: {
-                          input: {
-                            $ifNull: ["$cityNameLower", ""],
-                          },
-                          regex: new RegExp(escape(detectedCity), "i"),
+                          input: "$categoryNameLower",
+                          regex: categoryRegex,
                         },
                       },
-                      200,
+                      600,
                       0,
                     ],
                   },
                 ]
               : []),
 
-            // Topic matched only in description/searchText, not name/category (-50)
+            // Category name exactly matches normalized full query (+100 bonus)
             {
-              $cond: [
-                {
-                  $and: [
-                    { $gt: ["$topicMatchCount", 0] },
-                    {
-                      $eq: [
-                        {
-                          $size: {
-                            $filter: {
-                              input: topicKeywords,
-                              as: "kw",
-                              cond: {
-                                $regexMatch: {
-                                  input: "$businessNameLower",
-                                  regex: "$$kw",
-                                },
-                              },
-                            },
-                          },
-                        },
-                        0,
-                      ],
-                    },
-                    {
-                      $eq: [
-                        {
-                          $size: {
-                            $filter: {
-                              input: topicKeywords,
-                              as: "kw",
-                              cond: {
-                                $regexMatch: {
-                                  input: "$categoryNameLower",
-                                  regex: "$$kw",
-                                },
-                              },
-                            },
-                          },
-                        },
-                        0,
-                      ],
-                    },
-                  ],
-                },
-                -50,
-                0,
-              ],
+              $cond: [{ $eq: ["$categoryNameLower", normalizedQuery] }, 100, 0],
             },
+
+            // ── BUSINESS NAME SIGNALS ─────────────────────────────────────
+
+            // Business name contains a category keyword (+300)
+            ...(categoryRegex
+              ? [
+                  {
+                    $cond: [
+                      {
+                        $regexMatch: {
+                          input: "$businessNameLower",
+                          regex: categoryRegex,
+                        },
+                      },
+                      300,
+                      0,
+                    ],
+                  },
+                ]
+              : []),
+
+            // Business name contains a topic keyword — keyword mode only (+300)
+            ...(topicRegex
+              ? [
+                  {
+                    $cond: [
+                      {
+                        $regexMatch: {
+                          input: "$businessNameLower",
+                          regex: topicRegex,
+                        },
+                      },
+                      300,
+                      0,
+                    ],
+                  },
+                ]
+              : []),
+
+            // Business name starts with first keyword (+50)
+            ...(topicRegex && escapedTopics.length
+              ? [
+                  {
+                    $cond: [
+                      {
+                        $regexMatch: {
+                          input: "$businessNameLower",
+                          regex: `^${escapedTopics[0]}`,
+                        },
+                      },
+                      50,
+                      0,
+                    ],
+                  },
+                ]
+              : []),
+
+            // Business name starts with first category keyword (+50)
+            ...(categoryRegex && escapedCategoryKws.length
+              ? [
+                  {
+                    $cond: [
+                      {
+                        $regexMatch: {
+                          input: "$businessNameLower",
+                          regex: `^${escapedCategoryKws[0]}`,
+                        },
+                      },
+                      50,
+                      0,
+                    ],
+                  },
+                ]
+              : []),
+
+            // ── DESCRIPTION / SEARCHTEXT SIGNALS ─────────────────────────
+
+            // Per category-keyword hit in searchText (+20 each, up to 5 keywords)
+            ...(detectedCategory && categoryKeywords.length
+              ? [
+                  {
+                    $multiply: [
+                      {
+                        $min: [
+                          {
+                            $size: {
+                              $filter: {
+                                input: categoryKeywords.slice(0, 10), // cap iterations
+                                as: "kw",
+                                cond: {
+                                  $regexMatch: {
+                                    input: "$searchTextLower",
+                                    regex: "$$kw",
+                                  },
+                                },
+                              },
+                            },
+                          },
+                          5, // cap bonus at 5 matched keywords
+                        ],
+                      },
+                      20,
+                    ],
+                  },
+                ]
+              : []),
+
+            // Per topic-keyword hit in searchText — keyword mode (+20 each)
+            ...(!detectedCategory && topicKeywords.length
+              ? [
+                  {
+                    $multiply: [
+                      {
+                        $size: {
+                          $filter: {
+                            input: topicKeywords,
+                            as: "kw",
+                            cond: {
+                              $regexMatch: {
+                                input: "$searchTextLower",
+                                regex: "$$kw",
+                              },
+                            },
+                          },
+                        },
+                      },
+                      20,
+                    ],
+                  },
+                ]
+              : []),
           ],
         },
       },
     },
 
-    // ─── Stage 7: Filter low-confidence results ───────────────────────────
-    // Raised from 40 → 100 so city-only matches can never pass
-    { $match: { score: { $gte: 100 } } },
+    // ── Stage 8: Drop zero-score results ──────────────────────────────────
+    { $match: { score: { $gt: 0 } } },
 
-    // ─── Stage 8: Sort ────────────────────────────────────────────────────
+    // ── Stage 9: Sort by score desc, then newest first ────────────────────
     { $sort: { score: -1, createdAt: -1 } },
 
-    // ─── Stage 9: Paginate ────────────────────────────────────────────────
+    // ── Stage 10: Paginate with $facet ────────────────────────────────────
     {
       $facet: {
         metadata: [{ $count: "total" }],
         results: [
           { $skip: skip },
           { $limit: limit },
-          {
-            $lookup: {
-              from: "cities",
-              localField: "city",
-              foreignField: "_id",
-              as: "cityDoc",
-            },
-          },
-          { $unwind: { path: "$cityDoc", preserveNullAndEmptyArrays: true } },
           {
             $project: {
               businessName: 1,
@@ -288,8 +325,8 @@ export const searchListingsService = async (query, page = 1, limit = 20) => {
 
   const [data] = await BusinessListing.aggregate(pipeline);
 
-  const results = data.results || [];
-  const total = data.metadata[0]?.total || 0;
+  const results = data?.results || [];
+  const total = data?.metadata?.[0]?.total || 0;
   const totalPages = Math.ceil(total / limit);
 
   return {

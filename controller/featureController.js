@@ -242,12 +242,12 @@ export const getCategoryFeatures = async (req, res) => {
       category: categoryId,
       $or: [{ isDeleted: false }, { isDeleted: { $exists: false } }],
     })
-      .populate("category", "name slug iconSvg isActive seo")
+      .populate("category", "name slug iconSvg isActive seo tags")
       .populate("facilities services courses payment_modes");
 
     if (!categoryFeature) {
       const category = await Category.findById(categoryId).select(
-        "name slug iconSvg isActive seo",
+        "name slug iconSvg isActive seo tags",
       );
 
       if (!category) {

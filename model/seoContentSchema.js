@@ -1,5 +1,17 @@
 import mongoose from "mongoose";
 
+const faqSchema = new mongoose.Schema({
+  question: {
+    type: String,
+    required: true,
+  },
+
+  answer: {
+    type: String,
+    required: true,
+  },
+});
+
 const seoContentSchema = new mongoose.Schema(
   {
     category_id: {
@@ -8,29 +20,48 @@ const seoContentSchema = new mongoose.Schema(
       required: true,
     },
 
-    city_ids: [
-      {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "City",
-      },
-    ], // empty array = default for all cities
+    city_id: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "City",
+      required: true,
+    },
 
-    title: String,
-
-    content: {
+    // SECTION 1
+    city_content: {
       type: String,
       required: true,
     },
 
-    meta_title: String,
-    meta_description: String,
+    // SECTION 2
+    seo_content: {
+      type: String,
+      default: "",
+    },
 
-    isActive: { type: Boolean, default: true },
-    isDeleted: { type: Boolean, default: false },
+    // SECTION 3
+    pricing_content: {
+      type: String,
+      default: "",
+    },
+
+    // SECTION 4
+    faq_content: [faqSchema],
+
+    isDeleted: {
+      type: Boolean,
+      default: false,
+    },
   },
-  { timestamps: true },
+  {
+    timestamps: true,
+  },
 );
 
-// Prevent duplicate entries
+seoContentSchema.index(
+  { category_id: 1, city_id: 1 },
+  {
+    unique: true,
+  },
+);
 
 export default mongoose.model("SeoContent", seoContentSchema);
