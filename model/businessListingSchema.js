@@ -63,11 +63,14 @@ const businessListingSchema = new mongoose.Schema(
     websiteLink: { type: String, default: null },
     videoLink: { type: String, default: null },
     socialLinks: {
-      facebook: { type: String, default: null },
-      instagram: { type: String, default: null },
-      twitter: { type: String, default: null },
-      linkedin: { type: String, default: null },
-      youtube: { type: String, default: null },
+      type: mongoose.Schema.Types.Mixed,
+      default: {
+        facebook: null,
+        instagram: null,
+        twitter: null,
+        linkedin: null,
+        youtube: null,
+      },
     },
     /* =========================
        STEP 3 – CONTACT DETAILS
@@ -169,5 +172,22 @@ businessListingSchema.index({ businessName: 1, isDeleted: 1 }); // for duplicate
 businessListingSchema.index({ category: 1, subCategory: 1 });
 businessListingSchema.index({ city: 1 });
 businessListingSchema.index({ isDeleted: 1, isPublished: 1, isVerified: 1 });
+
+businessListingSchema.pre("save", function (next) {
+  if (Array.isArray(this.socialLinks)) {
+    this.socialLinks = this.socialLinks[0] || {};
+  }
+  next();
+});
+
+businessListingSchema.pre(["update", "updateOne", "updateMany", "findOneAndUpdate", "findByIdAndUpdate"], function (next) {
+  const update = this.getUpdate();
+  if (update && update.$set && Array.isArray(update.$set.socialLinks)) {
+    update.$set.socialLinks = update.$set.socialLinks[0] || {};
+  } else if (update && Array.isArray(update.socialLinks)) {
+    update.socialLinks = update.socialLinks[0] || {};
+  }
+  next();
+});
 
 export default mongoose.model("BusinessListing", businessListingSchema);

@@ -90,10 +90,13 @@ const userSchema = new mongoose.Schema(
     ],
 
     socialLinks: {
-      facebook: { type: String, default: "" },
-      linkedin: { type: String, default: "" },
-      telegram: { type: String, default: "" },
-      instagram: { type: String, default: "" },
+      type: mongoose.Schema.Types.Mixed,
+      default: {
+        facebook: "",
+        linkedin: "",
+        telegram: "",
+        instagram: "",
+      },
     },
 
     refreshTokenEncrypted: {
@@ -183,5 +186,23 @@ const userSchema = new mongoose.Schema(
     collection: "users",
   },
 );
+
+userSchema.pre("save", function (next) {
+  if (Array.isArray(this.socialLinks)) {
+    this.socialLinks = this.socialLinks[0] || {};
+  }
+  next();
+});
+
+// Also handle update operations
+userSchema.pre(["update", "updateOne", "updateMany", "findOneAndUpdate", "findByIdAndUpdate"], function (next) {
+  const update = this.getUpdate();
+  if (update && update.$set && Array.isArray(update.$set.socialLinks)) {
+    update.$set.socialLinks = update.$set.socialLinks[0] || {};
+  } else if (update && Array.isArray(update.socialLinks)) {
+    update.socialLinks = update.socialLinks[0] || {};
+  }
+  next();
+});
 
 export default mongoose.model("User", userSchema);
