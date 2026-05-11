@@ -40,6 +40,8 @@ const additionalFieldSchema = new mongoose.Schema(
       },
     },
 
+    is_inside_form: { type: Boolean, default: false, index: true },
+
     // ✅ BOOLEAN LOCATIONS
     is_logo: { type: Boolean, default: false, index: true },
     is_quickinfo: { type: Boolean, default: false, index: true },

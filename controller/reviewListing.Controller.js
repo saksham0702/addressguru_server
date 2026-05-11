@@ -69,37 +69,37 @@ export const submitReview = async (req, res) => {
     await syncRating(listing._id, listing.constructor);
  
     // ── Send mail notifications ───────────────────────────────────────────
-    try {
-      // 1. Notify Listing Owner
-      const owner = listing.createdBy
-        ? await User.findById(listing.createdBy).select("email name").lean()
-        : null;
-      const ownerEmail = listing.email || owner?.email;
-      const ownerName  = listing.contactPersonName || owner?.name || listing.businessName;
+    // try {
+    //   // 1. Notify Listing Owner
+    //   const owner = listing.createdBy
+    //     ? await User.findById(listing.createdBy).select("email name").lean()
+    //     : null;
+    //   const ownerEmail = listing.email || owner?.email;
+    //   const ownerName  = listing.contactPersonName || owner?.name || listing.businessName;
  
-      if (ownerEmail) {
-        await sendReviewReceivedMail(
-          ownerEmail,
-          ownerName,
-          listing.businessName || listing.slug,
-          listing.slug,
-          { fullName, rating, reviewText }
-        );
-        console.log(`✅ Review received mail sent to owner: ${ownerEmail}`);
-      }
+    //   if (ownerEmail) {
+    //     await sendReviewReceivedMail(
+    //       ownerEmail,
+    //       ownerName,
+    //       listing.businessName || listing.slug,
+    //       listing.slug,
+    //       { fullName, rating, reviewText }
+    //     );
+    //     console.log(`✅ Review received mail sent to owner: ${ownerEmail}`);
+    //   }
  
-      // 2. Notify Reviewer (Confirmation)
-      await sendReviewConfirmationMail(
-        email,
-        fullName,
-        listing.businessName || listing.slug,
-        listing.slug,
-        rating
-      );
-      console.log(`✅ Review confirmation mail sent to reviewer: ${email}`);
-    } catch (mailErr) {
-      console.warn("❌ Review mail failed:", mailErr.message);
-    }
+    //   // 2. Notify Reviewer (Confirmation)
+    //   await sendReviewConfirmationMail(
+    //     email,
+    //     fullName,
+    //     listing.businessName || listing.slug,
+    //     listing.slug,
+    //     rating
+    //   );
+    //   console.log(`✅ Review confirmation mail sent to reviewer: ${email}`);
+    // } catch (mailErr) {
+    //   console.warn("❌ Review mail failed:", mailErr.message);
+    // }
 
     return res.status(201).json({
       success: true,

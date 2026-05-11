@@ -13,6 +13,7 @@ const CREATABLE_FIELDS = [
   "is_quickinfo",
   "is_description",
   "is_additional",
+  "is_inside_form",
   "checkbox_items",
   "dropdown_items",
   "is_required",
@@ -26,6 +27,7 @@ const UPDATABLE_FIELDS = [
   "is_quickinfo",
   "is_description",
   "is_additional",
+  "is_inside_form",
   "checkbox_items",
   "dropdown_items",
   "is_required",
@@ -97,8 +99,8 @@ export const createField = async (req, res) => {
 // get fields by category
 export const getFields = async (req, res) => {
   try {
-    const { category_id, subcategory_id, is_active } = req.query;
-
+    const { category_id, subcategory_id, is_active, is_inside_form } =
+      req.query;
     if (!category_id) {
       return errorData(res, 400, false, "category_id is required", null, null);
     }
@@ -108,6 +110,14 @@ export const getFields = async (req, res) => {
       subcategory_id: subcategory_id || null,
       is_deleted: false,
     };
+
+    if (is_active !== undefined) {
+      filter.is_active = is_active === "true";
+    }
+
+    if (is_inside_form !== undefined) {
+      filter.is_inside_form = is_inside_form === "true";
+    }
 
     if (is_active !== undefined) {
       filter.is_active = is_active === "true";
@@ -124,9 +134,17 @@ export const getFields = async (req, res) => {
     }
   } catch (error) {
     console.warn("Get fields error:", error);
-    return errorData(res, 500, false, "Internal server error", null, error.message);
+    return errorData(
+      res,
+      500,
+      false,
+      "Internal server error",
+      null,
+      error.message,
+    );
   }
 };
+
 // get single field by id
 export const getField = async (req, res) => {
   try {
