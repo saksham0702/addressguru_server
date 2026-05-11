@@ -205,7 +205,6 @@ export const createListing = async (req, res) => {
       featureNames,
     });
 
-
     // 5. Save again
     await listing.save();
 
@@ -474,8 +473,6 @@ export const updateListingStep = async (req, res) => {
       featureNames,
     });
 
-
-
     await listing.save();
 
     // ── Send submitted mail when step 6 is completed ──
@@ -597,7 +594,7 @@ export const upsertAdditionalFields = async (req, res) => {
 export const getFeaturesAndAdditionalFieldsByCategory = async (req, res) => {
   try {
     const { category_id } = req.params;
-    const { subcategory_id } = req.query;
+    const { subcategory_id, is_inside_form } = req.query;
 
     if (!category_id) {
       return errorData(res, 400, false, "Category id is required");
@@ -612,6 +609,9 @@ export const getFeaturesAndAdditionalFieldsByCategory = async (req, res) => {
       category_id,
       is_deleted: false,
       ...(subcategory_id && { subcategory_id }),
+      ...(is_inside_form !== undefined && {
+        is_inside_form: is_inside_form === "true" ? true : { $ne: true }, // ✅ this is the fix
+      }),
     };
 
     const [features, additionalFields, paymentModes] = await Promise.all([
@@ -621,7 +621,7 @@ export const getFeaturesAndAdditionalFieldsByCategory = async (req, res) => {
         .populate("services", "name iconSvg _id")
         .populate("courses", "name iconSvg _id"),
 
-      AdditionalField.find(additionalFieldFilter).sort({ display_order: 1 }),
+      AdditionalField.find(additionalFieldFilter).sort({ createdAt: 1 }),
 
       // ✅ FIXED: isDeleted (camelCase) to match Feature schema
       Feature.find({

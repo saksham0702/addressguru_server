@@ -15,6 +15,7 @@ import {
   getClaimStatus,
   adminListClaims,
   adminReviewClaim,
+  getMyClaims,
 } from "../controller/claimListing.Controller.js";
 
 import {
@@ -22,6 +23,7 @@ import {
   submitReport,
   adminListReports,
   adminReviewReport,
+  getMyReports,
 } from "../controller/reportListing.Controller.js";
 
 import {
@@ -75,6 +77,9 @@ router.post("/:type/:slug/claim", submitClaim);
 // Get current claim status for a listing
 router.get("/:type/:slug/claim", getClaimStatus);
 
+// My claims (dashboard)
+router.get("/my-claims", authenticate, getMyClaims);
+
 // Admin: list all claims
 router.get("/admin/claims", adminListClaims);
 
@@ -90,6 +95,9 @@ router.get("/report-reasons", getReportReasons);
 
 // Submit a report
 router.post("/:type/:slug/report", submitReport);
+
+// My reports (dashboard)
+router.get("/my-reports", authenticate, getMyReports);
 
 // Admin: list all reports
 router.get("/admin/reports", adminListReports);
