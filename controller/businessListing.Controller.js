@@ -1371,12 +1371,12 @@ export const updateListingStatus = async (req, res) => {
     // ── Send mail & notification ────────────────────────────────────────────
     if (status !== "unapproved") {
       try {
-        await sendApprovedAndRejectedListingMail(
-          listing.email,
-          listing.contactPersonName || listing.businessName,
-          status,
-          status === "rejected" ? rejectionReason.trim() : null,
-        );
+        // await sendApprovedAndRejectedListingMail(
+        //   listing.email,
+        //   listing.contactPersonName || listing.businessName,
+        //   status,
+        //   status === "rejected" ? rejectionReason.trim() : null,
+        // );
         console.log(`✅ Mail sent to ${listing.email} for status: ${status}`);
 
         if (listing.createdBy) {
