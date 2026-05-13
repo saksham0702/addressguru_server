@@ -20,7 +20,6 @@ const claimBusinessSchema = new mongoose.Schema(
       required: true,
       index: true,
     },
-
     // ─── Claimant Info ────────────────────────────────────────────────────
     claimedBy: {
       type: mongoose.Schema.Types.ObjectId,
@@ -43,6 +42,10 @@ const claimBusinessSchema = new mongoose.Schema(
     mobileNumber: {
       type: Number,
       required: [true, "Mobile number is required"],
+    },
+    idProofImage: {
+      type: String,
+      required: [true, "ID proof image is required"],
     },
     reasonForClaim: {
       type: String,
