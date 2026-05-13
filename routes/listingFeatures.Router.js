@@ -34,6 +34,7 @@ import {
   adminReviewAction,
   deleteReview,
 } from "../controller/reviewListing.Controller.js";
+import upload from "../middleware/multerConfig.js";
 
 const router = express.Router();
 
@@ -72,8 +73,15 @@ router.patch("/enquiries/:enquiryId", updateEnquiryStatus);
 // ════════════════════════════════════════════════════════════════
 
 // Submit a claim
-router.post("/:type/:slug/claim", submitClaim);
-
+router.post(
+  "/:type/:slug/claim",
+  (req, res, next) => {
+    req._uploadFolder = "claims"; // custom folder name
+    next();
+  },
+  upload.single("idProofImage"), // 👈 important (field name must match frontend)
+  submitClaim,
+);
 // Get current claim status for a listing
 router.get("/:type/:slug/claim", getClaimStatus);
 

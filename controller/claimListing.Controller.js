@@ -18,27 +18,42 @@ export const submitClaim = async (req, res) => {
     const { fullName, email, countryCode, mobileNumber, reasonForClaim } =
       req.body;
 
-    if (!fullName || !email || !mobileNumber || !reasonForClaim)
-      return res
-        .status(422)
-        .json({ success: false, message: "All fields are required" });
+    if (!fullName || !email || !mobileNumber || !reasonForClaim) {
+      return res.status(422).json({
+        success: false,
+        message: "All fields are required",
+      });
+    }
+
+    // ✅ Handle uploaded file
+    const idProofImage = req.file?.path;
+    if (!idProofImage) {
+      return res.status(422).json({
+        success: false,
+        message: "ID proof image is required",
+      });
+    }
 
     const { listing, modelName } = await resolveListing(slug, type);
 
-    if (listing.isClaimed)
-      return res
-        .status(400)
-        .json({ success: false, message: "This listing is already claimed." });
+    if (listing.isClaimed) {
+      return res.status(400).json({
+        success: false,
+        message: "This listing is already claimed.",
+      });
+    }
 
     const existing = await ClaimBusiness.findOne({
       listingId: listing._id,
       status: "pending",
     });
-    if (existing)
+
+    if (existing) {
       return res.status(400).json({
         success: false,
         message: "A claim for this listing is already under review.",
       });
+    }
 
     const claim = await ClaimBusiness.create({
       listingId: listing._id,
@@ -47,42 +62,20 @@ export const submitClaim = async (req, res) => {
       claimedBy: req.user?._id,
       fullName,
       email,
-      countryCode: countryCode || 971,
+      countryCode: countryCode || 91,
       mobileNumber,
+      idProofImage, // ✅ SAVE FILE PATH HERE
       reasonForClaim,
       ipAddress: req.ip,
       userAgent: req.headers["user-agent"],
     });
 
-    // ── Send confirmation mail to claimant ────────────────────────────────
-    // try {
-    //   await sendClaimSubmittedMail(
-    //     email,
-    //     { fullName, email, countryCode, mobileNumber, reasonForClaim },
-    //     listing.businessName || listing.slug,
-    //   );
-    //   console.log(`✅ Claim mail sent to ${email}`);
-    // } catch (mailErr) {
-    //   console.warn("❌ Claim mail failed:", mailErr.message);
-    // }
-
-    // ── Notify admin about the new claim ──────────────────────────────────
-    // try {
-    //   await sendClaimReceivedAdminMail(
-    //     { fullName, email, countryCode, mobileNumber, reasonForClaim },
-    //     listing.businessName || listing.slug,
-    //     listing.slug,
-    //   );
-    //   console.log(`✅ Claim admin alert sent for: ${listing.slug}`);
-    // } catch (adminMailErr) {
-    //   console.warn("❌ Claim admin alert failed:", adminMailErr.message);
-    // }
-
-    // ── Notify Listing Owner about the claim ──────────────────────────────
+    // Owner mail logic (unchanged)
     try {
       const owner = listing.createdBy
         ? await User.findById(listing.createdBy).select("email name").lean()
         : null;
+
       const ownerEmail = listing.email || owner?.email;
       const ownerName =
         listing.contactPersonName || owner?.name || listing.businessName;
@@ -95,10 +88,9 @@ export const submitClaim = async (req, res) => {
           fullName,
           reasonForClaim,
         );
-        console.log(`✅ Claim notice sent to owner: ${ownerEmail}`);
       }
-    } catch (ownerMailErr) {
-      console.warn("❌ Claim owner notice failed:", ownerMailErr.message);
+    } catch (err) {
+      console.warn("Owner mail failed:", err.message);
     }
 
     return res.status(201).json({
@@ -107,15 +99,17 @@ export const submitClaim = async (req, res) => {
       data: { id: claim._id },
     });
   } catch (err) {
-    if (err.code === 11000)
-      return res
-        .status(400)
-        .json({ success: false, message: "A pending claim already exists." });
-    if (err.status)
-      return res
-        .status(err.status)
-        .json({ success: false, message: err.message });
-    return res.status(500).json({ success: false, message: "Server error" });
+    if (err.code === 11000) {
+      return res.status(400).json({
+        success: false,
+        message: "A pending claim already exists.",
+      });
+    }
+
+    return res.status(500).json({
+      success: false,
+      message: "Server error",
+    });
   }
 };
 
