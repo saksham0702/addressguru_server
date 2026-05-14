@@ -1,8 +1,7 @@
 import Review             from "../model/reviewListingSchema.js";
 import User               from "../model/userSchema.js";
 import ListingStats       from "../model/listingStatsSchema.js";
-import { resolveListing, MODEL_MAP } from "../utils/resolveListing.js";
-import { sendReviewReceivedMail, sendReviewConfirmationMail } from "../utils/sendMail.js";
+import { resolveListing } from "../utils/resolveListing.js";
 import { successData, errorData } from "../services/helper.js";
 
 // ─── Helper: recalculate & save rating on listing ─────────────────────────────
@@ -11,10 +10,12 @@ async function syncRating(listingId, ListingModel) {
     { $match: { listingId, status: "approved", isDeleted: false } },
     { $group: { _id: "$listingId", avg: { $avg: "$rating" }, count: { $sum: 1 } } },
   ]);
+
   const { avg = 0, count = 0 } = result[0] || {};
+
   await ListingModel.findByIdAndUpdate(listingId, {
     "rating.average": Math.round(avg * 10) / 10,
-    "rating.count":   count,
+    "rating.count": count,
   });
 }
 
@@ -24,99 +25,118 @@ export const submitReview = async (req, res) => {
     const { type, slug } = req.params;
     const { fullName, email, rating, reviewText } = req.body;
 
-    if (!fullName || !email || !rating)
-      return res.status(422).json({ success: false, message: "fullName, email and rating are required" });
-    if (rating < 1 || rating > 5)
-      return res.status(422).json({ success: false, message: "Rating must be between 1 and 5" });
+    // ── Basic validation ───────────────────────────────────────────────────
+    if (!fullName || !email || !rating) {
+      return res.status(422).json({
+        success: false,
+        message: "fullName, email and rating are required",
+      });
+    }
 
+    if (rating < 1 || rating > 5) {
+      return res.status(422).json({
+        success: false,
+        message: "Rating must be between 1 and 5",
+      });
+    }
+
+    // ── Resolve listing ────────────────────────────────────────────────────
     const { listing, modelName } = await resolveListing(slug, type);
 
-    // One review per email per listing
-    const existing = await Review.findOne({ listingId: listing._id, email });
-    if (existing)
-      return res.status(400).json({ success: false, message: "You have already reviewed this listing." });
+    // ── 🔥 CHECK: User must exist ──────────────────────────────────────────
+    const existingUser = await User.findOne({ email })
+      .select("_id name email")
+      .lean();
 
-    const review = await Review.create({
-      listingId:    listing._id,
-      listingModel: modelName,
-      listingSlug:  listing.slug,
-      reviewer:     req.user?._id,
-      fullName,
+    if (!existingUser) {
+      return res.status(401).json({
+        success: false,
+        message: "Please register first to submit a review.",
+      });
+    }
+
+    // ── Check duplicate review (per email per listing) ─────────────────────
+    const existingReview = await Review.findOne({
+      listingId: listing._id,
       email,
-      rating:       +rating,
-      reviewText,
-      ipAddress:    req.ip,
-      userAgent:    req.headers["user-agent"],
     });
 
-    // Record the event in ListingStats
-    await ListingStats.create({
+    if (existingReview) {
+      return res.status(400).json({
+        success: false,
+        message: "You have already reviewed this listing.",
+      });
+    }
+
+    // ── Create review ──────────────────────────────────────────────────────
+    const review = await Review.create({
       listingId: listing._id,
       listingModel: modelName,
-      type: "review",
-      userId: req.user?._id || null,
+      listingSlug: listing.slug,
+
+      reviewer: existingUser._id, // ✅ enforce real user
+      fullName: existingUser.name || fullName, // ✅ prevent fake name override
+      email,
+
+      rating: +rating,
+      reviewText,
+
       ipAddress: req.ip,
       userAgent: req.headers["user-agent"],
     });
 
-    // Increment user stats
+    // ── Record stats ───────────────────────────────────────────────────────
+    await ListingStats.create({
+      listingId: listing._id,
+      listingModel: modelName,
+      type: "review",
+      userId: existingUser._id, // ✅ always real user now
+      ipAddress: req.ip,
+      userAgent: req.headers["user-agent"],
+    });
+
+    // ── Increment listing owner's stats ────────────────────────────────────
     if (listing.createdBy) {
       await User.findByIdAndUpdate(listing.createdBy, {
         $inc: { statistics_totalReviews: 1 },
       });
     }
 
+    // ── Update rating ──────────────────────────────────────────────────────
     await syncRating(listing._id, listing.constructor);
- 
-    // ── Send mail notifications ───────────────────────────────────────────
-    // try {
-    //   // 1. Notify Listing Owner
-    //   const owner = listing.createdBy
-    //     ? await User.findById(listing.createdBy).select("email name").lean()
-    //     : null;
-    //   const ownerEmail = listing.email || owner?.email;
-    //   const ownerName  = listing.contactPersonName || owner?.name || listing.businessName;
- 
-    //   if (ownerEmail) {
-    //     await sendReviewReceivedMail(
-    //       ownerEmail,
-    //       ownerName,
-    //       listing.businessName || listing.slug,
-    //       listing.slug,
-    //       { fullName, rating, reviewText }
-    //     );
-    //     console.log(`✅ Review received mail sent to owner: ${ownerEmail}`);
-    //   }
- 
-    //   // 2. Notify Reviewer (Confirmation)
-    //   await sendReviewConfirmationMail(
-    //     email,
-    //     fullName,
-    //     listing.businessName || listing.slug,
-    //     listing.slug,
-    //     rating
-    //   );
-    //   console.log(`✅ Review confirmation mail sent to reviewer: ${email}`);
-    // } catch (mailErr) {
-    //   console.warn("❌ Review mail failed:", mailErr.message);
-    // }
 
+    // ── Response ───────────────────────────────────────────────────────────
     return res.status(201).json({
       success: true,
       message: "Thank you for your review!",
       data: {
-        id:         review._id,
-        rating:     review.rating,
-        fullName:   review.fullName,
+        id: review._id,
+        rating: review.rating,
+        fullName: review.fullName,
         reviewText: review.reviewText,
-        createdAt:  review.createdAt,
+        createdAt: review.createdAt,
       },
     });
+
   } catch (err) {
-    if (err.code === 11000)
-      return res.status(400).json({ success: false, message: "You have already reviewed this listing." });
-    if (err.status) return res.status(err.status).json({ success: false, message: err.message });
-    return res.status(500).json({ success: false, message: "Server error" });
+    if (err.code === 11000) {
+      return res.status(400).json({
+        success: false,
+        message: "You have already reviewed this listing.",
+      });
+    }
+
+    if (err.status) {
+      return res.status(err.status).json({
+        success: false,
+        message: err.message,
+      });
+    }
+
+    return res.status(500).json({
+      success: false,
+      message: "Server error",
+    });
   }
 };
 

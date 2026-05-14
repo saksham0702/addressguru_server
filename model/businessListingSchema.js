@@ -114,10 +114,13 @@ const businessListingSchema = new mongoose.Schema(
        STEP 6 – PLAN & PUBLISH
     ========================== */
     plan: { type: mongoose.Schema.Types.ObjectId, ref: "Plan" },
+    paymentStatus: {
+      type: String,
+      enum: ["pending", "paid", "failed"],
+      default: "pending",
+    },
 
-    /* =========================
-       STATUS & FLOW
-    ========================== */
+    /* STATUS & FLOW */
     stepCompleted: { type: Number, default: 1 },
     isVerified: { type: Boolean, default: false },
     isPublished: { type: Boolean, default: false },
