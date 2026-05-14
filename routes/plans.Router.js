@@ -30,18 +30,17 @@ router.get("/:id", getPlanById);
 router.post("/upgrade", authenticate, upgradePlan);
 
 // ─── ADMIN ROUTES ─────────────────────────────────────────────────────────────
-// Add authenticate + isAdmin middleware when your role system is ready.
-// For now authenticate is used as a guard so random users can't call these.
+
 
 // POST  /plans/seed             → one-time seed of 4 default UAE plans
-router.post("/seed"/*, isAdmin */, seedDefaultPlans);
+router.post("/seed",seedDefaultPlans);
 
 // POST  /plans                  → create a new plan
-router.post("/",    /*, isAdmin */ createPlan);
+router.post("/",    authenticate, createPlan);
 
 // PUT   /plans/:id              → update a plan
-router.put("/:id", /*, isAdmin */ updatePlan); 
+router.put("/:id", authenticate, updatePlan); 
 // DELETE /plans/:id             → soft-delete a plan
-router.delete("/:id", /*, isAdmin */ deletePlan);
+router.delete("/:id", authenticate, deletePlan);
 
 export default router;

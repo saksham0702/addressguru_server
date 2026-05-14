@@ -33,9 +33,8 @@ const planSchema = new mongoose.Schema(
       // controls left-to-right ordering on frontend
     },
 
-    /* =========================
-       PRICING (AED — UAE Dirham)
-    ========================== */
+    /* PRICING (AED — UAE Dirham) */
+    
     currency: {
       type: String,
       default: "AED",

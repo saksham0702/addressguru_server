@@ -4,6 +4,8 @@ import MarketplaceListing from "../model/marketplaceListingSchema.js";
 import PropertyListing from "../model/propertiesListingSchema.js";
 import JobListing from "../model/jobsListingSchema.js";
 import { successData, errorData } from "../services/helper.js";
+import { createPaymentRecord } from "../modules/payment/payment.service.js";
+
 import slugify from "slugify";
 
 // ─── GET ALL ACTIVE PLANS (public — for frontend listing page) ────────────────
@@ -357,45 +359,41 @@ export const seedDefaultPlans = async (req, res) => {
 };
 
 // ─── UPGRADE PLAN (simulated payment endpoint) ────────────────────────────────
+
 export const upgradePlan = async (req, res) => {
   try {
-    const { type, product_id, plan_id, buyer_name, email, phone } = req.body;
+    const { type, product_id, plan_id } = req.body;
 
     if (!type || !product_id || !plan_id) {
-      return errorData(res, 400, false, "Missing required fields for upgrade");
+      return errorData(res, 400, false, "Missing required fields");
     }
 
     const plan = await Plan.findById(plan_id);
     if (!plan) return errorData(res, 404, false, "Plan not found");
 
-    let ModelToUpdate;
-    if (type === "BUSINESS") ModelToUpdate = BusinessListing;
-    else if (type === "MARKETPLACE") ModelToUpdate = MarketplaceListing;
-    else if (type === "PROPERTIES") ModelToUpdate = PropertyListing;
-    else if (type === "JOBS") ModelToUpdate = JobListing;
-    else return errorData(res, 400, false, "Invalid listing type");
+    let Model;
+    if (type === "BUSINESS") Model = BusinessListing;
+    else if (type === "MARKETPLACE") Model = MarketplaceListing;
+    else if (type === "PROPERTIES") Model = PropertyListing;
+    else if (type === "JOBS") Model = JobListing;
 
-    const listing = await ModelToUpdate.findById(product_id);
+    const listing = await Model.findById(product_id);
     if (!listing) return errorData(res, 404, false, "Listing not found");
 
-    listing.plan = plan_id;
-    // Simulate successful payment action mapping
-    await listing.save();
+    // 🔥 CREATE PAYMENT INSTEAD OF DIRECT UPGRADE
+    const payment = await createPaymentRecord({
+      userId: req.user.id,
+      listingType: type,
+      listingId: listing._id,
+      plan,
+    });
 
-    // Mock an external payment response for the UI frontend
-    // If the frontend relies on `payUrl` as a return string in `data.results` (seen in CommonPaymentForm)
-    // we can return a dummy success marker URL or null. The UI checks `data?.results`
-    // Alternatively, returning a dummy payURL or a success flag
-    const dummyPayUrl = "SUCCESS_UPGRADE";
-
-    return res.status(200).json({
-      status: true,
-      message: "Plan upgraded successfully",
-      results: dummyPayUrl,
-      data: { plan: plan, upgraded: plan.name }
+    return successData(res, 200, true, "Payment initiated for upgrade", {
+      payment_id: payment._id,
+      amount: plan.price,
     });
   } catch (error) {
-    console.warn("Upgrade plan error:", error);
-    return errorData(res, 500, false, "Internal server error");
+    console.log(error);
+    return errorData(res, 500, false, "Upgrade failed");
   }
 };
