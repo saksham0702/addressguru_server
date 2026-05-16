@@ -3,14 +3,20 @@ import mongoose from "mongoose";
 
 const planSchema = new mongoose.Schema(
   {
-    /* =========================
+    /*
        IDENTIFICATION
-    ========================== */
+ */
     name: {
       type: String,
       required: true,
       trim: true,
       // e.g. "Free Plan", "Starter Plan", "Growth Plan", "Featured Plan"
+    },
+
+    planType: {
+      type: String,
+      enum: ["business", "marketplace", "property", "job"],
+      default: "business",
     },
 
     slug: {
@@ -31,6 +37,16 @@ const planSchema = new mongoose.Schema(
       type: Number,
       default: 0,
       // controls left-to-right ordering on frontend
+    },
+
+    durationInDays: {
+      type: Number,
+      default: 0,
+    },
+
+    planCode: {
+      type: String,
+      required: true,
     },
 
     /* PRICING (AED — UAE Dirham) */

@@ -1,48 +1,161 @@
-// modules/payment/payment.schema.js
-
 import mongoose from "mongoose";
 
 const paymentSchema = new mongoose.Schema(
   {
-    user: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
-
-    listingType: {
-      type: String,
-      enum: ["BUSINESS", "MARKETPLACE", "PROPERTIES", "JOBS"],
-    },
-
-    listingId: {
+    user: {
       type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+      index: true,
     },
 
-    planId: {
+    // PLAN
+
+    plan: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Plan",
+      required: true,
     },
 
-    amount: Number,
-    currency: { type: String, default: "AED" },
+    listing: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "BusinessListing",
+      default: null,
+    },
+
+    planSnapshot: {
+      name: {
+        type: String,
+        default: null,
+      },
+
+      slug: {
+        type: String,
+        default: null,
+      },
+
+      price: {
+        type: Number,
+        default: 0,
+      },
+
+      billingCycle: {
+        type: String,
+        default: null,
+      },
+
+      features: {
+        type: [String],
+        default: [],
+      },
+    },
+
+    // PAYMENT
+
+    amount: {
+      type: Number,
+      required: true,
+    },
+
+    amountInSubunits: {
+      type: Number,
+      required: true,
+    },
+
+    currency: {
+      type: String,
+      default: "AED",
+    },
 
     status: {
       type: String,
-      enum: ["pending", "success", "failed"],
-      default: "pending",
+
+      enum: ["created", "authorized", "captured", "failed", "cancelled"],
+
+      default: "created",
+
+      index: true,
     },
 
-    paymentProvider: {
+    razorpay: {
+      orderId: {
+        type: String,
+        required: true,
+        index: true,
+      },
+
+      paymentId: {
+        type: String,
+        default: null,
+        index: true,
+      },
+
+      signature: {
+        type: String,
+        default: null,
+      },
+
+      method: {
+        type: String,
+        default: null,
+      },
+
+      international: {
+        type: Boolean,
+        default: false,
+      },
+
+      email: {
+        type: String,
+        default: null,
+      },
+
+      contact: {
+        type: String,
+        default: null,
+      },
+    },
+
+    paidAt: {
+      type: Date,
+      default: null,
+    },
+
+    failedAt: {
+      type: Date,
+      default: null,
+    },
+
+    failureReason: {
       type: String,
-      enum: ["RAZORPAY", "STRIPE", "NONE"],
-      default: "NONE",
+      default: null,
     },
 
-    transactionId: String, // from gateway later
+    receipt: {
+      type: String,
+      required: true,
+      unique: true,
+    },
 
-    meta: {
-      type: Object, // raw gateway response later
+    webhookEvent: {
+      type: String,
+      default: null,
+    },
+
+    notes: {
+      type: Map,
+      of: String,
       default: {},
     },
   },
-  { timestamps: true },
+  {
+    timestamps: true,
+  },
 );
+
+paymentSchema.index({
+  user: 1,
+  status: 1,
+});
 
 export default mongoose.model("Payment", paymentSchema);

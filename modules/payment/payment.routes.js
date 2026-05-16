@@ -1,15 +1,43 @@
-// modules/payment/payment.routes.js
-
 import express from "express";
+
 import {
-  initiatePayment,
-  confirmPayment,
-} from "./payment.controller.js";
+  createPayment,
+  verifyPayment,
+  razorpayWebhook,
+} from "./payment.contoller.js";
+
 import { authenticate } from "../../middleware/userAuth.js";
 
 const router = express.Router();
 
-router.post("/initiate", authenticate, initiatePayment);
-router.post("/confirm", authenticate, confirmPayment);
+/*
+|--------------------------------------------------------------------------
+| USER ROUTES
+|--------------------------------------------------------------------------
+*/
+
+router.post("/create-order", authenticate, createPayment);
+
+router.post("/verify-payment", authenticate, verifyPayment);
+
+/*
+|--------------------------------------------------------------------------
+| WEBHOOK
+|--------------------------------------------------------------------------
+|
+| IMPORTANT:
+| Use express.raw ONLY here
+|
+*/
+
+router.post(
+  "/webhook",
+
+  express.raw({
+    type: "application/json",
+  }),
+
+  razorpayWebhook,
+);
 
 export default router;

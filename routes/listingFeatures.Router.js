@@ -7,6 +7,7 @@ import {
   getMyLeads,
   getMyLeadsStats,
   updateEnquiryStatus,
+  getAllBusinessEnquiries
 } from "../controller/enquiryListing.Controller.js";
 import { authenticate } from "../middleware/userAuth.js";
 
@@ -59,6 +60,8 @@ router.post("/:type/:slug/enquiry", sendEnquiry);
 // List enquiries for a listing  (owner / admin)
 router.get("/:type/:slug/enquiries", getEnquiries);
 
+router.get("/enquiries", getAllBusinessEnquiries);
+
 // List all leads for current owner (Dashboard)
 router.get("/my-leads", authenticate, getMyLeads);
 
@@ -68,9 +71,7 @@ router.get("/my-leads/stats", authenticate, getMyLeadsStats);
 // Mark enquiry as read / replied
 router.patch("/enquiries/:enquiryId", updateEnquiryStatus);
 
-// ════════════════════════════════════════════════════════════════
 //  CLAIM BUSINESS  (Listing ownership claim)
-// ════════════════════════════════════════════════════════════════
 
 // Submit a claim
 router.post(

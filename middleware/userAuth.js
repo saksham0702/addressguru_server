@@ -55,4 +55,29 @@ export const optionalAuth = (req, res, next) => {
   next();
 };
 
+// authorizeAdmin
+export const authorizeAdmin = (...allowedRoles) => {
+  return (req, res, next) => {
+    try {
+      const user = req.user;
 
+      if (!user) {
+        return errorData(res, 401, false, "Unauthorized");
+      }
+
+      if (!allowedRoles.includes(user.role)) {
+        return errorData(
+          res,
+          403,
+          false,
+          `Access denied for role: ${user.role}`,
+        );
+      }
+
+      next();
+    } catch (err) {
+      console.warn("Authorization error:", err);
+      return errorData(res, 500, false, "Authorization failed");
+    }
+  };
+};
