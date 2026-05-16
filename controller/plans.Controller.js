@@ -4,9 +4,10 @@ import MarketplaceListing from "../model/marketplaceListingSchema.js";
 import PropertyListing from "../model/propertiesListingSchema.js";
 import JobListing from "../model/jobsListingSchema.js";
 import { successData, errorData } from "../services/helper.js";
-import { createPaymentRecord } from "../modules/payment/payment.service.js";
+// import { createPaymentRecord } from "../modules/payment/payment.service.js";
 
 import slugify from "slugify";
+import { createOrderService } from "../modules/payment/payment.service.js";
 
 // ─── GET ALL ACTIVE PLANS (public — for frontend listing page) ────────────────
 export const getAllPlans = async (req, res) => {
@@ -359,41 +360,94 @@ export const seedDefaultPlans = async (req, res) => {
 };
 
 // ─── UPGRADE PLAN (simulated payment endpoint) ────────────────────────────────
-
 export const upgradePlan = async (req, res) => {
   try {
-    const { type, product_id, plan_id } = req.body;
+    const { type, listing_id, plan_id } = req.body;
 
-    if (!type || !product_id || !plan_id) {
+    if (!type || !listing_id || !plan_id) {
       return errorData(res, 400, false, "Missing required fields");
     }
 
     const plan = await Plan.findById(plan_id);
-    if (!plan) return errorData(res, 404, false, "Plan not found");
+
+    if (!plan) {
+      return errorData(res, 404, false, "Plan not found");
+    }
 
     let Model;
-    if (type === "BUSINESS") Model = BusinessListing;
-    else if (type === "MARKETPLACE") Model = MarketplaceListing;
-    else if (type === "PROPERTIES") Model = PropertyListing;
-    else if (type === "JOBS") Model = JobListing;
 
-    const listing = await Model.findById(product_id);
-    if (!listing) return errorData(res, 404, false, "Listing not found");
+    if (type === "BUSINESS") {
+      Model = BusinessListing;
+    } else if (type === "MARKETPLACE") {
+      Model = MarketplaceListing;
+    } else if (type === "PROPERTIES") {
+      Model = PropertyListing;
+    } else if (type === "JOBS") {
+      Model = JobListing;
+    } else {
+      return errorData(res, 400, false, "Invalid listing type");
+    }
 
-    // 🔥 CREATE PAYMENT INSTEAD OF DIRECT UPGRADE
-    const payment = await createPaymentRecord({
+    const listing = await Model.findById(listing_id);
+
+    if (!listing) {
+      return errorData(res, 404, false, "Listing not found");
+    }
+
+    if (listing.createdBy.toString() !== req.user.id.toString()) {
+      return errorData(res, 403, false, "Unauthorized");
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | FREE PLAN
+    |--------------------------------------------------------------------------
+    */
+
+    if (plan.price === 0) {
+      listing.plan = plan._id;
+
+      listing.isPublished = true;
+
+      listing.publishedAt = new Date();
+
+      await listing.save();
+
+      return successData(res, 200, true, "Plan upgraded successfully", {
+        free_plan: true,
+      });
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | PAID PLAN
+    |--------------------------------------------------------------------------
+    */
+
+    const { order, payment } = await createOrderService({
       userId: req.user.id,
-      listingType: type,
+
+      planId: plan._id,
+
       listingId: listing._id,
-      plan,
     });
 
-    return successData(res, 200, true, "Payment initiated for upgrade", {
+    return successData(res, 200, true, "Payment initiated", {
+      free_plan: false,
+
       payment_id: payment._id,
-      amount: plan.price,
+
+      order_id: order.id,
+
+      amount: order.amount,
+
+      currency: order.currency,
+
+      key: process.env.RAZORPAY_KEY_ID,
     });
   } catch (error) {
     console.log(error);
+
     return errorData(res, 500, false, "Upgrade failed");
   }
 };

@@ -484,18 +484,18 @@ export const updateListingStep = async (req, res) => {
             ? listing.category?.name || ""
             : ""; // category is stored as ID — populate separately if needed
 
-        await sendListingSubmittedMail(
-          listing.email,
-          listing.contactPersonName || listing.businessName,
-          listing.businessName,
-          categoryName,
-          new Date().toLocaleDateString("en-AE", {
-            day: "numeric",
-            month: "long",
-            year: "numeric",
-          }),
-          `https://addressguru.ae/dashboard`,
-        );
+        // await sendListingSubmittedMail(
+        //   listing.email,
+        //   listing.contactPersonName || listing.businessName,
+        //   listing.businessName,
+        //   categoryName,
+        //   new Date().toLocaleDateString("en-AE", {
+        //     day: "numeric",
+        //     month: "long",
+        //     year: "numeric",
+        //   }),
+        //   `https://addressguru.ae/dashboard`,
+        // );
         console.log(`✅ Submitted mail sent to ${listing.email}`);
       } catch (mailError) {
         console.warn("❌ Submitted mail failed:", mailError.message);
@@ -1663,6 +1663,129 @@ export const unpublishListing = async (req, res) => {
     });
   } catch (error) {
     console.warn("Listing unpublish error:", error);
+    return errorData(res, 500, false, "Internal server error");
+  }
+};
+
+// admin listings
+export const getAdminCompletedListings = async (req, res) => {
+  try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 20;
+    const skip = (page - 1) * limit;
+
+    const {
+      search,
+      status,
+      provider,
+      city_id,
+      category_id,
+      include_deleted,
+      sortBy = "createdAt",
+      order = "desc",
+    } = req.query;
+
+    // ✅ Base filter (ONLY completed listings)
+    const filter = {
+      stepCompleted: 6, // ✅ correct field
+    };
+
+    // ✅ Deleted filter
+    if (include_deleted !== "true") {
+      filter.isDeleted = false;
+    }
+
+    // ✅ Optional filters
+    if (status && status !== "all") filter.status = status;
+    if (provider) filter.provider = provider;
+    if (city_id) filter.city = city_id;
+    if (category_id) filter.category = category_id;
+
+    // ✅ FIXED SEARCH (based on your schema)
+    if (search) {
+      const regex = new RegExp(search, "i");
+
+      filter.$or = [
+        { businessName: regex },
+        { email: regex },
+        { mobileNumber: regex },
+        { slug: regex },
+        { businessAddress: regex },
+      ];
+    }
+
+    // ✅ Sorting
+    const sortOrder = order === "asc" ? 1 : -1;
+
+    const [
+      listings,
+      total,
+      totalAll,
+      totalPending,
+      totalApproved,
+      totalRejected,
+    ] = await Promise.all([
+      BusinessListing.find(filter)
+        .populate("category", "name")
+        .populate("subCategory", "name")
+        .populate("city", "name")
+        .populate("plan", "name")
+        .populate("createdBy", "name email")
+        .sort({ [sortBy]: sortOrder })
+        .skip(skip)
+        .limit(limit)
+        .lean(),
+
+      // pagination count
+      BusinessListing.countDocuments(filter),
+
+      // 🔥 REQUIRED FOR YOUR UI
+      BusinessListing.countDocuments({
+        stepCompleted: 6,
+        isDeleted: false,
+      }),
+
+      BusinessListing.countDocuments({
+        stepCompleted: 6,
+        isDeleted: false,
+        status: "pending",
+      }),
+
+      BusinessListing.countDocuments({
+        stepCompleted: 6,
+        isDeleted: false,
+        status: "approved",
+      }),
+
+      BusinessListing.countDocuments({
+        stepCompleted: 6,
+        isDeleted: false,
+        status: "rejected",
+      }),
+    ]);
+
+    return successData(res, 200, true, "Admin listings fetched", {
+      listings,
+
+      pagination: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+        hasNextPage: page * limit < total,
+        hasPrevPage: page > 1,
+      },
+
+      // ✅ REQUIRED FOR YOUR STATS UI
+      totalAll,
+      statusCounts: {
+        pending: totalPending,
+        approved: totalApproved,
+        rejected: totalRejected,
+      },
+    });
+  } catch (error) {
+    console.warn("Admin listing error:", error);
     return errorData(res, 500, false, "Internal server error");
   }
 };

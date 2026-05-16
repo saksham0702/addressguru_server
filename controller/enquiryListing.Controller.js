@@ -303,3 +303,61 @@ export const updateEnquiryStatus = async (req, res) => {
     return res.status(500).json({ success: false, message: "Server error" });
   }
 };
+
+
+// for admin 
+// controllers/adminEnquiry.controller.js
+
+
+export const getAllBusinessEnquiries = async (req, res) => {
+  try {
+    const { page = 1, limit = 20, status, search } = req.query;
+
+    const filter = {
+      listingModel: "BusinessListing",
+      isDeleted: false,
+    };
+
+    // Optional status filter
+    if (status) {
+      filter.status = status;
+    }
+
+    // Optional search (name, email, phone)
+    if (search) {
+      filter.$or = [
+        { fullName: { $regex: search, $options: "i" } },
+        { email: { $regex: search, $options: "i" } },
+        ...(Number(search) ? [{ mobileNumber: Number(search) }] : []),
+      ];
+    }
+
+    const [enquiries, total] = await Promise.all([
+      Enquiry.find(filter)
+        .sort({ createdAt: -1 })
+        .skip((+page - 1) * +limit)
+        .limit(+limit)
+        .populate("listingId", "name slug")     // optional
+        .populate("listingOwner", "name email"),
+
+      Enquiry.countDocuments(filter),
+    ]);
+
+    return res.json({
+      success: true,
+      data: enquiries,
+      pagination: {
+        total,
+        page: +page,
+        limit: +limit,
+        pages: Math.ceil(total / +limit),
+      },
+    });
+  } catch (err) {
+    console.error("Admin Enquiry Error:", err);
+    return res.status(500).json({
+      success: false,
+      message: "Server error",
+    });
+  }
+};
