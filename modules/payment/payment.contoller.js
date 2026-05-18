@@ -2,7 +2,9 @@ import {
   createOrderService,
   verifyPaymentService,
   handleWebhookService,
+  getAllPaymentsService,
 } from "./payment.service.js";
+import User from "../../model/userSchema.js"
 
 import { verifyWebhookSignature } from "../../config/razorpay.config.js";
 
@@ -90,6 +92,31 @@ export const verifyPayment = async (req, res) => {
       success: false,
       message: error.message,
     });
+  }
+};
+
+export const getAllPayments = async (req, res) => {
+  try {
+    const { page = 1, limit = 10, status, search } = req.query;
+
+    const userId = req.user.id || req.user._id;
+
+    // fetch roles from DB since JWT doesn't have them
+    const user = await User.findById(userId).select("roles").lean();
+    const isAdmin = user?.roles?.includes(1) ?? false;
+
+    const data = await getAllPaymentsService({
+      userId,
+      isAdmin,
+      page: parseInt(page),
+      limit: parseInt(limit),
+      status,
+      search,
+    });
+
+    return res.status(200).json({ success: true, data });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
   }
 };
 
