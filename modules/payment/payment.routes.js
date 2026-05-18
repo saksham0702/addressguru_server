@@ -4,6 +4,7 @@ import {
   createPayment,
   verifyPayment,
   razorpayWebhook,
+  getAllPayments,
 } from "./payment.contoller.js";
 
 import { authenticate } from "../../middleware/userAuth.js";
@@ -19,6 +20,8 @@ const router = express.Router();
 router.post("/create-order", authenticate, createPayment);
 
 router.post("/verify-payment", authenticate, verifyPayment);
+
+router.get("/get-payments", authenticate, getAllPayments);
 
 /*
 |--------------------------------------------------------------------------

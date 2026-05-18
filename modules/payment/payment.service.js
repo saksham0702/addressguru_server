@@ -314,3 +314,57 @@ export const handleWebhookService = async (webhookBody) => {
     await payment.save();
   }
 };
+
+// invoices
+export const getAllPaymentsService = async ({
+  userId,
+  isAdmin,
+  page = 1,
+  limit = 10,
+  status,
+  search,
+}) => {
+  const skip = (page - 1) * limit;
+  const filter = {};
+
+  // Non-admin sees only their own
+  if (!isAdmin) {
+    filter.user = userId;
+  }
+
+  if (status && status !== "all") {
+    filter.status = status;
+  }
+
+  if (search) {
+    const regex = new RegExp(search, "i");
+    filter.$or = [
+      { "razorpay.orderId": regex },
+      { "razorpay.paymentId": regex },
+      { "planSnapshot.name": regex },
+      { receipt: regex },
+    ];
+  }
+
+  const [payments, total] = await Promise.all([
+    Payment.find(filter)
+      .populate("user", "name email")
+      .populate("listing", "businessName slug")
+      .populate("plan", "name")
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit)
+      .lean(),
+    Payment.countDocuments(filter),
+  ]);
+
+  return {
+    payments,
+    pagination: {
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    },
+  };
+};

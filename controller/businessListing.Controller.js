@@ -1673,38 +1673,39 @@ export const getAdminCompletedListings = async (req, res) => {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 20;
     const skip = (page - 1) * limit;
-
     const {
       search,
       status,
       provider,
       city_id,
       category_id,
-      include_deleted,
       sortBy = "createdAt",
       order = "desc",
+      viewType = "completed",
     } = req.query;
 
-    // ✅ Base filter (ONLY completed listings)
-    const filter = {
-      stepCompleted: 6, // ✅ correct field
-    };
+    const filter = {};
 
-    // ✅ Deleted filter
-    if (include_deleted !== "true") {
+    // ✅ viewType control
+    if (viewType === "completed") {
+      filter.stepCompleted = 6;
       filter.isDeleted = false;
+    } else if (viewType === "incomplete") {
+      filter.stepCompleted = { $lt: 6 };
+      filter.isDeleted = false;
+    } else if (viewType === "deleted") {
+      filter.isDeleted = true;
     }
 
-    // ✅ Optional filters
+    // ✅ other filters
     if (status && status !== "all") filter.status = status;
     if (provider) filter.provider = provider;
     if (city_id) filter.city = city_id;
     if (category_id) filter.category = category_id;
 
-    // ✅ FIXED SEARCH (based on your schema)
+    // ✅ search
     if (search) {
       const regex = new RegExp(search, "i");
-
       filter.$or = [
         { businessName: regex },
         { email: regex },
@@ -1714,70 +1715,38 @@ export const getAdminCompletedListings = async (req, res) => {
       ];
     }
 
-    // ✅ Sorting
     const sortOrder = order === "asc" ? 1 : -1;
 
-    const [
-      listings,
-      total,
-      totalAll,
-      totalPending,
-      totalApproved,
-      totalRejected,
-    ] = await Promise.all([
-      BusinessListing.find(filter)
-        .populate("category", "name")
-        .populate("subCategory", "name")
-        .populate("city", "name")
-        .populate("plan", "name")
-        .populate("createdBy", "name email")
-        .sort({ [sortBy]: sortOrder })
-        .skip(skip)
-        .limit(limit)
-        .lean(),
+    // ✅ statusCounts should reflect viewType filter but NOT the status filter
+    const baseFilter = { ...filter };
+    delete baseFilter.status;
 
-      // pagination count
-      BusinessListing.countDocuments(filter),
-
-      // 🔥 REQUIRED FOR YOUR UI
-      BusinessListing.countDocuments({
-        stepCompleted: 6,
-        isDeleted: false,
-      }),
-
-      BusinessListing.countDocuments({
-        stepCompleted: 6,
-        isDeleted: false,
-        status: "pending",
-      }),
-
-      BusinessListing.countDocuments({
-        stepCompleted: 6,
-        isDeleted: false,
-        status: "approved",
-      }),
-
-      BusinessListing.countDocuments({
-        stepCompleted: 6,
-        isDeleted: false,
-        status: "rejected",
-      }),
-    ]);
+    const [listings, total, totalPending, totalApproved, totalRejected] =
+      await Promise.all([
+        BusinessListing.find(filter)
+          .populate("category", "name")
+          .populate("subCategory", "name")
+          .populate("city", "name")
+          .populate("plan", "name")
+          .populate("createdBy", "name email")
+          .sort({ [sortBy]: sortOrder })
+          .skip(skip)
+          .limit(limit)
+          .lean(),
+        BusinessListing.countDocuments(filter),
+        BusinessListing.countDocuments({ ...baseFilter, status: "pending" }),
+        BusinessListing.countDocuments({ ...baseFilter, status: "approved" }),
+        BusinessListing.countDocuments({ ...baseFilter, status: "rejected" }),
+      ]);
 
     return successData(res, 200, true, "Admin listings fetched", {
       listings,
-
       pagination: {
         total,
         page,
         limit,
         totalPages: Math.ceil(total / limit),
-        hasNextPage: page * limit < total,
-        hasPrevPage: page > 1,
       },
-
-      // ✅ REQUIRED FOR YOUR STATS UI
-      totalAll,
       statusCounts: {
         pending: totalPending,
         approved: totalApproved,

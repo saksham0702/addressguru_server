@@ -21,7 +21,11 @@ import {
 import { setUploadFolder } from "../middleware/setUploadFolder.js";
 import upload from "../middleware/multerConfig.js";
 import { validateBusinessStep } from "../middleware/validateBusiness.js";
-import { authenticate, optionalAuth, authorizeAdmin } from "../middleware/userAuth.js";
+import {
+  authenticate,
+  optionalAuth,
+  authorizeAdmin,
+} from "../middleware/userAuth.js";
 
 const router = express.Router();
 
@@ -96,12 +100,6 @@ router.get(
 );
 router.post("/send-digest", sendBusinessDigestMail);
 
-// get admin lisings
-router.get(
-  "/admin/listings/completed",
-  authenticate,
-  // authorizeAdmin("admin", "editor"),
-  getAdminCompletedListings
-);
+router.get("/admin/listings", authenticate, getAdminCompletedListings);
 
 export default router;
