@@ -1,7 +1,7 @@
 import Review             from "../model/reviewListingSchema.js";
 import User               from "../model/userSchema.js";
 import ListingStats       from "../model/listingStatsSchema.js";
-import { resolveListing } from "../utils/resolveListing.js";
+import { MODEL_MAP, resolveListing } from "../utils/resolveListing.js";
 import { successData, errorData } from "../services/helper.js";
 
 // ─── Helper: recalculate & save rating on listing ─────────────────────────────
