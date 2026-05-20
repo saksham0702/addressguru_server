@@ -20,11 +20,7 @@ export const createOrderService = async ({
   planId,
   listingId = null,
 }) => {
-  /*
-  |--------------------------------------------------------------------------
-  | FIND PLAN
-  |--------------------------------------------------------------------------
-  */
+  /* FIND PLAN */
 
   const plan = await Plan.findById(planId);
 
@@ -32,11 +28,7 @@ export const createOrderService = async ({
     throw new Error("Plan not found");
   }
 
-  /*
-  |--------------------------------------------------------------------------
-  | PREVENT DUPLICATE PENDING PAYMENTS
-  |--------------------------------------------------------------------------
-  */
+  /* PREVENT DUPLICATE PENDING PAYMENTS */
 
   const existingPayment = await Payment.findOne({
     user: userId,
@@ -56,11 +48,7 @@ export const createOrderService = async ({
     };
   }
 
-  /*
-  |--------------------------------------------------------------------------
-  | CREATE RAZORPAY ORDER
-  |--------------------------------------------------------------------------
-  */
+  /* CREATE RAZORPAY ORDER */
 
   const amountInSubunits = convertToSubunits(plan.price);
 
@@ -80,11 +68,7 @@ export const createOrderService = async ({
     },
   });
 
-  /*
-  |--------------------------------------------------------------------------
-  | CREATE LOCAL PAYMENT RECORD
-  |--------------------------------------------------------------------------
-  */
+  /* CREATE LOCAL PAYMENT RECORD */
 
   const payment = await Payment.create({
     user: userId,
