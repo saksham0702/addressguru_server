@@ -20,7 +20,11 @@ export const createOrderService = async ({
   planId,
   listingId = null,
 }) => {
-  /* FIND PLAN */
+  /*
+  |--------------------------------------------------------------------------
+  | FIND PLAN
+  |--------------------------------------------------------------------------
+  */
 
   const plan = await Plan.findById(planId);
 
@@ -28,7 +32,56 @@ export const createOrderService = async ({
     throw new Error("Plan not found");
   }
 
-  /* PREVENT DUPLICATE PENDING PAYMENTS */
+  /*
+  |--------------------------------------------------------------------------
+  | HANDLE FREE PLAN
+  |--------------------------------------------------------------------------
+  */
+
+  if (plan.price === 0) {
+    const payment = await Payment.create({
+      user: userId,
+
+      plan: plan._id,
+
+      listing: listingId,
+
+      planSnapshot: {
+        name: plan.name,
+        slug: plan.slug,
+        price: plan.price,
+        billingCycle: plan.billingCycle,
+        features: plan.features,
+      },
+
+      amount: 0,
+
+      amountInSubunits: 0,
+
+      currency: PAYMENT_CURRENCY,
+
+      status: "captured",
+
+      paidAt: new Date(),
+
+      notes: {
+        planType: plan.planType,
+        isFreePlan: true,
+      },
+    });
+
+    return {
+      isFreePlan: true,
+      payment,
+      order: null,
+    };
+  }
+
+  /*
+  |--------------------------------------------------------------------------
+  | PREVENT DUPLICATE PENDING PAYMENTS
+  |--------------------------------------------------------------------------
+  */
 
   const existingPayment = await Payment.findOne({
     user: userId,
@@ -39,7 +92,10 @@ export const createOrderService = async ({
 
   if (existingPayment) {
     return {
+      isFreePlan: false,
+
       payment: existingPayment,
+
       order: {
         id: existingPayment.razorpay.orderId,
         amount: existingPayment.amountInSubunits,
@@ -48,7 +104,11 @@ export const createOrderService = async ({
     };
   }
 
-  /* CREATE RAZORPAY ORDER */
+  /*
+  |--------------------------------------------------------------------------
+  | CREATE RAZORPAY ORDER
+  |--------------------------------------------------------------------------
+  */
 
   const amountInSubunits = convertToSubunits(plan.price);
 
@@ -68,7 +128,11 @@ export const createOrderService = async ({
     },
   });
 
-  /* CREATE LOCAL PAYMENT RECORD */
+  /*
+  |--------------------------------------------------------------------------
+  | CREATE LOCAL PAYMENT RECORD
+  |--------------------------------------------------------------------------
+  */
 
   const payment = await Payment.create({
     user: userId,
@@ -103,6 +167,7 @@ export const createOrderService = async ({
   });
 
   return {
+    isFreePlan: false,
     order,
     payment,
   };
@@ -128,6 +193,9 @@ export const verifyPaymentService = async ({
   | VERIFY PAYMENT SIGNATURE
   |--------------------------------------------------------------------------
   */
+  if (!orderId || !paymentId || !signature) {
+    throw new Error("Invalid payment verification request");
+  }
 
   const isValid = verifyPaymentSignature({
     orderId,

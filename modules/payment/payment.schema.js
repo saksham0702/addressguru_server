@@ -51,7 +51,6 @@ const paymentSchema = new mongoose.Schema(
     },
 
     // PAYMENT
-
     amount: {
       type: Number,
       required: true,
@@ -80,8 +79,9 @@ const paymentSchema = new mongoose.Schema(
     razorpay: {
       orderId: {
         type: String,
-        required: true,
-        index: true,
+        required: function () {
+          return this.parent().amount > 0;
+        },
       },
 
       paymentId: {
@@ -133,8 +133,10 @@ const paymentSchema = new mongoose.Schema(
 
     receipt: {
       type: String,
-      required: true,
-      unique: true,
+
+      required: function () {
+        return this.amount > 0;
+      },
     },
 
     webhookEvent: {
