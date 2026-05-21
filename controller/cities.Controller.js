@@ -14,6 +14,12 @@ export const getCities = async (req, res) => {
       query.deletedAt = null;
     }
 
+    // if both type and parent are NOT present
+    // return only parent cities
+    if (!type && !parent) {
+      query.type = "city";
+    }
+
     // optional filters
     if (type) {
       query.type = type;
@@ -51,16 +57,12 @@ export const getCities = async (req, res) => {
 export const addCities = async (req, res) => {
   try {
     const input = req.body.cities || req.body;
-
     const citiesToBeAdded = Array.isArray(input) ? input : [input];
-
     if (!citiesToBeAdded || citiesToBeAdded.length === 0) {
       return errorData(res, 400, false, "No cities to be added");
     }
-
     const prepared = citiesToBeAdded.map((city) => ({
       ...city,
-
       slug: city.slug
         ? slugify(city.slug, {
             lower: true,
@@ -70,18 +72,13 @@ export const addCities = async (req, res) => {
             lower: true,
             strict: true,
           }),
-
       type: city.type || "city",
-
       parent: city.parent || null,
     }));
-
     const cities = await City.insertMany(prepared);
-
     return successData(res, 200, true, "Added cities successfully.", cities);
   } catch (error) {
     console.warn("Cities Error:", error);
-
     return errorData(res, 500, false, "Server error while adding cities");
   }
 };

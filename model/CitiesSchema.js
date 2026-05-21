@@ -18,7 +18,7 @@ const citySchema = new mongoose.Schema(
     // NEW
     type: {
       type: String,
-      enum: ["country", "state", "city", "locality"],
+      enum: ["state", "city", "locality"],
       default: "city",
     },
 
