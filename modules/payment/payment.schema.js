@@ -79,6 +79,7 @@ const paymentSchema = new mongoose.Schema(
     razorpay: {
       orderId: {
         type: String,
+        sparse: true,
         required: function () {
           return this.parent().amount > 0;
         },
@@ -133,7 +134,7 @@ const paymentSchema = new mongoose.Schema(
 
     receipt: {
       type: String,
-
+      sparse: true,
       required: function () {
         return this.amount > 0;
       },
