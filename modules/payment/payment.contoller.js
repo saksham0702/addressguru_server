@@ -4,7 +4,7 @@ import {
   handleWebhookService,
   getAllPaymentsService,
 } from "./payment.service.js";
-import User from "../../model/userSchema.js"
+import User from "../../model/userSchema.js";
 
 import { verifyWebhookSignature } from "../../config/razorpay.config.js";
 
@@ -25,14 +25,40 @@ export const createPayment = async (req, res) => {
       });
     }
 
-    const { order, payment } = await createOrderService({
+    const { order, payment, isFreePlan } = await createOrderService({
       userId: req.user.id,
       planId: plan_id,
       listingId: listing_id,
     });
 
+    /*
+    |--------------------------------------------------------------------------
+    | FREE PLAN RESPONSE
+    |--------------------------------------------------------------------------
+    */
+
+    if (isFreePlan) {
+      return res.status(200).json({
+        success: true,
+
+        free_plan: true,
+
+        data: {
+          payment_id: payment._id,
+        },
+      });
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | PAID PLAN RESPONSE
+    |--------------------------------------------------------------------------
+    */
+
     return res.status(200).json({
       success: true,
+
+      free_plan: false,
 
       data: {
         payment_id: payment._id,
@@ -47,6 +73,8 @@ export const createPayment = async (req, res) => {
       },
     });
   } catch (error) {
+    console.log("createPayment error", error);
+
     return res.status(500).json({
       success: false,
       message: error.message,
