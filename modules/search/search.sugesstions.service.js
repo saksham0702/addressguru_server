@@ -1,43 +1,16 @@
 import BusinessListing from "../../model/businessListingSchema.js";
-import { parseSearchQuery, categoryKeywordsMap } from "./search.utils.js";
+import City from "../../model/CitiesSchema.js";
+import { parseSearchQuery, getCategoryIndex } from "./search.utils.js";
 
 /**
  * GET /api/search/suggestions?q=...
  *
  * Returns a single flat sorted array of suggestions — best match first.
- * Each item has a `type` and `score`. Frontend just renders them in order.
- *
- * Scoring tiers:
- *   120 = exact match
- *   100 = starts with query
- *    80 = query is a substring of the candidate
- *    60 = all query words present in candidate (any order)
- *    30 = more than half of words match  ← minimum for category/business
- *     0 = discard (services/courses are discarded below 60)
- *
- * category_city gets +50 bonus on top of its base score (always high priority
- * when both are present).
- *
- * Response:
- * {
- *   suggestions: [
- *     // category + city redirect
- *     { type:"category_city", label, redirectUrl, category:{name,slug}, city:{name,slug}, score }
- *     // category only redirect
- *     { type:"category",      label, redirectUrl, category:{name,slug}, city:null, score }
- *     // business name match
- *     { type:"business",      label, redirectUrl, slug, city, citySlug, category, categorySlug, score }
- *     // service perfect match
- *     { type:"service",       label, sublabel, redirectUrl, businessSlug, city, score }
- *     // course perfect match
- *     { type:"course",        label, sublabel, redirectUrl, businessSlug, city, score }
- *   ]
- * }
  */
 export const searchSuggestionsService = async (query) => {
   if (!query || query.trim().length < 2) return { suggestions: [] };
 
-  const { detectedCity, detectedCategory, categoryKeywords, normalizedQuery } =
+  const { detectedCity, detectedCategory, detectedCategorySlug, normalizedQuery } =
     await parseSearchQuery(query);
 
   const q = normalizedQuery.trim();
@@ -45,36 +18,25 @@ export const searchSuggestionsService = async (query) => {
   const words = q.split(/\s+/).filter((w) => w.length > 1);
   if (!words.length) return { suggestions: [] };
 
-  const [categoryItems, businessItems, serviceItems, courseItems] =
-    await Promise.all([
-      getCategoryItems({
-        detectedCategory,
-        detectedCity,
-        categoryKeywords,
-        q,
-        words,
-        escape,
-      }),
-      getBusinessItems({ q, words, detectedCity, escape }),
-      getServiceItems({ q, words, detectedCity, escape }),
-      getCourseItems({ q, words, detectedCity, escape }),
-    ]);
+  const [categoryItems, businessItems] = await Promise.all([
+    getCategorySuggestions({
+      detectedCategory,
+      detectedCategorySlug,
+      detectedCity,
+      q,
+      words,
+      escape,
+    }),
+    getBusinessSuggestions({ q, words, detectedCity, escape }),
+  ]);
 
-  const all = [
-    ...categoryItems,
-    ...businessItems,
-    ...serviceItems,
-    ...courseItems,
-  ];
+  const all = [...categoryItems, ...businessItems];
   all.sort((a, b) => b.score - a.score);
 
   return { suggestions: all.slice(0, 10) };
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Score a candidate string against the search query
-// Returns 0 if the match is too weak to show in suggestions
-// ─────────────────────────────────────────────────────────────────────────────
+// ── Score a candidate string against the search query ───────────────────────
 const scoreMatch = (candidate, q, words) => {
   if (!candidate) return 0;
   const c = candidate.toLowerCase();
@@ -93,53 +55,34 @@ const scoreMatch = (candidate, q, words) => {
   return 0;
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Category (+ optional city) suggestions
-// ─────────────────────────────────────────────────────────────────────────────
-const getCategoryItems = async ({
+// ── Category (+ optional city) suggestions ─────────────────────────────────
+const getCategorySuggestions = async ({
   detectedCategory,
+  detectedCategorySlug,
   detectedCity,
-  categoryKeywords,
   q,
   words,
   escape,
 }) => {
-  if (!detectedCategory || !categoryKeywords?.length) return [];
+  if (!detectedCategory) return [];
 
-  const CategoryModel = (await import("../../model/categorySchema.js")).default;
-  const CityModel = (await import("../../model/CitiesSchema.js")).default;
-
-  const catRegex = new RegExp(
-    `\\b(${categoryKeywords.map(escape).join("|")})\\b`,
-    "i",
-  );
-
-  const categoryDoc = await CategoryModel.findOne({
-    name: { $regex: catRegex },
-    isDeleted: { $ne: true },
-  })
-    .select("name slug")
-    .lean();
-
-  if (!categoryDoc) return [];
-
-  // Category always gets at least score 40 so it always shows
-  const baseScore = Math.max(scoreMatch(categoryDoc.name, q, words), 40);
+  // Category always gets at least score 40
+  const baseScore = Math.max(scoreMatch(detectedCategory, q, words), 40);
 
   if (!detectedCity) {
     return [
       {
         type: "category",
-        label: categoryDoc.name,
-        redirectUrl: `/${categoryDoc.slug}`,
-        category: { name: categoryDoc.name, slug: categoryDoc.slug },
+        label: detectedCategory,
+        redirectUrl: `/${detectedCategorySlug}`,
+        category: { name: detectedCategory, slug: detectedCategorySlug },
         city: null,
         score: baseScore,
       },
     ];
   }
 
-  const cityDoc = await CityModel.findOne({
+  const cityDoc = await City.findOne({
     name: { $regex: new RegExp(`^${escape(detectedCity)}$`, "i") },
   })
     .select("name slug")
@@ -149,32 +92,29 @@ const getCategoryItems = async ({
     return [
       {
         type: "category",
-        label: categoryDoc.name,
-        redirectUrl: `/${categoryDoc.slug}`,
-        category: { name: categoryDoc.name, slug: categoryDoc.slug },
+        label: detectedCategory,
+        redirectUrl: `/${detectedCategorySlug}`,
+        category: { name: detectedCategory, slug: detectedCategorySlug },
         city: null,
         score: baseScore,
       },
     ];
   }
 
-  // Category + city → +50 bonus, always floats high
   return [
     {
       type: "category_city",
-      label: `${categoryDoc.name} in ${cityDoc.name}`,
-      redirectUrl: `/${categoryDoc.slug}/${cityDoc.slug}`,
-      category: { name: categoryDoc.name, slug: categoryDoc.slug },
+      label: `${detectedCategory} in ${cityDoc.name}`,
+      redirectUrl: `/${detectedCategorySlug}/${cityDoc.slug}`,
+      category: { name: detectedCategory, slug: detectedCategorySlug },
       city: { name: cityDoc.name, slug: cityDoc.slug },
       score: baseScore + 50,
     },
   ];
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Business name suggestions (min score 30 to appear)
-// ─────────────────────────────────────────────────────────────────────────────
-const getBusinessItems = async ({ q, words, detectedCity, escape }) => {
+// ── Business name suggestions ───────────────────────────────────────────────
+const getBusinessSuggestions = async ({ q, words, detectedCity, escape }) => {
   const nameRegex = new RegExp(words.map(escape).join("|"), "i");
 
   const cityMatchStage = detectedCity
@@ -237,7 +177,7 @@ const getBusinessItems = async ({ q, words, detectedCity, escape }) => {
     items.push({
       type: "business",
       label: biz.businessName,
-      redirectUrl: `/${biz.slug}`,
+      redirectUrl: `/listing/${biz.slug}`,
       slug: biz.slug,
       city: biz.city || null,
       citySlug: biz.citySlug || null,
@@ -248,142 +188,4 @@ const getBusinessItems = async ({ q, words, detectedCity, escape }) => {
   }
 
   return items.sort((a, b) => b.score - a.score).slice(0, 5);
-};
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Service suggestions — only show if score >= 60 (perfect/near-perfect match)
-// ─────────────────────────────────────────────────────────────────────────────
-const getServiceItems = async ({ q, words, detectedCity, escape }) => {
-  const serviceRegex = new RegExp(words.map(escape).join("|"), "i");
-
-  const cityMatchStage = detectedCity
-    ? [
-        {
-          $match: {
-            "cityDoc.name": {
-              $regex: new RegExp(`^${escape(detectedCity)}$`, "i"),
-            },
-          },
-        },
-      ]
-    : [];
-
-  const raw = await BusinessListing.aggregate([
-    {
-      $match: {
-        isDeleted: false,
-        isPublished: true,
-        status: "approved",
-        "services.name": { $regex: serviceRegex },
-      },
-    },
-    { $unwind: "$services" },
-    { $match: { "services.name": { $regex: serviceRegex } } },
-    { $limit: 20 },
-    {
-      $lookup: {
-        from: "cities",
-        localField: "city",
-        foreignField: "_id",
-        as: "cityDoc",
-      },
-    },
-    { $unwind: { path: "$cityDoc", preserveNullAndEmptyArrays: true } },
-    ...cityMatchStage,
-    {
-      $project: {
-        serviceName: "$services.name",
-        businessName: "$businessName",
-        businessSlug: "$slug",
-        city: "$cityDoc.name",
-        citySlug: "$cityDoc.slug",
-      },
-    },
-  ]);
-
-  const items = [];
-  for (const s of raw) {
-    const score = scoreMatch(s.serviceName, q, words);
-    if (score < 60) continue; // strict threshold — only good matches
-    items.push({
-      type: "service",
-      label: s.serviceName,
-      sublabel: `@ ${s.businessName}${s.city ? ` · ${s.city}` : ""}`,
-      redirectUrl: `/listing/${s.businessSlug}`,
-      businessSlug: s.businessSlug,
-      city: s.city || null,
-      score,
-    });
-  }
-
-  return items.sort((a, b) => b.score - a.score).slice(0, 3);
-};
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Course suggestions — only show if score >= 60
-// ─────────────────────────────────────────────────────────────────────────────
-const getCourseItems = async ({ q, words, detectedCity, escape }) => {
-  const courseRegex = new RegExp(words.map(escape).join("|"), "i");
-
-  const cityMatchStage = detectedCity
-    ? [
-        {
-          $match: {
-            "cityDoc.name": {
-              $regex: new RegExp(`^${escape(detectedCity)}$`, "i"),
-            },
-          },
-        },
-      ]
-    : [];
-
-  const raw = await BusinessListing.aggregate([
-    {
-      $match: {
-        isDeleted: false,
-        isPublished: true,
-        status: "approved",
-        "courses.name": { $regex: courseRegex },
-      },
-    },
-    { $unwind: "$courses" },
-    { $match: { "courses.name": { $regex: courseRegex } } },
-    { $limit: 20 },
-    {
-      $lookup: {
-        from: "cities",
-        localField: "city",
-        foreignField: "_id",
-        as: "cityDoc",
-      },
-    },
-    { $unwind: { path: "$cityDoc", preserveNullAndEmptyArrays: true } },
-    ...cityMatchStage,
-    {
-      $project: {
-        courseName: "$courses.name",
-        businessName: "$businessName",
-        businessSlug: "$slug",
-        city: "$cityDoc.name",
-        citySlug: "$cityDoc.slug",
-      },
-    },
-  ]);
-
-  const items = [];
-  for (const c of raw) {
-    const score = scoreMatch(c.courseName, q, words);
-    if (score < 60) continue; // strict threshold
-    items.push({
-      type: "course",
-      label: c.courseName,
-      sublabel: `@ ${c.businessName}${c.city ? ` · ${c.city}` : ""}`,
-      redirectUrl: `/listing/${c.businessSlug}`,
-      businessSlug: c.businessSlug,
-      city: c.city || null,
-      score,
-    });
-  }
-
-  return items.sort((a, b) => b.score - a.score).slice(0, 3);
 };

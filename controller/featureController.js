@@ -242,7 +242,7 @@ export const getCategoryFeatures = async (req, res) => {
       category: categoryId,
       $or: [{ isDeleted: false }, { isDeleted: { $exists: false } }],
     })
-      .populate("category", "name slug iconSvg isActive seo tags")
+      .populate("category", "name slug iconSvg isActive seo tags isPopular")
       .populate("facilities services courses payment_modes");
 
     if (!categoryFeature) {
