@@ -17,6 +17,11 @@ const categorySchema = new mongoose.Schema(
       default: false,
     },
 
+    isPopular: {
+      type: Boolean,
+      default: false,
+    },
+
     // NEW
     tags: [
       {
@@ -43,7 +48,6 @@ const categorySchema = new mongoose.Schema(
   },
   { timestamps: true },
 );
-
 
 categorySchema.index({ slug: 1 });
 

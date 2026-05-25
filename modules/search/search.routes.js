@@ -5,28 +5,17 @@ import { searchResolveService } from "./search.resolve.service.js";
 const router = express.Router();
 
 /**
- * GET /api/search/suggestions?q=gym in delhi
+ * GET /api/search/suggestions?q=...
  *
  * Live suggestions while user is typing.
- * Debounce this on frontend (300ms recommended).
- *
- * Response:
- * {
- *   categoryCity: { category, categorySlug, city, citySlug, redirectUrl } | null,
- *   businesses:   [{ name, slug, city, citySlug, category }],
- *   services:     [{ serviceName, businessName, businessSlug, city }],
- *   courses:      [{ courseName,  businessName, businessSlug, city }],
- * }
+ * Returns Category/City redirects and Business matches.
  */
 router.get("/suggestions", async (req, res) => {
   try {
     const { q } = req.query;
     if (!q || q.trim().length < 2) {
       return res.json({
-        categoryCity: null,
-        businesses: [],
-        services: [],
-        courses: [],
+        suggestions: [],
       });
     }
     const data = await searchSuggestionsService(q.trim());
@@ -38,18 +27,16 @@ router.get("/suggestions", async (req, res) => {
 });
 
 /**
- * GET /api/search/resolve?q=gym in delhi&page=1&limit=20
+ * GET /api/search/resolve?q=...&page=1&limit=20
  *
  * Called when user submits the search.
- * Frontend reads `intent` to decide what to do next:
+ * Returns an intent for redirection or listing view.
  *
- *  "category_city"  → navigate to redirectUrl  (/{categorySlug}/{citySlug})
- *  "category"       → navigate to redirectUrl  (/{categorySlug})
- *  "exact_business" → navigate to redirectUrl  (/listing/{slug})
- *  "business_list"  → render listings grid (multiple name matches)
- *  "service_match"  → render listings grid (matched by service name)
- *  "course_match"   → render listings grid (matched by course name)
- *  "keyword_search" → render listings grid (generic keyword fallback)
+ * Intents:
+ *  "category_city"  → redirect to /{categorySlug}/{citySlug}
+ *  "category"       → redirect to /{categorySlug}
+ *  "exact_business" → redirect to /listing/{slug}
+ *  "business_list"  → render listings grid
  *  "no_results"     → show empty state
  */
 router.get("/resolve", async (req, res) => {

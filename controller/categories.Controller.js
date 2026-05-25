@@ -81,7 +81,7 @@ export const getCategories = async (req, res) => {
   try {
     const categories = await Category.find({
       isDeleted: false,
-    }).sort({ createdAt: -1 });
+    }).sort({ isPopular: -1, createdAt: -1 });
 
     if (!categories || categories.length === 0)
       return errorData(res, 404, false, "Category not found.");
@@ -102,16 +102,13 @@ export const getCategories = async (req, res) => {
 export const updateCategory = async (req, res) => {
   try {
     const { id } = req.params;
-
     const existingCategory = await Category.findOne({
       _id: id,
       isDeleted: false,
     });
-
     if (!existingCategory) {
       return errorData(res, 404, false, "Category not found.");
     }
-
     const {
       name,
       description,
@@ -122,7 +119,8 @@ export const updateCategory = async (req, res) => {
       iconPng,
       metaTitle,
       metaDescription,
-      } = req.body;
+      isPopular,
+    } = req.body;
 
     // parse tags safely
     let tags = existingCategory.tags || [];
@@ -145,7 +143,7 @@ export const updateCategory = async (req, res) => {
       {
         name,
         slug: name ? slugify(name, { lower: true }) : existingCategory.slug,
-
+        isPopular,
         description,
         color,
         type,
@@ -182,13 +180,18 @@ export const updateCategory = async (req, res) => {
 export const getCategoryByType = async (req, res) => {
   try {
     const { type } = req.params;
+
     const category = await Category.find({
       type,
-      isDeleted: false, // ✅ already had this
-    }).sort({ createdAt: -1 }); // ✅ ADDED sort
+      isDeleted: false,
+    }).sort({
+      isPopular: -1, // ✅ popular categories first
+      createdAt: -1, // ✅ newest inside each group
+    });
 
-    if (!category || category.length === 0)
+    if (!category || category.length === 0) {
       return errorData(res, 404, false, "Category not found.");
+    }
 
     return successData(res, 200, true, "Get category successfully", category);
   } catch (error) {

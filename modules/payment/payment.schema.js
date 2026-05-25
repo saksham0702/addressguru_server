@@ -84,13 +84,11 @@ const paymentSchema = new mongoose.Schema(
           return this.parent().amount > 0;
         },
       },
-
       paymentId: {
         type: String,
         default: null,
         index: true,
       },
-
       signature: {
         type: String,
         default: null,
