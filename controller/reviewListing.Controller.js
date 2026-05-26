@@ -1,6 +1,6 @@
-import Review             from "../model/reviewListingSchema.js";
-import User               from "../model/userSchema.js";
-import ListingStats       from "../model/listingStatsSchema.js";
+import Review from "../model/reviewListingSchema.js";
+import User from "../model/userSchema.js";
+import ListingStats from "../model/listingStatsSchema.js";
 import { MODEL_MAP, resolveListing } from "../utils/resolveListing.js";
 import { successData, errorData } from "../services/helper.js";
 
@@ -8,7 +8,13 @@ import { successData, errorData } from "../services/helper.js";
 async function syncRating(listingId, ListingModel) {
   const result = await Review.aggregate([
     { $match: { listingId, status: "approved", isDeleted: false } },
-    { $group: { _id: "$listingId", avg: { $avg: "$rating" }, count: { $sum: 1 } } },
+    {
+      $group: {
+        _id: "$listingId",
+        avg: { $avg: "$rating" },
+        count: { $sum: 1 },
+      },
+    },
   ]);
 
   const { avg = 0, count = 0 } = result[0] || {};
@@ -102,13 +108,10 @@ export const submitReview = async (req, res) => {
       });
     }
 
-    // ── Update rating ──────────────────────────────────────────────────────
-    await syncRating(listing._id, listing.constructor);
-
     // ── Response ───────────────────────────────────────────────────────────
     return res.status(201).json({
       success: true,
-      message: "Thank you for your review!",
+      message: "Review submitted successfully and is pending approval.",
       data: {
         id: review._id,
         rating: review.rating,
@@ -117,7 +120,6 @@ export const submitReview = async (req, res) => {
         createdAt: review.createdAt,
       },
     });
-
   } catch (err) {
     if (err.code === 11000) {
       return res.status(400).json({
@@ -149,13 +151,17 @@ export const getReviews = async (req, res) => {
     const { listing } = await resolveListing(slug, type);
 
     const sortMap = {
-      newest:  { createdAt: -1 },
-      oldest:  { createdAt:  1 },
+      newest: { createdAt: -1 },
+      oldest: { createdAt: 1 },
       highest: { rating: -1 },
-      lowest:  { rating:  1 },
+      lowest: { rating: 1 },
     };
 
-    const filter = { listingId: listing._id, status: "approved", isDeleted: false };
+    const filter = {
+      listingId: listing._id,
+      status: "approved",
+      isDeleted: false,
+    };
 
     const [reviews, total] = await Promise.all([
       Review.find(filter)
@@ -178,14 +184,22 @@ export const getReviews = async (req, res) => {
       success: true,
       data: reviews,
       stats: {
-        average:   listing.rating?.average || 0,
+        average: listing.rating?.average || 0,
         total,
         breakdown: ratingBreakdown,
       },
-      pagination: { total, page: +page, limit: +limit, pages: Math.ceil(total / +limit) },
+      pagination: {
+        total,
+        page: +page,
+        limit: +limit,
+        pages: Math.ceil(total / +limit),
+      },
     });
   } catch (err) {
-    if (err.status) return res.status(err.status).json({ success: false, message: err.message });
+    if (err.status)
+      return res
+        .status(err.status)
+        .json({ success: false, message: err.message });
     return res.status(500).json({ success: false, message: "Server error" });
   }
 };
@@ -203,9 +217,11 @@ export const getMyReviews = async (req, res) => {
     const userId = req.user.id || req.user._id;
     await Promise.all(
       Object.values(MODEL_MAP).map(async ({ model }) => {
-        const ids = await model.find({ createdBy: userId, isDeleted: false }).distinct("_id");
+        const ids = await model
+          .find({ createdBy: userId, isDeleted: false })
+          .distinct("_id");
         listingIds.push(...ids);
-      })
+      }),
     );
 
     if (listingIds.length === 0) {
@@ -213,15 +229,15 @@ export const getMyReviews = async (req, res) => {
         listings: [],
         total: 0,
         statistics: { total: 0, approved: 0, pending: 0, rejected: 0 },
-        pagination: { total: 0, page: +page, limit: +limit, pages: 0 }
+        pagination: { total: 0, page: +page, limit: +limit, pages: 0 },
       });
     }
 
     const sortMap = {
-      newest:  { createdAt: -1 },
-      oldest:  { createdAt:  1 },
+      newest: { createdAt: -1 },
+      oldest: { createdAt: 1 },
       highest: { rating: -1 },
-      lowest:  { rating:  1 },
+      lowest: { rating: 1 },
     };
 
     const filter = { listingId: { $in: listingIds }, isDeleted: false };
@@ -239,18 +255,18 @@ export const getMyReviews = async (req, res) => {
       Review.countDocuments(filter),
       Review.aggregate([
         { $match: filter },
-        { $group: { _id: "$status", count: { $sum: 1 } } }
-      ])
+        { $group: { _id: "$status", count: { $sum: 1 } } },
+      ]),
     ]);
 
     const statistics = {
       total: 0,
       approved: 0,
       pending: 0,
-      rejected: 0
+      rejected: 0,
     };
 
-    stats.forEach(s => {
+    stats.forEach((s) => {
       if (s._id === "approved") statistics.approved = s.count;
       if (s._id === "pending") statistics.pending = s.count;
       if (s._id === "rejected") statistics.rejected = s.count;
@@ -258,10 +274,11 @@ export const getMyReviews = async (req, res) => {
     });
 
     // Transform for frontend expectations
-    const result = reviews.map(rev => ({
+    const result = reviews.map((rev) => ({
       ...rev,
       id: rev._id,
-      title: rev.listingId?.businessName || rev.listingId?.title || rev.listingSlug,
+      title:
+        rev.listingId?.businessName || rev.listingId?.title || rev.listingSlug,
       // Map schema fields to what CardReview2 expects:
       name: rev.fullName,
       rating_email: rev.email,
@@ -273,7 +290,12 @@ export const getMyReviews = async (req, res) => {
       listings: result,
       total,
       statistics,
-      pagination: { total, page: +page, limit: +limit, pages: Math.ceil(total / +limit) },
+      pagination: {
+        total,
+        page: +page,
+        limit: +limit,
+        pages: Math.ceil(total / +limit),
+      },
     });
   } catch (err) {
     console.error("getMyReviews Error:", err);
@@ -290,26 +312,28 @@ export const getMyReviewsStats = async (req, res) => {
     const userId = req.user.id || req.user._id;
     await Promise.all(
       Object.values(MODEL_MAP).map(async ({ model }) => {
-        const ids = await model.find({ createdBy: userId, isDeleted: false }).distinct("_id");
+        const ids = await model
+          .find({ createdBy: userId, isDeleted: false })
+          .distinct("_id");
         listingIds.push(...ids);
-      })
+      }),
     );
 
     const filter = { listingId: { $in: listingIds }, isDeleted: false };
 
     const stats = await Review.aggregate([
       { $match: filter },
-      { $group: { _id: "$status", count: { $sum: 1 } } }
+      { $group: { _id: "$status", count: { $sum: 1 } } },
     ]);
 
     const result = {
       total: 0,
       approved: 0,
       pending: 0,
-      rejected: 0
+      rejected: 0,
     };
 
-    stats.forEach(s => {
+    stats.forEach((s) => {
       if (s._id === "approved") result.approved = s.count;
       if (s._id === "pending") result.pending = s.count;
       if (s._id === "rejected") result.rejected = s.count;
@@ -317,7 +341,7 @@ export const getMyReviewsStats = async (req, res) => {
     });
 
     return successData(res, 200, true, "Review stats fetched", {
-      statistics: result
+      statistics: result,
     });
   } catch (err) {
     console.error("getMyReviewsStats Error:", err);
@@ -325,33 +349,63 @@ export const getMyReviewsStats = async (req, res) => {
   }
 };
 
-// ─── PATCH /api/admin/reviews/:reviewId  (approve / reject) ──────────────────
+// ─── PATCH /api/admin/reviews/:reviewId ──────────────────
 export const adminReviewAction = async (req, res) => {
   try {
     const { status } = req.body;
-    if (!["approved", "rejected"].includes(status))
-      return res.status(422).json({ success: false, message: "Invalid status" });
 
-    const review = await Review.findByIdAndUpdate(
-      req.params.reviewId,
-      { status, approvedBy: req.user?._id },
-      { new: true }
-    );
+    if (!["approved", "rejected"].includes(status)) {
+      return res.status(422).json({
+        success: false,
+        message: "Invalid status",
+      });
+    }
 
-    if (!review) return res.status(404).json({ success: false, message: "Review not found" });
+    const review = await Review.findById(req.params.reviewId);
 
-    // Sync rating after moderation
-    const { model } = Object.values(
-      (await import("../utils/resolveListing.js")).MODEL_MAP
-    ).find(async (_, i) =>
-      Object.keys(( await import("../utils/resolveListing.js")).MODEL_MAP)[i] ===
+    if (!review) {
+      return res.status(404).json({
+        success: false,
+        message: "Review not found",
+      });
+    }
+
+    if (review.status === status) {
+      return res.status(400).json({
+        success: false,
+        message: `Review already ${status}`,
+      });
+    }
+
+    // ✅ THIS WAS MISSING
+    review.status = status;
+
+    review.approvedBy = req.user._id;
+
+    await review.save();
+
+    // Sync listing ratings
+    const ListingModel =
+      MODEL_MAP[
         review.listingModel.toLowerCase().replace("businesslisting", "business")
-    ) || {};
-    if (model) await syncRating(review.listingId, model);
+      ]?.model;
 
-    return res.json({ success: true, data: review });
+    if (ListingModel) {
+      await syncRating(review.listingId, ListingModel);
+    }
+
+    return res.json({
+      success: true,
+      message: `Review ${status} successfully`,
+      data: review,
+    });
   } catch (err) {
-    return res.status(500).json({ success: false, message: "Server error" });
+    console.error(err);
+
+    return res.status(500).json({
+      success: false,
+      message: "Server error",
+    });
   }
 };
 
@@ -364,15 +418,151 @@ export const deleteReview = async (req, res) => {
     const review = await Review.findOneAndUpdate(
       { _id: req.params.reviewId, listingId: listing._id },
       { isDeleted: true },
-      { new: true }
+      { new: true },
     );
 
-    if (!review) return res.status(404).json({ success: false, message: "Review not found" });
+    if (!review)
+      return res
+        .status(404)
+        .json({ success: false, message: "Review not found" });
     await syncRating(listing._id, listing.constructor);
 
     return res.json({ success: true, message: "Review deleted." });
   } catch (err) {
-    if (err.status) return res.status(err.status).json({ success: false, message: err.message });
+    if (err.status)
+      return res
+        .status(err.status)
+        .json({ success: false, message: err.message });
     return res.status(500).json({ success: false, message: "Server error" });
+  }
+};
+
+// ─── GET /api/admin/reviews ─────────────────────────────────────────────
+export const getAllReviewsAdmin = async (req, res) => {
+  try {
+    const {
+      page = 1,
+      limit = 20,
+      sort = "newest",
+      status,
+      search = "",
+    } = req.query;
+
+    const sortMap = {
+      newest: { createdAt: -1 },
+      oldest: { createdAt: 1 },
+      highest: { rating: -1 },
+      lowest: { rating: 1 },
+    };
+
+    // ── Filters ─────────────────────────────────────
+    const filter = {
+      isDeleted: false,
+    };
+
+    if (status && ["pending", "approved", "rejected"].includes(status)) {
+      filter.status = status;
+    }
+
+    if (search) {
+      filter.$or = [
+        { fullName: { $regex: search, $options: "i" } },
+        { email: { $regex: search, $options: "i" } },
+        { reviewText: { $regex: search, $options: "i" } },
+        { listingSlug: { $regex: search, $options: "i" } },
+      ];
+    }
+
+    // ── Query ──────────────────────────────────────
+    const [reviews, total, stats] = await Promise.all([
+      Review.find(filter)
+        .populate({
+          path: "listingId",
+          select: "businessName title slug",
+        })
+        .populate({
+          path: "reviewer",
+          select: "name email",
+        })
+        .populate({
+          path: "approvedBy",
+          select: "name email",
+        })
+        .sort(sortMap[sort] || sortMap.newest)
+        .skip((+page - 1) * +limit)
+        .limit(+limit)
+        .lean(),
+
+      Review.countDocuments(filter),
+
+      Review.aggregate([
+        {
+          $match: { isDeleted: false },
+        },
+        {
+          $group: {
+            _id: "$status",
+            count: { $sum: 1 },
+          },
+        },
+      ]),
+    ]);
+
+    // ── Statistics ─────────────────────────────────
+    const statistics = {
+      total: 0,
+      approved: 0,
+      pending: 0,
+      rejected: 0,
+    };
+
+    stats.forEach((s) => {
+      statistics[s._id] = s.count;
+      statistics.total += s.count;
+    });
+
+    // ── Transform ──────────────────────────────────
+    const result = reviews.map((rev) => ({
+      id: rev._id,
+
+      reviewerName: rev.fullName,
+      reviewerEmail: rev.email,
+
+      rating: rev.rating,
+      reviewText: rev.reviewText,
+
+      status: rev.status,
+
+      listingTitle:
+        rev.listingId?.businessName || rev.listingId?.title || rev.listingSlug,
+
+      listingSlug: rev.listingSlug,
+      listingModel: rev.listingModel,
+
+      approvedBy: rev.approvedBy?.name || null,
+
+      createdAt: rev.createdAt,
+    }));
+
+    return res.status(200).json({
+      success: true,
+      data: result,
+
+      statistics,
+
+      pagination: {
+        total,
+        page: +page,
+        limit: +limit,
+        pages: Math.ceil(total / +limit),
+      },
+    });
+  } catch (err) {
+    console.error("getAllReviewsAdmin Error:", err);
+
+    return res.status(500).json({
+      success: false,
+      message: "Server error",
+    });
   }
 };

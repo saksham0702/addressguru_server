@@ -7,7 +7,7 @@ import {
   getMyLeads,
   getMyLeadsStats,
   updateEnquiryStatus,
-  getAllBusinessEnquiries
+  getAllBusinessEnquiries,
 } from "../controller/enquiryListing.Controller.js";
 import { authenticate } from "../middleware/userAuth.js";
 
@@ -34,6 +34,7 @@ import {
   getMyReviewsStats,
   adminReviewAction,
   deleteReview,
+  getAllReviewsAdmin,
 } from "../controller/reviewListing.Controller.js";
 import upload from "../middleware/multerConfig.js";
 
@@ -131,9 +132,10 @@ router.get("/my-reviews", authenticate, getMyReviews);
 router.get("/my-reviews/stats", authenticate, getMyReviewsStats);
 
 // Admin: approve / reject a review
-router.patch("/admin/reviews/:reviewId", adminReviewAction);
+router.patch("/admin/reviews/:reviewId", authenticate, adminReviewAction);
 
 // Delete a review (admin / owner)
 router.delete("/:type/:slug/reviews/:reviewId", deleteReview);
+router.get("/admin/reviews", authenticate, getAllReviewsAdmin);
 
 export default router;
