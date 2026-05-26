@@ -723,7 +723,7 @@ export const getAllUsers = async (req, res) => {
       users: mappedUsers,
     });
   } catch (error) {
-    return errorData(res, 500, false, "Server Error", null, err?.message);
+    return errorData(res, 500, false, "Server Error", null, error?.message);
   }
 };
 

@@ -56,7 +56,7 @@ const reviewSchema = new mongoose.Schema(
     status: {
       type: String,
       enum: ["pending", "approved", "rejected"],
-      default: "approved", // set to "pending" to enable pre-moderation
+      default: "pending", // set to "pending" to enable pre-moderation
       index: true,
     },
     approvedBy: {
@@ -69,7 +69,7 @@ const reviewSchema = new mongoose.Schema(
     userAgent: String,
     isDeleted: { type: Boolean, default: false },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 // One review per email per listing
