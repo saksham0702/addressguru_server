@@ -210,7 +210,13 @@ export const getReviews = async (req, res) => {
  */
 export const getMyReviews = async (req, res) => {
   try {
-    const { page = 1, limit = 20, sort = "newest" } = req.query;
+    const {
+      page = 1,
+      limit = 20,
+      sort = "newest",
+      status,
+      search = "",
+    } = req.query;
 
     // 1. Get all listing IDs belonging to the user across all models
     const listingIds = [];
@@ -226,7 +232,7 @@ export const getMyReviews = async (req, res) => {
 
     if (listingIds.length === 0) {
       return successData(res, 200, true, "No reviews found", {
-        listings: [],
+        data: [],
         total: 0,
         statistics: { total: 0, approved: 0, pending: 0, rejected: 0 },
         pagination: { total: 0, page: +page, limit: +limit, pages: 0 },
@@ -240,7 +246,21 @@ export const getMyReviews = async (req, res) => {
       lowest: { rating: 1 },
     };
 
+    // ── Filters ─────────────────────────────────────
     const filter = { listingId: { $in: listingIds }, isDeleted: false };
+
+    if (status && ["pending", "approved", "rejected"].includes(status)) {
+      filter.status = status;
+    }
+
+    if (search) {
+      filter.$or = [
+        { fullName: { $regex: search, $options: "i" } },
+        { email: { $regex: search, $options: "i" } },
+        { reviewText: { $regex: search, $options: "i" } },
+        { listingSlug: { $regex: search, $options: "i" } },
+      ];
+    }
 
     const [reviews, total, stats] = await Promise.all([
       Review.find(filter)
@@ -248,13 +268,21 @@ export const getMyReviews = async (req, res) => {
           path: "listingId",
           select: "businessName title slug",
         })
+        .populate({
+          path: "reviewer",
+          select: "name email",
+        })
+        .populate({
+          path: "approvedBy",
+          select: "name email",
+        })
         .sort(sortMap[sort] || sortMap.newest)
         .skip((+page - 1) * +limit)
         .limit(+limit)
         .lean(),
       Review.countDocuments(filter),
       Review.aggregate([
-        { $match: filter },
+        { $match: { listingId: { $in: listingIds }, isDeleted: false } },
         { $group: { _id: "$status", count: { $sum: 1 } } },
       ]),
     ]);
@@ -267,27 +295,35 @@ export const getMyReviews = async (req, res) => {
     };
 
     stats.forEach((s) => {
-      if (s._id === "approved") statistics.approved = s.count;
-      if (s._id === "pending") statistics.pending = s.count;
-      if (s._id === "rejected") statistics.rejected = s.count;
+      if (statistics.hasOwnProperty(s._id)) statistics[s._id] = s.count;
       statistics.total += s.count;
     });
 
-    // Transform for frontend expectations
+    // Transform for frontend expectations (matching admin API)
     const result = reviews.map((rev) => ({
-      ...rev,
       id: rev._id,
-      title:
+
+      reviewerName: rev.fullName,
+      reviewerEmail: rev.email,
+
+      rating: rev.rating,
+      reviewText: rev.reviewText,
+
+      status: rev.status,
+
+      listingTitle:
         rev.listingId?.businessName || rev.listingId?.title || rev.listingSlug,
-      // Map schema fields to what CardReview2 expects:
-      name: rev.fullName,
-      rating_email: rev.email,
-      message: rev.reviewText,
-      created_at: new Date(rev.createdAt).toLocaleDateString(),
+
+      listingSlug: rev.listingSlug,
+      listingModel: rev.listingModel,
+
+      approvedBy: rev.approvedBy?.name || null,
+
+      createdAt: rev.createdAt,
     }));
 
     return successData(res, 200, true, "Reviews fetched successfully", {
-      listings: result,
+      data: result,
       total,
       statistics,
       pagination: {

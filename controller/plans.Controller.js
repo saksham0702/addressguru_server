@@ -12,7 +12,12 @@ import { createOrderService } from "../modules/payment/payment.service.js";
 // ─── GET ALL ACTIVE PLANS (public — for frontend listing page) ────────────────
 export const getAllPlans = async (req, res) => {
   try {
-    const plans = await Plan.find({ isActive: true, isDeleted: false })
+    const { planType = "business" } = req.query;
+    const plans = await Plan.find({
+      isActive: true,
+      isDeleted: false,
+      planType,
+    })
       .sort({ displayOrder: 1 })
       .lean();
 
@@ -72,6 +77,7 @@ export const createPlan = async (req, res) => {
     const {
       name,
       tagline,
+      planType,
       displayOrder,
       price,
       billingCycle,
@@ -101,6 +107,7 @@ export const createPlan = async (req, res) => {
       name: name.trim(),
       slug,
       tagline: tagline || null,
+      planType: planType || "business",
       displayOrder: displayOrder ?? 0,
       price,
       billingCycle: billingCycle || "year",

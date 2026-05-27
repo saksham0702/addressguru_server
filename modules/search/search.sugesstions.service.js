@@ -1,6 +1,7 @@
 import BusinessListing from "../../model/businessListingSchema.js";
 import City from "../../model/CitiesSchema.js";
 import { parseSearchQuery, getCategoryIndex } from "./search.utils.js";
+import Category from "../../model/categoriesSchema.js";
 
 /**
  * GET /api/search/suggestions?q=...
@@ -10,8 +11,12 @@ import { parseSearchQuery, getCategoryIndex } from "./search.utils.js";
 export const searchSuggestionsService = async (query) => {
   if (!query || query.trim().length < 2) return { suggestions: [] };
 
-  const { detectedCity, detectedCategory, detectedCategorySlug, normalizedQuery } =
-    await parseSearchQuery(query);
+  const {
+    detectedCity,
+    detectedCategory,
+    detectedCategorySlug,
+    normalizedQuery,
+  } = await parseSearchQuery(query);
 
   const q = normalizedQuery.trim();
   const escape = (k) => k.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -66,7 +71,15 @@ const getCategorySuggestions = async ({
 }) => {
   if (!detectedCategory) return [];
 
-  // Category always gets at least score 40
+  // Fetch full category doc
+  const categoryDoc = await Category.findOne({
+    slug: detectedCategorySlug,
+  }).lean();
+  const categoryData = categoryDoc || {
+    name: detectedCategory,
+    slug: detectedCategorySlug,
+  };
+
   const baseScore = Math.max(scoreMatch(detectedCategory, q, words), 40);
 
   if (!detectedCity) {
@@ -75,7 +88,7 @@ const getCategorySuggestions = async ({
         type: "category",
         label: detectedCategory,
         redirectUrl: `/${detectedCategorySlug}`,
-        category: { name: detectedCategory, slug: detectedCategorySlug },
+        category: categoryData, // ← full doc now
         city: null,
         score: baseScore,
       },
@@ -94,7 +107,7 @@ const getCategorySuggestions = async ({
         type: "category",
         label: detectedCategory,
         redirectUrl: `/${detectedCategorySlug}`,
-        category: { name: detectedCategory, slug: detectedCategorySlug },
+        category: categoryData, // ← full doc now
         city: null,
         score: baseScore,
       },
@@ -106,7 +119,7 @@ const getCategorySuggestions = async ({
       type: "category_city",
       label: `${detectedCategory} in ${cityDoc.name}`,
       redirectUrl: `/${detectedCategorySlug}/${cityDoc.slug}`,
-      category: { name: detectedCategory, slug: detectedCategorySlug },
+      category: categoryData, // ← full doc now
       city: { name: cityDoc.name, slug: cityDoc.slug },
       score: baseScore + 50,
     },
@@ -162,6 +175,7 @@ const getBusinessSuggestions = async ({ q, words, detectedCity, escape }) => {
       $project: {
         businessName: 1,
         slug: 1,
+        logo: 1,
         city: "$cityDoc.name",
         citySlug: "$cityDoc.slug",
         category: "$categoryDoc.name",
@@ -177,8 +191,9 @@ const getBusinessSuggestions = async ({ q, words, detectedCity, escape }) => {
     items.push({
       type: "business",
       label: biz.businessName,
-      redirectUrl: `/listing/${biz.slug}`,
+      redirectUrl: `/${biz.slug}`,
       slug: biz.slug,
+      logo: biz.logo || null,
       city: biz.city || null,
       citySlug: biz.citySlug || null,
       category: biz.category || null,
