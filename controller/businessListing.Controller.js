@@ -21,6 +21,7 @@ import DigestMailLog from "../model/digestMailLogSchema.js";
 import ListingStats from "../model/listingStatsSchema.js";
 import ReviewListing from "../model/reviewListingSchema.js";
 import { buildSearchText } from "../modules/search/search.utils.js";
+import FollowUp from "../model/followUpSchema.js";
 
 const validateAdditionalFields = async (additionalFields = []) => {
   if (!additionalFields.length) return { errors: [], validated: [] };
@@ -1682,11 +1683,13 @@ export const getAdminCompletedListings = async (req, res) => {
       sortBy = "createdAt",
       order = "desc",
       viewType = "completed",
+      leadStatus, // "hot" | "warm" | "cold" | "new"
+      followUpFilter, // "overdue" | "today" | "tomorrow" | "this_week" | "no_followup"
     } = req.query;
 
     const filter = {};
 
-    // ✅ viewType control
+    // ── viewType ─────────────────────────────────────────────────────────────
     if (viewType === "completed") {
       filter.stepCompleted = 6;
       filter.isDeleted = false;
@@ -1697,13 +1700,18 @@ export const getAdminCompletedListings = async (req, res) => {
       filter.isDeleted = true;
     }
 
-    // ✅ other filters
+    // ── basic filters ─────────────────────────────────────────────────────────
     if (status && status !== "all") filter.status = status;
     if (provider) filter.provider = provider;
     if (city_id) filter.city = city_id;
     if (category_id) filter.category = category_id;
 
-    // ✅ search
+    // ── lead status filter ────────────────────────────────────────────────────
+    if (leadStatus && leadStatus !== "all") {
+      filter.leadStatus = leadStatus;
+    }
+
+    // ── search ────────────────────────────────────────────────────────────────
     if (search) {
       const regex = new RegExp(search, "i");
       filter.$or = [
@@ -1715,29 +1723,118 @@ export const getAdminCompletedListings = async (req, res) => {
       ];
     }
 
+    // ── follow-up date filter ─────────────────────────────────────────────────
+    if (followUpFilter && followUpFilter !== "all") {
+      const now = new Date();
+
+      const startOfToday = new Date(now);
+      startOfToday.setHours(0, 0, 0, 0);
+
+      const endOfToday = new Date(now);
+      endOfToday.setHours(23, 59, 59, 999);
+
+      const startOfTomorrow = new Date(startOfToday);
+      startOfTomorrow.setDate(startOfTomorrow.getDate() + 1);
+
+      const endOfTomorrow = new Date(startOfTomorrow);
+      endOfTomorrow.setHours(23, 59, 59, 999);
+
+      const endOfWeek = new Date(startOfToday);
+      endOfWeek.setDate(endOfWeek.getDate() + 7);
+
+      // base match — always filter by module and not deleted
+      const followUpMatch = {
+        module: "BusinessListing",
+        isDeleted: false,
+        nextFollowUpDate: { $ne: null },
+      };
+
+      if (followUpFilter === "overdue") {
+        followUpMatch.nextFollowUpDate = { $lt: startOfToday };
+      } else if (followUpFilter === "today") {
+        followUpMatch.nextFollowUpDate = {
+          $gte: startOfToday,
+          $lte: endOfToday,
+        };
+      } else if (followUpFilter === "tomorrow") {
+        followUpMatch.nextFollowUpDate = {
+          $gte: startOfTomorrow,
+          $lte: endOfTomorrow,
+        };
+      } else if (followUpFilter === "this_week") {
+        followUpMatch.nextFollowUpDate = {
+          $gte: startOfToday,
+          $lte: endOfWeek,
+        };
+      }
+
+      if (followUpFilter === "no_followup") {
+        // listings that have NEVER had a follow-up logged
+        const listingsWithFollowUp = await FollowUp.distinct("listing", {
+          module: "BusinessListing",
+          isDeleted: false,
+        });
+        filter._id = { $nin: listingsWithFollowUp };
+      } else {
+        // get latest follow-up per listing, pick only those matching the date range
+        const matchingIds = await FollowUp.aggregate([
+          {
+            $match: {
+              module: "BusinessListing",
+              isDeleted: false,
+              nextFollowUpDate: { $ne: null },
+            },
+          },
+          { $sort: { listing: 1, createdAt: -1 } },
+          {
+            $group: {
+              _id: "$listing",
+              latestFollowUpDate: { $first: "$nextFollowUpDate" },
+            },
+          },
+          {
+            $match: {
+              latestFollowUpDate: followUpMatch.nextFollowUpDate,
+            },
+          },
+          { $project: { _id: 1 } },
+        ]);
+
+        filter._id = { $in: matchingIds.map((r) => r._id) };
+      }
+    }
+
+    // ── sort ──────────────────────────────────────────────────────────────────
     const sortOrder = order === "asc" ? 1 : -1;
 
-    // ✅ statusCounts should reflect viewType filter but NOT the status filter
+    // ── statusCounts — viewType only, no status filter ────────────────────────
     const baseFilter = { ...filter };
     delete baseFilter.status;
 
-    const [listings, total, totalPending, totalApproved, totalRejected] =
-      await Promise.all([
-        BusinessListing.find(filter)
-          .populate("category", "name")
-          .populate("subCategory", "name")
-          .populate("city", "name")
-          .populate("plan", "name")
-          .populate("createdBy", "name email")
-          .sort({ [sortBy]: sortOrder })
-          .skip(skip)
-          .limit(limit)
-          .lean(),
-        BusinessListing.countDocuments(filter),
-        BusinessListing.countDocuments({ ...baseFilter, status: "pending" }),
-        BusinessListing.countDocuments({ ...baseFilter, status: "approved" }),
-        BusinessListing.countDocuments({ ...baseFilter, status: "rejected" }),
-      ]);
+    const [
+      listings,
+      total,
+      totalPending,
+      totalApproved,
+      totalRejected,
+      totalAll,
+    ] = await Promise.all([
+      BusinessListing.find(filter)
+        .populate("category", "name")
+        .populate("subCategory", "name")
+        .populate("city", "name")
+        .populate("plan", "name")
+        .populate("createdBy", "name email")
+        .sort({ [sortBy]: sortOrder })
+        .skip(skip)
+        .limit(limit)
+        .lean(),
+      BusinessListing.countDocuments(filter),
+      BusinessListing.countDocuments({ ...baseFilter, status: "pending" }),
+      BusinessListing.countDocuments({ ...baseFilter, status: "approved" }),
+      BusinessListing.countDocuments({ ...baseFilter, status: "rejected" }),
+      BusinessListing.countDocuments({ isDeleted: false }), // grand total for header badge
+    ]);
 
     return successData(res, 200, true, "Admin listings fetched", {
       listings,
@@ -1752,9 +1849,42 @@ export const getAdminCompletedListings = async (req, res) => {
         approved: totalApproved,
         rejected: totalRejected,
       },
+      totalAll,
     });
   } catch (error) {
     console.warn("Admin listing error:", error);
     return errorData(res, 500, false, "Internal server error");
+  }
+};
+
+// update lead status
+export const updateLeadStatus = async (req, res) => {
+  try {
+    console.log("req.params", req.params);
+    console.log("req.body", req.body);
+    const { listingId } = req.params;
+    const { leadStatus } = req.body;
+    const listing = await BusinessListing.findByIdAndUpdate(
+      listingId,
+      { leadStatus },
+      { new: true, runValidators: true }, // important
+    );
+
+    if (!listing) {
+      return res.status(404).json({
+        success: false,
+        message: "Listing not found",
+      });
+    }
+
+    res.json({
+      success: true,
+      data: listing,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
   }
 };

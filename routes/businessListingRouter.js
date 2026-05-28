@@ -17,6 +17,7 @@ import {
   upsertAdditionalFields,
   publishListing,
   getAdminCompletedListings,
+  updateLeadStatus,
 } from "../controller/businessListing.Controller.js";
 import { setUploadFolder } from "../middleware/setUploadFolder.js";
 import upload from "../middleware/multerConfig.js";
@@ -101,5 +102,7 @@ router.get(
 router.post("/send-digest", sendBusinessDigestMail);
 
 router.get("/admin/listings", authenticate, getAdminCompletedListings);
+
+router.patch("/:listingId/lead-status", authenticate, updateLeadStatus);
 
 export default router;
