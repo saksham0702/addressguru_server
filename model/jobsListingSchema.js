@@ -67,6 +67,12 @@ const jobSchema = new mongoose.Schema(
       default: "on-site",
     },
 
+    leadStatus: {
+      type: String,
+      enum: ["hot", "warm", "cold", "new"],
+      default: "new",
+    },
+
     experienceLevel: {
       type: String,
       enum: ["entry", "junior", "mid", "senior", "lead", "executive"],
@@ -94,7 +100,7 @@ const jobSchema = new mongoose.Schema(
       city: {
         _id: { type: mongoose.Schema.Types.ObjectId },
         name: { type: String },
-        slug: { type: String }
+        slug: { type: String },
       },
 
       area: { type: String },
@@ -133,7 +139,7 @@ const jobSchema = new mongoose.Schema(
 
     // ─── Nationality & Language (for filter) ─────────────────
     nationality: [{ type: String }], // e.g., ["indian", "pakistani", "any"]
-    language: [{ type: String }],    // e.g., ["english", "arabic"]
+    language: [{ type: String }], // e.g., ["english", "arabic"]
 
     // ─── Contact Info ─────────────────────────────────────────
     contact: {
@@ -160,7 +166,7 @@ const jobSchema = new mongoose.Schema(
       city: {
         _id: { type: mongoose.Schema.Types.ObjectId },
         name: { type: String },
-        slug: { type: String }
+        slug: { type: String },
       },
     },
 
