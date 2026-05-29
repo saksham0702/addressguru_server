@@ -22,6 +22,7 @@ import ListingStats from "../model/listingStatsSchema.js";
 import ReviewListing from "../model/reviewListingSchema.js";
 import { buildSearchText } from "../modules/search/search.utils.js";
 import FollowUp from "../model/followUpSchema.js";
+import mongoose from "mongoose";
 
 const validateAdditionalFields = async (additionalFields = []) => {
   if (!additionalFields.length) return { errors: [], validated: [] };
@@ -515,7 +516,6 @@ export const updateListingStep = async (req, res) => {
 };
 
 // PUT /business-listings/:listingId/additional-fields
-
 export const upsertAdditionalFields = async (req, res) => {
   try {
     const { listingId } = req.params;
@@ -744,6 +744,14 @@ export const getAllListingsWithPaginationAndFilters = async (req, res) => {
     if (req.query.sub_category_id)
       filter.subCategory = req.query.sub_category_id;
     if (req.query.city_id) filter.city = req.query.city_id;
+    if (req.query.payment_mode_id) {
+      const ids = req.query.payment_mode_id
+        .split(",")
+        .filter(Boolean)
+        .map((id) => new mongoose.Types.ObjectId(id.trim())); // ✅ cast to ObjectId
+
+      filter.paymentModes = { $in: ids };
+    }
 
     if (req.query.is_published !== undefined)
       filter.isPublished = req.query.is_published === "true";
@@ -899,12 +907,16 @@ export const getListingsByCategoryAndCity = async (req, res) => {
 
     // Payment mode filter
     if (payment_mode_id) {
-      const ids = Array.isArray(payment_mode_id)
-        ? payment_mode_id
-        : payment_mode_id.split(",");
-      if (ids.length > 0) filter.payment_modes = { $in: ids };
-    }
+      const ids = (
+        Array.isArray(payment_mode_id)
+          ? payment_mode_id
+          : payment_mode_id.split(",")
+      )
+        .filter(Boolean)
+        .map((id) => new mongoose.Types.ObjectId(id.trim()));
 
+      if (ids.length > 0) filter.paymentModes = { $in: ids };
+    }
     // Sort
     let sortOption = { createdAt: -1 }; // default: newest
     if (sort_by === "oldest") sortOption = { createdAt: 1 };
@@ -919,13 +931,19 @@ export const getListingsByCategoryAndCity = async (req, res) => {
 
     const [listings, total] = await Promise.all([
       BusinessListing.find(filter)
+        .select(
+          "businessName slug logo images businessAddress description " +
+            "category subCategory city countryCode mobileNumber " +
+            "facilities services courses paymentModes " +
+            "isVerified isPublished status createdAt",
+        )
         .populate("category", "name slug seo")
-        .populate("subCategory", "name slug seo")
-        .populate("facilities")
-        .populate("services")
-        .populate("courses")
-        .populate("paymentModes")
+        .populate("subCategory", "name slug")
         .populate("city", "name slug")
+        .populate("facilities", "name iconSvg") // ✅ only name + icon
+        .populate("services", "name iconSvg") // ✅ only name + icon
+        .populate("courses", "name iconSvg") // ✅ only name + icon
+        .populate("paymentModes", "name _id") // ✅ only what filter needs
         .sort(sortOption)
         .skip(skip)
         .limit(limitNumber)
@@ -979,6 +997,7 @@ export const getListingsByCategoryAndCity = async (req, res) => {
     });
 
     // Attach stats to each listing
+    // Attach stats to each listing
     listings.forEach((l) => {
       const lid = l._id.toString();
       const s = statsMap[lid] || {};
@@ -994,8 +1013,12 @@ export const getListingsByCategoryAndCity = async (req, res) => {
           ? Number(rs.averageRating.toFixed(1))
           : 0,
       };
-      // Keep backward compatibility
       l.views = s.view || 0;
+
+      // ✅ ADD THESE 3 LINES RIGHT HERE
+      l.facilities = l.facilities?.slice(0, 5);
+      l.images = l.images?.slice(0, 5);
+      l.services = l.services?.slice(0, 5);
     });
 
     return successData(res, 200, true, "Listings fetched successfully", {
