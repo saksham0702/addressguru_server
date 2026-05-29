@@ -57,9 +57,7 @@ const businessListingSchema = new mongoose.Schema(
 
     workingHours: { type: Object, default: null },
 
-    /* =========================
-       STEP 2 – SOCIAL LINKS
-    ========================== */
+    /* STEP 2 – SOCIAL LINKS */
     websiteLink: { type: String, default: null },
     videoLink: { type: String, default: null },
     socialLinks: {
@@ -72,9 +70,7 @@ const businessListingSchema = new mongoose.Schema(
         youtube: null,
       },
     },
-    /* =========================
-       STEP 3 – CONTACT DETAILS
-    ========================== */
+    /* STEP 3 – CONTACT DETAILS */
     contactPersonName: { type: String },
     email: { type: String, lowercase: true },
 
@@ -95,31 +91,24 @@ const businessListingSchema = new mongoose.Schema(
 
     locality: { type: String },
 
-    /* =========================
-       STEP 4 – SEO
-    ========================== */
+    /* STEP 4 – SEO */
     seo: {
       title: { type: String },
       description: { type: String },
     },
     slug: { type: String, unique: true, index: true },
 
-    /* =========================
-       STEP 5 – MEDIA
-    ========================== */
+    /* STEP 5 – MEDIA*/
     logo: { type: String, default: null },
     images: [{ type: String, max: 10 }],
 
-    /* =========================
-       STEP 6 – PLAN & PUBLISH
-    ========================== */
+    /* STEP 6 – PLAN & PUBLISH */
     plan: { type: mongoose.Schema.Types.ObjectId, ref: "Plan" },
     paymentStatus: {
       type: String,
       enum: ["pending", "paid", "failed"],
       default: "pending",
     },
-
     /* STATUS & FLOW */
     stepCompleted: { type: Number, default: 1 },
     isVerified: { type: Boolean, default: false },
@@ -129,7 +118,11 @@ const businessListingSchema = new mongoose.Schema(
       ref: "User",
       required: true,
     },
-
+    leadStatus: {
+      type: String,
+      enum: ["hot", "warm", "cold", "new"],
+      default: "new",
+    },
     status: {
       type: String,
       enum: ["pending", "approved", "rejected"],

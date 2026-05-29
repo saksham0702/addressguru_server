@@ -64,15 +64,26 @@ export const getBlogs = async (req, res) => {
 
     const total = await Blog.countDocuments(query);
     const blogs = await Blog.find(query)
-      .populate("category_id", "name slug")
-      .populate("author", "name avatar designation profile_bio socialLinks")
+      .select("title slug coverImage content createdAt publishedAt category_id") // ✅ only needed fields
+      .populate("category_id", "name") // ✅ only name, drop slug
       .sort({ publishedAt: -1 })
       .skip((Number(page) - 1) * Number(limit))
       .limit(Number(limit))
       .lean();
 
+    // ✅ Strip HTML and trim content to 300 chars
+    const trimmedBlogs = blogs.map((blog) => ({
+      ...blog,
+      content:
+        blog.content
+          ?.replace(/<[^>]+>/g, " ") // remove all HTML tags
+          .replace(/\s+/g, " ") // collapse whitespace
+          .trim()
+          .slice(0, 300) || "", // only first 300 chars
+    }));
+
     return successData(res, 200, true, "Blogs fetched successfully", {
-      blogs: blogs.map(formatBlog),
+      blogs: trimmedBlogs,
       pagination: {
         total,
         page: Number(page),
@@ -81,7 +92,7 @@ export const getBlogs = async (req, res) => {
       },
     });
   } catch (error) {
-    console.error("CREATE BLOG ERROR:", error); // ✅ ADD THIS
+    console.error("GET BLOGS ERROR:", error);
     return errorData(res, 500, false, error.message);
   }
 };
