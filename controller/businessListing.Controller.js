@@ -23,6 +23,7 @@ import ReviewListing from "../model/reviewListingSchema.js";
 import { buildSearchText } from "../modules/search/search.utils.js";
 import FollowUp from "../model/followUpSchema.js";
 import mongoose from "mongoose";
+import businessListingSchema from "../model/businessListingSchema.js";
 
 const validateAdditionalFields = async (additionalFields = []) => {
   if (!additionalFields.length) return { errors: [], validated: [] };
@@ -1909,5 +1910,30 @@ export const updateLeadStatus = async (req, res) => {
       success: false,
       message: error.message,
     });
+  }
+};
+
+// ─── GET RECENT LISTINGS ──────────────────────────────────────────────────────
+export const getRecentListings = async (req, res) => {
+  try {
+    const listings = await BusinessListing.find({
+      isDeleted: false,
+      status: "approved",
+    })
+      .sort({ createdAt: -1 })
+      .limit(5)
+      .populate("category", "name")
+      .select("businessName businessAddress slug category images")
+      .lean();
+    return successData(
+      res,
+      200,
+      true,
+      "Recent listings fetched successfully",
+      listings,
+    );
+  } catch (error) {
+    console.warn("Recent listings fetch error:", error);
+    return errorData(res, 500, false, "Internal server error");
   }
 };
