@@ -18,6 +18,7 @@ import {
   publishListing,
   getAdminCompletedListings,
   updateLeadStatus,
+  getRecentListings,
 } from "../controller/businessListing.Controller.js";
 import { setUploadFolder } from "../middleware/setUploadFolder.js";
 import upload from "../middleware/multerConfig.js";
@@ -73,10 +74,11 @@ router.get(
 );
 router.get("/get-all-listings", getAllListingsWithPaginationAndFilters);
 router.get("/get-listing-by-slug/:slug", getListingBySlug);
+router.get("/get-recent-listings", getRecentListings);
 router.delete("/delete-listing/:slug", authenticate, deleteListing);
 
 router.put(
-  "/business-listings/:listingId/additional-fields",
+  "/:listingId/additional-fields",
   authenticate,
   upsertAdditionalFields,
 );
