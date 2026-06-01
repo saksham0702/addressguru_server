@@ -39,7 +39,7 @@ export const searchResolveService = async (query, page = 1, limit = 20) => {
   if (exactBusiness) {
     return {
       intent: "exact_business",
-      redirectUrl: `/listing/${exactBusiness.slug}`,
+      redirectUrl: `/${exactBusiness.slug}`,
       business: exactBusiness,
     };
   }

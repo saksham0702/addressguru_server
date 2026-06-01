@@ -42,7 +42,7 @@ const sanitizeUser = (user) => {
 export const adminCreateUser = async (req, res) => {
   try {
     const adminId = req.user?.user?.id ?? req.user?.id;
-    const { name, email, password, roles, phone, city } = req.body;
+    const { name, email, password, roles, phone, country_code, city } = req.body;
 
     // required
     if (!name?.trim())
@@ -93,6 +93,7 @@ export const adminCreateUser = async (req, res) => {
       password: hashedPassword,
       roles: parsedRoles,
       phone: phone || undefined,
+      country_code: country_code || undefined,
       city: city || undefined,
       login_type: "email",
       verified_email: true,
@@ -205,11 +206,12 @@ export const adminGetUserById = async (req, res) => {
 
 export const adminUpdateUser = async (req, res) => {
   try {
-    const { name, email, phone, roles, city, status, password } = req.body;
+    const { name, email, phone, country_code, roles, city, status, password } = req.body;
 
     const updateData = {};
 
     if (name !== undefined) updateData.name = name.trim();
+    if (country_code !== undefined) updateData.country_code = country_code;
     if (city !== undefined) updateData.city = city;
 
     if (status !== undefined) updateData.status = status === true || status === "true";
