@@ -8,7 +8,8 @@ import app from "../app.js";
 import debugLib from "debug";
 import http from "http";
 import logger from "../services/logger.js";
-
+import { initializeSocket } from "../socket/index.js";
+import { registerSocketEvents } from "../socket/socketHandler.js";
 const debug = debugLib("backend:server");
 
 /**
@@ -24,6 +25,9 @@ app.set("port", port);
 
 var server = http.createServer(app);
 
+const io = initializeSocket(server);
+
+registerSocketEvents(io);
 /**
  * Listen on provided port, on all network interfaces.
  */

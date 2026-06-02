@@ -23,7 +23,7 @@ const SALT_ROUNDS = 10;
 
 const isStrongPassword = (pwd) =>
   /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-={}[\]:;"'<>,.?/\\|`~]).{8,}$/.test(
-    pwd
+    pwd,
   );
 
 const sanitizeUser = (user) => {
@@ -42,47 +42,61 @@ const sanitizeUser = (user) => {
 export const adminCreateUser = async (req, res) => {
   try {
     const adminId = req.user?.user?.id ?? req.user?.id;
-    const { name, email, password, roles, phone, country_code, city } = req.body;
+    const { name, email, password, roles, phone, country_code, city } =
+      req.body;
 
     // required
-    if (!name?.trim())
-      return errorData(res, 400, false, "Name is required.");
-    if (!email?.trim())
-      return errorData(res, 400, false, "Email is required.");
+    if (!name?.trim()) return errorData(res, 400, false, "Name is required.");
+    if (!email?.trim()) return errorData(res, 400, false, "Email is required.");
     if (!/^\S+@\S+\.\S+$/.test(email))
       return errorData(res, 400, false, "Invalid email format.");
-    if (!password)
-      return errorData(res, 400, false, "Password is required.");
+    if (!password) return errorData(res, 400, false, "Password is required.");
     if (!isStrongPassword(password))
       return errorData(
-        res, 400, false,
-        "Password must be 8+ chars with uppercase, lowercase, number and special character."
+        res,
+        400,
+        false,
+        "Password must be 8+ chars with uppercase, lowercase, number and special character.",
       );
 
     // roles
     if (!roles || !Array.isArray(roles) || roles.length === 0)
-      return errorData(res, 400, false, "Roles array is required. e.g. [2] or [3,4]");
+      return errorData(
+        res,
+        400,
+        false,
+        "Roles array is required. e.g. [2] or [3,4]",
+      );
 
     const parsedRoles = [...new Set(roles.map(Number))];
     const invalidRoles = parsedRoles.filter((r) => !VALID_ROLES.includes(r));
     if (invalidRoles.length > 0)
       return errorData(
-        res, 400, false,
+        res,
+        400,
+        false,
         `Invalid role(s): ${invalidRoles.join(", ")}. Valid: ${VALID_ROLES.map(
-          (r) => `${r}=${ROLE_NAMES[r]}`
-        ).join(", ")}`
+          (r) => `${r}=${ROLE_NAMES[r]}`,
+        ).join(", ")}`,
       );
     if (parsedRoles.includes(ROLES.ADMIN))
       return errorData(res, 403, false, "Admin role cannot be assigned here.");
 
     // duplicates
-    const emailExists = await User.findOne({ email: email.toLowerCase().trim() });
+    const emailExists = await User.findOne({
+      email: email.toLowerCase().trim(),
+    });
     if (emailExists)
       return errorData(res, 409, false, "Email is already registered.");
     if (phone) {
       const phoneExists = await User.findOne({ phone });
       if (phoneExists)
-        return errorData(res, 409, false, "Phone number is already registered.");
+        return errorData(
+          res,
+          409,
+          false,
+          "Phone number is already registered.",
+        );
     }
 
     const hashedPassword = await bcrypt.hash(password, SALT_ROUNDS);
@@ -104,9 +118,11 @@ export const adminCreateUser = async (req, res) => {
     });
 
     return successData(
-      res, 201, true,
+      res,
+      201,
+      true,
       `User created with role(s): ${parsedRoles.map((r) => ROLE_NAMES[r]).join(", ")}`,
-      sanitizeUser(newUser)
+      sanitizeUser(newUser),
     );
   } catch (err) {
     console.warn("adminCreateUser error:", err);
@@ -114,11 +130,17 @@ export const adminCreateUser = async (req, res) => {
   }
 };
 
- 
 export const adminGetAllUsers = async (req, res) => {
   try {
-    let { page = 1, limit = 10, role, status, deleted = "false", search } = req.query;
-
+    let {
+      page = 1,
+      limit = 10,
+      role,
+      status,
+      deleted = "false",
+      search,
+      online,
+    } = req.query;
     page = Math.max(1, parseInt(page, 10));
     limit = Math.min(100, Math.max(1, parseInt(limit, 10)));
 
@@ -137,6 +159,13 @@ export const adminGetAllUsers = async (req, res) => {
     }
 
     if (status !== undefined) query.status = status === "true";
+    if (online === "true") {
+      query.isOnline = true;
+    }
+
+    if (online === "false") {
+      query.isOnline = false;
+    }
 
     // search needs special handling when $or already exists from isDeleted
     if (search) {
@@ -145,10 +174,7 @@ export const adminGetAllUsers = async (req, res) => {
 
       if (query.$or) {
         // combine both $or conditions using $and
-        query.$and = [
-          { $or: query.$or },
-          { $or: searchConditions },
-        ];
+        query.$and = [{ $or: query.$or }, { $or: searchConditions }];
         delete query.$or;
       } else {
         query.$or = searchConditions;
@@ -188,7 +214,7 @@ export const adminGetAllUsers = async (req, res) => {
 export const adminGetUserById = async (req, res) => {
   try {
     const user = await User.findById(req.params.id).select(
-      "-password -otp -otpCreatedAt -refreshTokenEncrypted"
+      "-password -otp -otpCreatedAt -refreshTokenEncrypted",
     );
 
     if (!user) return errorData(res, 404, false, "User not found.");
@@ -203,10 +229,10 @@ export const adminGetUserById = async (req, res) => {
   }
 };
 
-
 export const adminUpdateUser = async (req, res) => {
   try {
-    const { name, email, phone, country_code, roles, city, status, password } = req.body;
+    const { name, email, phone, country_code, roles, city, status, password } =
+      req.body;
 
     const updateData = {};
 
@@ -214,7 +240,8 @@ export const adminUpdateUser = async (req, res) => {
     if (country_code !== undefined) updateData.country_code = country_code;
     if (city !== undefined) updateData.city = city;
 
-    if (status !== undefined) updateData.status = status === true || status === "true";
+    if (status !== undefined)
+      updateData.status = status === true || status === "true";
 
     // roles
     if (roles !== undefined) {
@@ -225,11 +252,18 @@ export const adminUpdateUser = async (req, res) => {
       const invalidRoles = parsedRoles.filter((r) => !VALID_ROLES.includes(r));
       if (invalidRoles.length > 0)
         return errorData(
-          res, 400, false,
-          `Invalid role(s): ${invalidRoles.join(", ")}`
+          res,
+          400,
+          false,
+          `Invalid role(s): ${invalidRoles.join(", ")}`,
         );
       if (parsedRoles.includes(ROLES.ADMIN))
-        return errorData(res, 403, false, "Admin role cannot be assigned here.");
+        return errorData(
+          res,
+          403,
+          false,
+          "Admin role cannot be assigned here.",
+        );
 
       updateData.roles = parsedRoles;
     }
@@ -237,15 +271,23 @@ export const adminUpdateUser = async (req, res) => {
     // email — check uniqueness
     if (email !== undefined) {
       const normalised = email.toLowerCase().trim();
-      const conflict = await User.findOne({ email: normalised, _id: { $ne: req.params.id } });
-      if (conflict) return errorData(res, 409, false, "Email is already in use.");
+      const conflict = await User.findOne({
+        email: normalised,
+        _id: { $ne: req.params.id },
+      });
+      if (conflict)
+        return errorData(res, 409, false, "Email is already in use.");
       updateData.email = normalised;
     }
 
     // phone — check uniqueness
     if (phone !== undefined) {
-      const conflict = await User.findOne({ phone, _id: { $ne: req.params.id } });
-      if (conflict) return errorData(res, 409, false, "Phone number is already in use.");
+      const conflict = await User.findOne({
+        phone,
+        _id: { $ne: req.params.id },
+      });
+      if (conflict)
+        return errorData(res, 409, false, "Phone number is already in use.");
       updateData.phone = phone;
     }
 
@@ -253,8 +295,10 @@ export const adminUpdateUser = async (req, res) => {
     if (password !== undefined) {
       if (!isStrongPassword(password))
         return errorData(
-          res, 400, false,
-          "Password must be 8+ chars with uppercase, lowercase, number and special character."
+          res,
+          400,
+          false,
+          "Password must be 8+ chars with uppercase, lowercase, number and special character.",
         );
       updateData.password = await bcrypt.hash(password, SALT_ROUNDS);
     }
@@ -262,7 +306,7 @@ export const adminUpdateUser = async (req, res) => {
     const updated = await User.findByIdAndUpdate(
       req.params.id,
       { $set: updateData },
-      { new: true, runValidators: true }
+      { new: true, runValidators: true },
     ).select("-password -otp -otpCreatedAt -refreshTokenEncrypted");
 
     if (!updated) return errorData(res, 404, false, "User not found.");
@@ -277,7 +321,7 @@ export const adminUpdateUser = async (req, res) => {
   }
 };
 
-//  
+//
 export const adminDeleteUser = async (req, res) => {
   try {
     const user = await User.findById(req.params.id);
@@ -298,7 +342,7 @@ export const adminDeleteUser = async (req, res) => {
   }
 };
 
-//  
+//
 export const adminRestoreUser = async (req, res) => {
   try {
     const user = await User.findById(req.params.id);
@@ -312,7 +356,13 @@ export const adminRestoreUser = async (req, res) => {
     user.deletedAt = null;
     await user.save();
 
-    return successData(res, 200, true, "User restored successfully.", sanitizeUser(user));
+    return successData(
+      res,
+      200,
+      true,
+      "User restored successfully.",
+      sanitizeUser(user),
+    );
   } catch (err) {
     console.warn("adminRestoreUser error:", err);
     return errorData(res, 500, false, "Server Error", null, err?.message);

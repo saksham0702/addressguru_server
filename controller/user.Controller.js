@@ -17,7 +17,7 @@ import {
 const OTP_VALIDITY_MINUTES = 10;
 
 export const login = async (req, res) => {
-  console.log("LOGIN BODY:", req.body);
+  // console.log("LOGIN BODY:", req.body);
 
   try {
     const { email, password } = req.body;
