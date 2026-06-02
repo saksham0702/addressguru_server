@@ -17,7 +17,6 @@ import {
 import { getAdminStats } from "../controller/adminStats.Controller.js";
 import { authenticate } from "../middleware/userAuth.js";
 
-
 const router = express.Router();
 
 // router.use(authenticate);

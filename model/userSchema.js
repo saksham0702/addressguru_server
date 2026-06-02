@@ -169,8 +169,15 @@ const userSchema = new mongoose.Schema(
 
     // ── Flags ─────────────────────────────────────────────────────────────────
     status: { type: Boolean, default: true },
-    lastActive: { type: Date, default: Date.now },
+    isOnline: {
+      type: Boolean,
+      default: false,
+    },
 
+    lastSeen: {
+      type: Date,
+      default: null,
+    },
     // Soft-delete
     deletedAt: { type: Date, default: null },
 
@@ -195,14 +202,23 @@ userSchema.pre("save", function (next) {
 });
 
 // Also handle update operations
-userSchema.pre(["update", "updateOne", "updateMany", "findOneAndUpdate", "findByIdAndUpdate"], function (next) {
-  const update = this.getUpdate();
-  if (update && update.$set && Array.isArray(update.$set.socialLinks)) {
-    update.$set.socialLinks = update.$set.socialLinks[0] || {};
-  } else if (update && Array.isArray(update.socialLinks)) {
-    update.socialLinks = update.socialLinks[0] || {};
-  }
-  next();
-});
+userSchema.pre(
+  [
+    "update",
+    "updateOne",
+    "updateMany",
+    "findOneAndUpdate",
+    "findByIdAndUpdate",
+  ],
+  function (next) {
+    const update = this.getUpdate();
+    if (update && update.$set && Array.isArray(update.$set.socialLinks)) {
+      update.$set.socialLinks = update.$set.socialLinks[0] || {};
+    } else if (update && Array.isArray(update.socialLinks)) {
+      update.socialLinks = update.socialLinks[0] || {};
+    }
+    next();
+  },
+);
 
 export default mongoose.model("User", userSchema);

@@ -1922,7 +1922,7 @@ export const getRecentListings = async (req, res) => {
     })
       .sort({ createdAt: -1 })
       .limit(5)
-      .populate("category", "name")
+      .populate("category", "name iconSvg")
       .select("businessName businessAddress slug category images")
       .lean();
     return successData(
