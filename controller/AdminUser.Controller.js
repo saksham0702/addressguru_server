@@ -140,13 +140,13 @@ export const adminGetAllUsers = async (req, res) => {
       deleted = "false",
       search,
       online,
+      sortBy = "new",
     } = req.query;
     page = Math.max(1, parseInt(page, 10));
     limit = Math.min(100, Math.max(1, parseInt(limit, 10)));
 
     const query = {};
 
-    // deleted filter — handles old docs that don't have isDeleted field
     if (deleted === "true") {
       query.isDeleted = true;
     } else {
@@ -159,21 +159,14 @@ export const adminGetAllUsers = async (req, res) => {
     }
 
     if (status !== undefined) query.status = status === "true";
-    if (online === "true") {
-      query.isOnline = true;
-    }
 
-    if (online === "false") {
-      query.isOnline = false;
-    }
+    if (online === "true") query.isOnline = true;
+    if (online === "false") query.isOnline = false;
 
-    // search needs special handling when $or already exists from isDeleted
     if (search) {
       const re = new RegExp(search, "i");
       const searchConditions = [{ name: re }, { email: re }, { phone: re }];
-
       if (query.$or) {
-        // combine both $or conditions using $and
         query.$and = [{ $or: query.$or }, { $or: searchConditions }];
         delete query.$or;
       } else {
@@ -181,11 +174,13 @@ export const adminGetAllUsers = async (req, res) => {
       }
     }
 
+    const sortOrder = sortBy === "old" ? 1 : -1;
+
     const [users, total] = await Promise.all([
       User.find(query)
         .select("-password -otp -otpCreatedAt -refreshTokenEncrypted")
         .populate("createdBy", "name email")
-        .sort({ createdAt: -1 })
+        .sort({ isOnline: -1, createdAt: sortOrder })
         .skip((page - 1) * limit)
         .limit(limit)
         .lean(),

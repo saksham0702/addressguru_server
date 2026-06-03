@@ -5,8 +5,8 @@ export const registerSocketEvents = (io) => {
     console.log("Socket Connected:", socket.id);
 
     socket.on("user-online", async (userId) => {
-      socket.userId = userId;
       console.log("USER ONLINE EVENT", userId);
+      socket.userId = userId;
       await User.findByIdAndUpdate(userId, {
         isOnline: true,
         lastSeen: null,
@@ -20,17 +20,20 @@ export const registerSocketEvents = (io) => {
     });
 
     socket.on("disconnect", async () => {
-      if (!socket.userId) return;
+      console.log("DISCONNECT CALLED", socket.userId);
+
+      const userId = socket.userId;
+      if (!userId) return; // keep it simple
 
       const lastSeen = new Date();
 
-      await User.findByIdAndUpdate(socket.userId, {
+      await User.findByIdAndUpdate(userId, {
         isOnline: false,
         lastSeen,
       });
 
       io.emit("user-status-changed", {
-        userId: socket.userId,
+        userId,
         isOnline: false,
         lastSeen,
       });
