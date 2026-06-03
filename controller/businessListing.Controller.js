@@ -1709,6 +1709,7 @@ export const getAdminCompletedListings = async (req, res) => {
       viewType = "completed",
       leadStatus, // "hot" | "warm" | "cold" | "new"
       followUpFilter, // "overdue" | "today" | "tomorrow" | "this_week" | "no_followup"
+      onlineUsers,
     } = req.query;
 
     const filter = {};
@@ -1733,6 +1734,12 @@ export const getAdminCompletedListings = async (req, res) => {
     // ── lead status filter ────────────────────────────────────────────────────
     if (leadStatus && leadStatus !== "all") {
       filter.leadStatus = leadStatus;
+    }
+
+    // online users filter
+    if (onlineUsers === "true") {
+      const onlineUserIds = await User.distinct("_id", { isOnline: true });
+      filter.createdBy = { $in: onlineUserIds };
     }
 
     // ── search ────────────────────────────────────────────────────────────────
@@ -1848,7 +1855,7 @@ export const getAdminCompletedListings = async (req, res) => {
         .populate("subCategory", "name")
         .populate("city", "name")
         .populate("plan", "name")
-        .populate("createdBy", "name email")
+        .populate("createdBy", "name email isOnline lastSeen")
         .sort({ [sortBy]: sortOrder })
         .skip(skip)
         .limit(limit)
