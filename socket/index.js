@@ -4,6 +4,7 @@ let io;
 
 export const initializeSocket = (server) => {
   io = new Server(server, {
+    path: "/api",
     cors: {
       origin: "*",
       credentials: true,
