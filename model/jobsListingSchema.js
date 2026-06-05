@@ -166,6 +166,7 @@ const jobSchema = new mongoose.Schema(
         enum: ["1-10", "11-50", "51-200", "201-500", "500+"],
       },
       address: { type: String },
+      locality: { type: String },
       city: {
         _id: { type: mongoose.Schema.Types.ObjectId },
         name: { type: String },
