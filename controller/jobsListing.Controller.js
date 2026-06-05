@@ -13,9 +13,7 @@ import {
 } from "../utils/sendMail.js";
 import { sendPushNotification } from "../services/notification.service.js";
 
-/* =========================
-   SAVE JOB (2-STEP WIZARD)
-========================== */
+/*  SAVE JOB (2-STEP WIZARD) */
 // export const saveJobStep = async (req, res) => {
 //   try {
 //     const { job_id } = req.body;
@@ -158,7 +156,11 @@ export const saveJobStep = async (req, res) => {
     const safeParse = (val, fallback = []) => {
       if (!val) return fallback;
       if (typeof val === "string") {
-        try { return JSON.parse(val); } catch { return fallback; }
+        try {
+          return JSON.parse(val);
+        } catch {
+          return fallback;
+        }
       }
       return val;
     };
@@ -234,14 +236,18 @@ export const saveJobStep = async (req, res) => {
 
       /* ── Step 1 Validation ── */
       const validationErrors = {};
-      if (!title || !title.toString().trim()) validationErrors.title = "Job title is required";
+      if (!title || !title.toString().trim())
+        validationErrors.title = "Job title is required";
       if (!category_id) validationErrors.category = "Job category is required";
       if (!sector) validationErrors.sector = "Sector is required";
       if (!jobType) validationErrors.jobType = "Job type is required";
-      if (!experienceLevel) validationErrors.experienceLevel = "Experience level is required";
+      if (!experienceLevel)
+        validationErrors.experienceLevel = "Experience level is required";
 
       if (Object.keys(validationErrors).length > 0) {
-        return errorData(res, 400, false, "Validation failed", { errors: validationErrors });
+        return errorData(res, 400, false, "Validation failed", {
+          errors: validationErrors,
+        });
       }
 
       // Parse JSON-string arrays coming from FormData
@@ -273,7 +279,9 @@ export const saveJobStep = async (req, res) => {
           benefits: Array.isArray(parsedBenefits)
             ? parsedBenefits
             : [parsedBenefits].filter(Boolean),
-          skills: Array.isArray(parsedSkills) ? parsedSkills : [parsedSkills].filter(Boolean),
+          skills: Array.isArray(parsedSkills)
+            ? parsedSkills
+            : [parsedSkills].filter(Boolean),
           sector,
           jobType,
           workMode,
@@ -285,9 +293,15 @@ export const saveJobStep = async (req, res) => {
           noOfExperience,
           gender,
           ageRange: parsedAgeRange,
-          nationality: Array.isArray(parsedNationality) ? parsedNationality : [parsedNationality].filter(Boolean),
-          language: Array.isArray(parsedLanguage) ? parsedLanguage : [parsedLanguage].filter(Boolean),
-          localities: Array.isArray(parsedLocalities) ? parsedLocalities : [parsedLocalities].filter(Boolean),
+          nationality: Array.isArray(parsedNationality)
+            ? parsedNationality
+            : [parsedNationality].filter(Boolean),
+          language: Array.isArray(parsedLanguage)
+            ? parsedLanguage
+            : [parsedLanguage].filter(Boolean),
+          localities: Array.isArray(parsedLocalities)
+            ? parsedLocalities
+            : [parsedLocalities].filter(Boolean),
           slug: baseSlug,
           createdBy: user?.id,
           status: "pending",
@@ -334,9 +348,14 @@ export const saveJobStep = async (req, res) => {
             : [parsedResponsibilities];
 
         if (benefits)
-          job.benefits = Array.isArray(parsedBenefits) ? parsedBenefits : [parsedBenefits];
+          job.benefits = Array.isArray(parsedBenefits)
+            ? parsedBenefits
+            : [parsedBenefits];
 
-        if (skills) job.skills = Array.isArray(parsedSkills) ? parsedSkills : [parsedSkills];
+        if (skills)
+          job.skills = Array.isArray(parsedSkills)
+            ? parsedSkills
+            : [parsedSkills];
 
         if (sector) job.sector = sector;
         if (jobType) job.jobType = jobType;
@@ -349,9 +368,18 @@ export const saveJobStep = async (req, res) => {
         if (noOfExperience) job.noOfExperience = noOfExperience;
         if (gender) job.gender = gender;
         if (ageRange) job.ageRange = parsedAgeRange;
-        if (nationality) job.nationality = Array.isArray(parsedNationality) ? parsedNationality : [parsedNationality];
-        if (language) job.language = Array.isArray(parsedLanguage) ? parsedLanguage : [parsedLanguage];
-        if (localities) job.localities = Array.isArray(parsedLocalities) ? parsedLocalities : [parsedLocalities];
+        if (nationality)
+          job.nationality = Array.isArray(parsedNationality)
+            ? parsedNationality
+            : [parsedNationality];
+        if (language)
+          job.language = Array.isArray(parsedLanguage)
+            ? parsedLanguage
+            : [parsedLanguage];
+        if (localities)
+          job.localities = Array.isArray(parsedLocalities)
+            ? parsedLocalities
+            : [parsedLocalities];
 
         // If editing, status goes back to pending (never "unapproved")
         job.status = "pending";
@@ -382,10 +410,13 @@ export const saveJobStep = async (req, res) => {
 
       /* ── Step 2 Validation ── */
       const validationErrors = {};
-      if (!parsedCompany?.name?.trim()) validationErrors.company_name = "Company name is required";
+      if (!parsedCompany?.name?.trim())
+        validationErrors.company_name = "Company name is required";
       if (!parsedContact?.email?.trim()) {
         validationErrors.email = "Email is required";
-      } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(parsedContact.email.trim())) {
+      } else if (
+        !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(parsedContact.email.trim())
+      ) {
         validationErrors.email = "Invalid email format";
       }
       if (!parsedContact?.phone) {
@@ -393,7 +424,9 @@ export const saveJobStep = async (req, res) => {
       }
 
       if (Object.keys(validationErrors).length > 0) {
-        return errorData(res, 400, false, "Validation failed", { errors: validationErrors });
+        return errorData(res, 400, false, "Validation failed", {
+          errors: validationErrors,
+        });
       }
 
       if (parsedContact) job.contact = parsedContact;
@@ -406,15 +439,33 @@ export const saveJobStep = async (req, res) => {
           name: parsedCompany.name || job.company?.name,
           website: parsedCompany.website || job.company?.website,
           size: parsedCompany.size || job.company?.size,
-          description: parsedCompany.description !== undefined ? parsedCompany.description : job.company?.description,
-          logo: parsedCompany?.logo !== undefined ? parsedCompany?.logo : job?.company?.logo,
-          address: parsedCompany.address !== undefined ? parsedCompany.address : job.company?.address,
-          city: parsedCompany.city !== undefined ? parsedCompany.city : job.company?.city,
+          description:
+            parsedCompany.description !== undefined
+              ? parsedCompany.description
+              : job.company?.description,
+          logo:
+            parsedCompany?.logo !== undefined
+              ? parsedCompany?.logo
+              : job?.company?.logo,
+          address:
+            parsedCompany.address !== undefined
+              ? parsedCompany.address
+              : job.company?.address,
+          locality:
+            parsedCompany.locality !== undefined
+              ? parsedCompany.locality
+              : job.company?.locality,
+          city:
+            parsedCompany.city !== undefined
+              ? parsedCompany.city
+              : job.company?.city,
         };
 
-        // Store locality in the localities array
+        // Also Store locality in the localities array for legacy/multi-area support if needed
         if (companyLocality) {
-          const localitiesArr = Array.isArray(companyLocality) ? companyLocality : [companyLocality];
+          const localitiesArr = Array.isArray(companyLocality)
+            ? companyLocality
+            : [companyLocality];
           job.localities = localitiesArr.filter(Boolean);
         }
       }
@@ -446,7 +497,7 @@ export const saveJobStep = async (req, res) => {
       // Append newly uploaded images to existing array
       if (req.files?.images?.length > 0) {
         const newImages = req.files.images.map((img) =>
-          img.path.replace(/\\/g, "/")
+          img.path.replace(/\\/g, "/"),
         );
         job.images = [...(job.images || []), ...newImages];
       }
@@ -506,12 +557,19 @@ export const saveJobStep = async (req, res) => {
       for (const key in error.errors) {
         fieldErrors[key] = error.errors[key].message;
       }
-      return errorData(res, 400, false, "Validation failed", { errors: fieldErrors });
+      return errorData(res, 400, false, "Validation failed", {
+        errors: fieldErrors,
+      });
     }
 
     // ── Duplicate key error (slug collision etc.) ──
     if (error.code === 11000) {
-      return errorData(res, 409, false, "A job with this title already exists. Please use a different title.");
+      return errorData(
+        res,
+        409,
+        false,
+        "A job with this title already exists. Please use a different title.",
+      );
     }
 
     return errorData(res, 500, false, "Internal server error");
@@ -550,7 +608,10 @@ export const getAllJobsWithPaginationAndFilters = async (req, res) => {
     // =========================
     // Query Params Aliases
     const categoryId = req.query.category_id || req.query.category;
-    const subCategoryId = req.query.sub_category_id || req.query.subcategory || req.query.subCategory;
+    const subCategoryId =
+      req.query.sub_category_id ||
+      req.query.subcategory ||
+      req.query.subCategory;
 
     if (categoryId) filter.category = categoryId;
     if (subCategoryId) filter.subCategory = subCategoryId;
@@ -594,8 +655,7 @@ export const getAllJobsWithPaginationAndFilters = async (req, res) => {
     if (req.query.availableStatus !== undefined)
       filter.availableStatus = req.query.availableStatus;
 
-    if (req.query.userId !== undefined)
-      filter.createdBy = req.query.userId;
+    if (req.query.userId !== undefined) filter.createdBy = req.query.userId;
 
     if (req.query.sector) filter.sector = req.query.sector;
     if (req.query.jobType) filter.jobType = req.query.jobType;
@@ -608,12 +668,16 @@ export const getAllJobsWithPaginationAndFilters = async (req, res) => {
 
     // Nationality & Language (Array overlaps)
     if (req.query.nationality) {
-      const nationalitiArray = Array.isArray(req.query.nationality) ? req.query.nationality : [req.query.nationality];
+      const nationalitiArray = Array.isArray(req.query.nationality)
+        ? req.query.nationality
+        : [req.query.nationality];
       filter.nationality = { $in: nationalitiArray };
     }
 
     if (req.query.language) {
-      const langArray = Array.isArray(req.query.language) ? req.query.language : [req.query.language];
+      const langArray = Array.isArray(req.query.language)
+        ? req.query.language
+        : [req.query.language];
       filter.language = { $in: langArray };
     }
 
@@ -626,8 +690,19 @@ export const getAllJobsWithPaginationAndFilters = async (req, res) => {
         filter["location.city.slug"] = req.query.city;
       }
     }
-    
+
     if (req.query.country) filter["location.country"] = req.query.country;
+
+    if (req.query.locality) {
+      const localityArray = Array.isArray(req.query.locality)
+        ? req.query.locality
+        : [req.query.locality];
+      filter.$or = filter.$or || [];
+      filter.$or.push(
+        { "company.locality": { $in: localityArray } },
+        { localities: { $in: localityArray } },
+      );
+    }
 
     // Remote filter
     if (req.query.isRemote === "true" || req.query.workMode === "remote") {
@@ -667,28 +742,25 @@ export const getAllJobsWithPaginationAndFilters = async (req, res) => {
     // =========================
     // Query Execution
     // =========================
-    const [
-      jobs,
-      total,
-      totalAll,
-      totalPending,
-      totalApproved,
-      totalRejected,
-    ] = await Promise.all([
-      Job.find(filter)
-        .populate("category", "name")
-        .populate("subCategory", "name")
-        .sort({ createdAt: -1 })
-        .skip(skip)
-        .limit(limit)
-        .lean(),
+    const [jobs, total, totalAll, totalPending, totalApproved, totalRejected] =
+      await Promise.all([
+        Job.find(filter)
+          .populate("category", "name")
+          .populate("subCategory", "name")
+          .populate("createdBy", "name email phone isOnline")
+          .populate("approvedBy", "name email phone")
+          .populate("rejectedBy", "name email phone")
+          .sort({ createdAt: -1 })
+          .skip(skip)
+          .limit(limit)
+          .lean(),
 
-      Job.countDocuments(filter),
-      Job.countDocuments({ isDeleted: false }),
-      Job.countDocuments({ isDeleted: false, status: "pending" }),
-      Job.countDocuments({ isDeleted: false, status: "approved" }),
-      Job.countDocuments({ isDeleted: false, status: "rejected" }),
-    ]);
+        Job.countDocuments(filter),
+        Job.countDocuments({ isDeleted: false }),
+        Job.countDocuments({ isDeleted: false, status: "pending" }),
+        Job.countDocuments({ isDeleted: false, status: "approved" }),
+        Job.countDocuments({ isDeleted: false, status: "rejected" }),
+      ]);
 
     // =========================
     // Success Response
@@ -713,7 +785,6 @@ export const getAllJobsWithPaginationAndFilters = async (req, res) => {
     return errorData(res, 500, false, "Internal server error");
   }
 };
-
 
 /* =========================
    GET ALL JOBS BY USER
@@ -841,7 +912,13 @@ export const getLastJobCompanyDetails = async (req, res) => {
       .lean();
 
     if (!jobs || jobs.length === 0) {
-      return successData(res, 200, true, "No previous company details found", []);
+      return successData(
+        res,
+        200,
+        true,
+        "No previous company details found",
+        [],
+      );
     }
 
     // Filter unique companies by name
@@ -856,12 +933,18 @@ export const getLastJobCompanyDetails = async (req, res) => {
           company: job.company,
           contact: job.contact,
           location: job.location,
-          jobId: job._id
+          jobId: job._id,
         });
       }
     }
 
-    return successData(res, 200, true, "Previous companies fetched", uniqueCompanies);
+    return successData(
+      res,
+      200,
+      true,
+      "Previous companies fetched",
+      uniqueCompanies,
+    );
   } catch (error) {
     console.warn("getLastJobCompanyDetails error:", error);
     return errorData(res, 500, false, "Internal server error");
@@ -915,7 +998,6 @@ export const updateJobStatus = async (req, res) => {
     let { status, availableStatus, rejectionReason } = req.body;
     const adminId = req.user._id;
 
-    const validModerationStatuses = ["pending", "approved", "rejected", "unapproved"];
     const validAvailableStatuses = ["open", "closed", "expired", "pending"];
 
     // If frontend sends everything via `status` property, elegantly route it
@@ -926,15 +1008,16 @@ export const updateJobStatus = async (req, res) => {
       }
     }
 
-    // Map "unapproved" to "pending" — schema only supports pending/approved/rejected
-    if (status === "unapproved") {
-      status = "pending";
+    // Only approved/rejected are treated explicitly.
+    // Everything else becomes pending.
+    if (status) {
+      status =
+        status === "approved"
+          ? "approved"
+          : status === "rejected"
+            ? "rejected"
+            : "pending";
     }
-
-    if (status && !validModerationStatuses.includes(status)) {
-      return errorData(res, 400, false, "Invalid moderation status value");
-    }
-
     if (availableStatus && !validAvailableStatuses.includes(availableStatus)) {
       return errorData(res, 400, false, "Invalid available status value");
     }
@@ -962,6 +1045,11 @@ export const updateJobStatus = async (req, res) => {
         job.rejectionReason = rejectionReason;
         job.approvedBy = null;
         job.isPublished = false;
+      } else if (status === "pending") {
+        job.approvedBy = null;
+        job.rejectedBy = null;
+        job.rejectionReason = null;
+        job.isPublished = false;
       }
 
       // ── Send Email & Notification ──
@@ -981,23 +1069,30 @@ export const updateJobStatus = async (req, res) => {
               category: categoryName,
               listingUrl: `${APP_BASE_URL}/job/${job.slug}`,
               dashboardUrl: `${APP_BASE_URL}/dashboard`,
-            }
+            },
           );
 
           if (job.createdBy) {
-            const pushTitle = status === "approved" ? "Job Listing Approved 🎉" : "Job Listing Rejected ❌";
-            const pushBody = status === "approved"
-              ? `Congratulations! Your job listing "${job.title}" has been successfully approved.`
-              : `We're sorry, your job listing "${job.title}" was rejected. ${rejectionReason ? 'Reason: ' + rejectionReason.trim() : ''}`;
+            const pushTitle =
+              status === "approved"
+                ? "Job Listing Approved 🎉"
+                : "Job Listing Rejected ❌";
+            const pushBody =
+              status === "approved"
+                ? `Congratulations! Your job listing "${job.title}" has been successfully approved.`
+                : `We're sorry, your job listing "${job.title}" was rejected. ${rejectionReason ? "Reason: " + rejectionReason.trim() : ""}`;
 
             await sendPushNotification(job.createdBy, pushTitle, pushBody, {
               type: "JOB_LISTING_STATUS",
               listingId: job._id.toString(),
-              status: status
+              status: status,
             });
           }
         } catch (mailError) {
-          console.warn("❌ Admin status mail/notification failed:", mailError.message);
+          console.warn(
+            "❌ Admin status mail/notification failed:",
+            mailError.message,
+          );
         }
       }
     }
@@ -1100,7 +1195,6 @@ export const getJobsByCategoryAndCity = async (req, res) => {
         totalPages: Math.ceil(total / limit),
       },
     });
-
   } catch (error) {
     console.error("❌ Get jobs by category/city error:", error);
     return errorData(res, 500, false, "Internal server error");
@@ -1116,9 +1210,9 @@ export const publishListing = async (req, res) => {
     const listing = await Job.findOne({
       $or: [
         { _id: isObjectId ? identifier : undefined },
-        { slug: identifier }
+        { slug: identifier },
       ].filter(Boolean),
-      isDeleted: false
+      isDeleted: false,
     });
 
     if (!listing) return errorData(res, 404, false, "Listing not found");
@@ -1131,7 +1225,12 @@ export const publishListing = async (req, res) => {
       listing.createdBy.toString() !== req.user.id.toString() &&
       !userRole
     ) {
-      return errorData(res, 403, false, "Forbidden: you do not own this listing");
+      return errorData(
+        res,
+        403,
+        false,
+        "Forbidden: you do not own this listing",
+      );
     }
 
     listing.isPublished = true;
@@ -1163,9 +1262,9 @@ export const unpublishListing = async (req, res) => {
     const listing = await Job.findOne({
       $or: [
         { _id: isObjectId ? identifier : undefined },
-        { slug: identifier }
+        { slug: identifier },
       ].filter(Boolean),
-      isDeleted: false
+      isDeleted: false,
     });
 
     if (!listing) return errorData(res, 404, false, "Listing not found");
@@ -1178,7 +1277,12 @@ export const unpublishListing = async (req, res) => {
       listing.createdBy.toString() !== req.user.id.toString() &&
       !userRole
     ) {
-      return errorData(res, 403, false, "Forbidden: you do not own this listing");
+      return errorData(
+        res,
+        403,
+        false,
+        "Forbidden: you do not own this listing",
+      );
     }
 
     listing.isPublished = false;
