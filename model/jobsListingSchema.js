@@ -108,6 +108,9 @@ const jobSchema = new mongoose.Schema(
       isRemote: { type: Boolean, default: false },
     },
 
+    // ─── Localities ───────────────────────────────────────────
+    localities: [{ type: String }],
+
     // ─── Education & Experience (for filter) ─────────────────
     education: {
       type: String,
@@ -213,7 +216,7 @@ const jobSchema = new mongoose.Schema(
 
     status: {
       type: String,
-      enum: ["pending", "approved", "rejected", "unapproved"],
+      enum: ["pending", "approved", "rejected"],
       default: "pending",
     },
 
