@@ -13,136 +13,9 @@ import {
 } from "../utils/sendMail.js";
 import { sendPushNotification } from "../services/notification.service.js";
 
-/*  SAVE JOB (2-STEP WIZARD) */
-// export const saveJobStep = async (req, res) => {
-//   try {
-//     const { job_id } = req.body;
-//     const step = req.params.step;
-//     const user = req.user;
-//     console.log("USERR ::", user);
-
-//     /* =========================
-//        STEP 1 – JOB DETAILS & REQS
-//     ========================== */
-//     if (Number(step) === 1) {
-//       const {
-//         category_id,
-//         sub_category_id,
-//         title,
-//         description,
-//         requirements = [],
-//         responsibilities = [],
-//         benefits = [],
-//         sector,
-//         jobType,
-//         workMode,
-//         experienceLevel,
-//         total_positions = 1,
-//         salary,
-//         location,
-//         education,
-//         experienceYears,
-//         gender,
-//         ageRange,
-//       } = req.body;
-
-//       const baseSlug = slugify(title, { lower: true, strict: true });
-//       const slug = baseSlug
-
-//       const job = await Job.create({
-//         category: category_id,
-//         subCategory: sub_category_id || null,
-//         title,
-//         description: description || null,
-//         requirements: Array.isArray(requirements) ? requirements : [requirements].filter(Boolean),
-//         responsibilities: Array.isArray(responsibilities) ? responsibilities : [responsibilities].filter(Boolean),
-//         benefits: Array.isArray(benefits) ? benefits : [benefits].filter(Boolean),
-//         sector,
-//         jobType,
-//         workMode: workMode || "on-site",
-//         experienceLevel,
-//         totalPositions: total_positions,
-//         salary: salary || undefined,
-//         location: location || undefined,
-//         education: education || "any",
-//         experienceYears: experienceYears || undefined,
-//         gender: gender || "any",
-//         ageRange: ageRange || undefined,
-//         slug,
-//         createdBy: req.user?.id || null, // Assuming you have req.user from auth middleware
-//         status: "pending",
-//       });
-
-//       return successData(res, 200, true, "Job created successfully", {
-//         id: job._id,
-//         slug: job.slug,
-//       });
-//     }
-// 0.
-//     /* =========================
-//        FIND JOB (for Step 2)
-//     ========================== */
-//     const job = await Job.findOne({
-//       _id: job_id,
-//       isDeleted: false,
-//     });
-
-//     if (!job) return errorData(res, 404, false, "Job not found");
-
-//     /* =========================
-//        STEP 2 – CONTACT, MEDIA & SEO
-//     ========================== */
-//     if (Number(step) === 2) {
-//       const { contact, company, seo_title, seo_description, seo_keywords, application_deadline } = req.body;
-
-//       job.contact = contact || job.contact;
-
-//       // Merge company info, keep existing properties if not provided
-//       job.company = {
-//         name: company?.name || job.company?.name,
-//         website: company?.website || job.company?.website,
-//         size: company?.size || job.company?.size,
-//         logo: job.company?.logo // Keep existing logo first
-//       };
-
-//       job.seo = {
-//         title: seo_title || null,
-//         description: seo_description || null,
-//         keywords: Array.isArray(seo_keywords) ? seo_keywords : [seo_keywords].filter(Boolean),
-//       };
-
-//       job.applicationDeadline = application_deadline || null;
-
-//       // Handle file uploads via Multer
-//       // company logo — single file
-//       if (req.files?.logo?.[0]) {
-//         job.company.logo = req.files.logo[0].path;
-//       }
-
-//       // images — multiple files, append to existing
-//       if (req.files?.images?.length > 0) {
-//         const newImages = req.files.images.map((img) => img.path);
-//         job.images = [...(job.images || []), ...newImages];
-//       }
-
-//       // Finalize the posting
-//       job.status = "active";
-//       job.isActive = true;
-//     }
-
-//     await job.save();
-
-//     return successData(res, 200, true, `Step ${step} saved successfully`, {
-//       id: job._id,
-//     });
-//   } catch (error) {
-//     console.warn("Job step error:", error);
-//     return errorData(res, 500, false, "Internal server error");
-//   }
-// };
-
 export const saveJobStep = async (req, res) => {
   console.log("REQQ BODYY :", req?.body);
+  console.log("REQQ FILES :", req?.files);
 
   try {
     const { job_id, slug } = req?.body;
@@ -432,8 +305,15 @@ export const saveJobStep = async (req, res) => {
       if (parsedContact) job.contact = parsedContact;
 
       if (parsedCompany) {
-        // Extract locality from company object (frontend sends it inside company)
         const companyLocality = parsedCompany.locality;
+
+        // ✅ Resolve logo BEFORE building company object
+        let resolvedLogo = job?.company?.logo; // fallback to existing
+        if (req.files?.logo?.[0]) {
+          resolvedLogo = req.files.logo[0].path.replace(/\\/g, "/");
+        } else if (req.body.previous_company_logo) {
+          resolvedLogo = req.body.previous_company_logo;
+        }
 
         job.company = {
           name: parsedCompany.name || job.company?.name,
@@ -443,10 +323,7 @@ export const saveJobStep = async (req, res) => {
             parsedCompany.description !== undefined
               ? parsedCompany.description
               : job.company?.description,
-          logo:
-            parsedCompany?.logo !== undefined
-              ? parsedCompany?.logo
-              : job?.company?.logo,
+          logo: resolvedLogo, // ✅ always correct now
           address:
             parsedCompany.address !== undefined
               ? parsedCompany.address
@@ -461,7 +338,6 @@ export const saveJobStep = async (req, res) => {
               : job.company?.city,
         };
 
-        // Also Store locality in the localities array for legacy/multi-area support if needed
         if (companyLocality) {
           const localitiesArr = Array.isArray(companyLocality)
             ? companyLocality
@@ -481,26 +357,6 @@ export const saveJobStep = async (req, res) => {
       };
 
       if (application_deadline) job.applicationDeadline = application_deadline;
-
-      // ── Logo Handling ──
-      if (req.files?.logo?.[0]) {
-        // New file uploaded — use it
-        job.company.logo = req.files.logo[0].path.replace(/\\/g, "/");
-      } else if (req.body?.logo_url) {
-        // Reuse existing remote logo — keep as-is
-        job.company.logo = req.body.logo_url;
-      } else if (typeof req.body?.logo === "string" && req.body.logo.trim()) {
-        // Logo sent as a string URL (existing logo path from edit)
-        job.company.logo = req.body.logo;
-      }
-
-      // Append newly uploaded images to existing array
-      if (req.files?.images?.length > 0) {
-        const newImages = req.files.images.map((img) =>
-          img.path.replace(/\\/g, "/"),
-        );
-        job.images = [...(job.images || []), ...newImages];
-      }
 
       // Status: always "pending" — never "unapproved"
       job.status = "pending";
