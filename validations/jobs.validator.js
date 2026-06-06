@@ -155,6 +155,8 @@ export const jobStepSchemas = {
       "string.empty": "Slug cannot be empty",
     }),
 
+    previous_company_logo: Joi.string().optional().allow(),
+
     job_id: commonRules.mongoId
       .optional()
       .messages({ "string.pattern.base": "Invalid Job ID" }),
@@ -185,7 +187,9 @@ export const jobStepSchemas = {
         _id: Joi.string().required(),
         name: Joi.string().required(),
         slug: Joi.string().required(),
-      }).optional().allow(null),
+      })
+        .optional()
+        .allow(null),
       // logo is uploaded and handled by multer, not validated by Joi
     })
       .optional()
