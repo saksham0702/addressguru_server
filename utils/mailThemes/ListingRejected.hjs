@@ -38,7 +38,7 @@
       align-items: center;
       justify-content: center;
       height: 72px;
-      border-bottom: 1px solid #ebebeb;
+      border-bottom: 2px solid #f7941d; /* Subtle brand touch */
     }
     .header-logo {
       display: block;
@@ -48,27 +48,22 @@
       object-fit: contain;
     }
 
-    /* ── STATUS BAR ── */
-    .status-bar {
+    /* ── BANNER ── */
+    .banner {
+      padding: 24px 32px 0;
+      text-align: center;
+    }
+    .status-badge {
+      display: inline-block;
+      padding: 4px 12px;
       background: #fef2f2;
-      border-bottom: 2px solid #fca5a5;
-      padding: 12px 32px;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-    .status-dot {
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      background: #ef4444;
-      flex-shrink: 0;
-    }
-    .status-text {
-      font-size: 13px;
-      font-weight: 600;
       color: #b91c1c;
-      letter-spacing: 0.2px;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      border-radius: 99px;
+      border: 1px solid #fee2e2;
     }
 
     /* ── CONTENT ── */
@@ -218,10 +213,9 @@
       <img class="header-logo" src="https://www.addressguru.in/images/logopng.png" alt="AddressGuru" />
     </div>
 
-    <!-- STATUS BAR -->
-    <div class="status-bar">
-      <div class="status-dot"></div>
-      <span class="status-text">Listing Not Approved</span>
+    <!-- BANNER -->
+    <div class="banner">
+      <span class="status-badge">Action Required</span>
     </div>
 
     <!-- CONTENT -->

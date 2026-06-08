@@ -1361,7 +1361,7 @@ export const updateListingStatus = async (req, res) => {
     }
 
     // ── Find the listing ────────────────────────────────────────────────────
-    const listing = await BusinessListing.findById(id);
+    const listing = await BusinessListing.findById(id).populate("category", "name");
     if (!listing) {
       return res.status(404).json({
         success: false,
@@ -1396,12 +1396,19 @@ export const updateListingStatus = async (req, res) => {
     // ── Send mail & notification ────────────────────────────────────────────
     if (status !== "unapproved") {
       try {
-        // await sendApprovedAndRejectedListingMail(
-        //   listing.email,
-        //   listing.contactPersonName || listing.businessName,
-        //   status,
-        //   status === "rejected" ? rejectionReason.trim() : null,
-        // );
+        await sendApprovedAndRejectedListingMail(
+          listing.email,
+          listing.contactPersonName || listing.businessName,
+          status,
+          status === "rejected" ? rejectionReason.trim() : null,
+          {
+            businessName: listing.businessName,
+            category: listing.category?.name || "Business",
+            listingUrl: `https://addressguru.ae/listing/${listing.slug}`,
+            previewLink: `https://addressguru.ae/listing/${listing.slug}`,
+            dashboardUrl: `https://addressguru.ae/dashboard`,
+          },
+        );
         console.log(`✅ Mail sent to ${listing.email} for status: ${status}`);
 
         if (listing.createdBy) {
