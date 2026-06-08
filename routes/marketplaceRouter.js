@@ -11,6 +11,7 @@ import {
   getApprovedListings,
   unpublishListing,
   publishListing,
+  getMarketplaceCategoryInfo,
 } from "../controller/marketplace.Controller.js";
 import { setUploadFolder } from "../middleware/setUploadFolder.js";
 import upload from "../middleware/multerConfig.js";
@@ -51,5 +52,7 @@ router.patch("/:identifier/publish", authenticate, publishListing);
 router.get("/get-approved-listings", getApprovedListings);
 router.patch("/mark-as-sold/:id", authenticate, markMarketplaceListingAsSold);
 router.delete("/delete-listing/:id", authenticate, deleteMarketplaceListing);
+
+router.get("/category-info/:categoryId", getMarketplaceCategoryInfo);
 
 export default router;

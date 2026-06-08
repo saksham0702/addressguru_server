@@ -783,14 +783,45 @@ export const getApprovedListings = async (req, res) => {
     if (!listings.length)
       return errorData(res, 404, false, "No listings found");
 
-    return successData(res, 200, true, "Listings fetched successfully", {
-      listings,
-      page,
-      limit,
-      total: listings.length,
-    });
+    return successData(res, 200, true, "Listing fetched successfully", listings || []); // Ensure array
   } catch (error) {
-    console.error("Marketplace listing fetch error:", error);
+    console.warn("Marketplace listing fetch error:", error);
+    return errorData(res, 500, false, "Internal server error");
+  }
+};
+
+// ─── GET Category Info (Subcategories + Additional Fields) ────────────────────
+export const getMarketplaceCategoryInfo = async (req, res) => {
+  try {
+    const { categoryId } = req.params;
+
+    if (!categoryId) {
+      return errorData(res, 400, false, "Category id is required");
+    }
+
+    const [subCategories, additionalFields] = await Promise.all([
+      SubCategory.find({ category: categoryId, isDeleted: false }).select(
+        "name _id",
+      ),
+      AdditionalField.find({
+        category_id: categoryId,
+        is_inside_form: true,
+        is_deleted: false,
+      }).sort({ createdAt: 1 }),
+    ]);
+
+    return successData(
+      res,
+      200,
+      true,
+      "Category info fetched successfully",
+      {
+        subCategories: subCategories || [],
+        additionalFields: additionalFields || [],
+      },
+    );
+  } catch (error) {
+    console.warn("Marketplace category info fetch error:", error);
     return errorData(res, 500, false, "Internal server error");
   }
 };
