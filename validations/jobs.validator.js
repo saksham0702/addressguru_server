@@ -177,7 +177,7 @@ export const jobStepSchemas = {
     company: Joi.object({
       name: Joi.string().optional().allow("", null),
       website: Joi.string().uri().optional().allow("", null),
-      description: Joi.string().optional().allow("", null),
+      description: Joi.string().min(200).max(500).optional().allow("", null),
       size: Joi.string()
         .valid("1-10", "11-50", "51-200", "201-500", "500+")
         .optional()

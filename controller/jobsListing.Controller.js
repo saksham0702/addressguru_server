@@ -14,9 +14,6 @@ import {
 import { sendPushNotification } from "../services/notification.service.js";
 
 export const saveJobStep = async (req, res) => {
-  console.log("REQQ BODYY :", req?.body);
-  console.log("REQQ FILES :", req?.files);
-
   try {
     const { job_id, slug } = req?.body;
     const step = Number(req?.params?.step);
