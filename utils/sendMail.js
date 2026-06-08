@@ -71,7 +71,6 @@ const sendOTPMail = (email, name = "", otp) => {
 // Added optional `extra` param for richer approved template data.
 // Fully backward-compatible — existing callers with 4 args still work.
 const sendApprovedAndRejectedListingMail = (email, name, status, message, extra = {}) => {
-  /*
   console.log("EMAIL:", email, "Name:", name, "Status:", status, "Message:", message);
 
   let templatePath;
@@ -120,9 +119,6 @@ const sendApprovedAndRejectedListingMail = (email, name, status, message, extra 
   };
 
   return transporter.sendMail(mailOptions);
-  */
-  console.log("Mail sending disabled for sendApprovedAndRejectedListingMail");
-  return Promise.resolve();
 };
 
 
