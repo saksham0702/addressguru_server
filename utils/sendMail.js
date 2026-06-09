@@ -1,5 +1,4 @@
-// 
-
+//
 
 import nodemailer from "nodemailer";
 import fs from "fs";
@@ -67,11 +66,26 @@ const sendOTPMail = (email, name = "", otp) => {
   return transporter.sendMail(mailOptions);
 };
 
-// ─── UPDATED: Approved / Rejected listing mail ────────────────────────────────
+//  UPDATED: Approved / Rejected listing mail
 // Added optional `extra` param for richer approved template data.
 // Fully backward-compatible — existing callers with 4 args still work.
-const sendApprovedAndRejectedListingMail = (email, name, status, message, extra = {}) => {
-  console.log("EMAIL:", email, "Name:", name, "Status:", status, "Message:", message);
+const sendApprovedAndRejectedListingMail = (
+  email,
+  name,
+  status,
+  message,
+  extra = {},
+) => {
+  console.log(
+    "EMAIL:",
+    email,
+    "Name:",
+    name,
+    "Status:",
+    status,
+    "Message:",
+    message,
+  );
 
   let templatePath;
   if (status === "approved") {
@@ -91,9 +105,11 @@ const sendApprovedAndRejectedListingMail = (email, name, status, message, extra 
     businessName: extra.businessName || name,
     category: extra.category || "",
     listingUrl: extra.listingUrl || "https://addressguru.ae",
-    previewLink: extra.previewLink || extra.listingUrl || "https://addressguru.ae",
+    previewLink:
+      extra.previewLink || extra.listingUrl || "https://addressguru.ae",
     dashboardUrl: extra.dashboardUrl || "https://addressguru.ae/dashboard",
     plansUrl: extra.plansUrl || "https://addressguru.ae/plans",
+    adminNote: extra.adminNote || null,
     year: new Date().getFullYear(),
   });
 
@@ -121,10 +137,14 @@ const sendApprovedAndRejectedListingMail = (email, name, status, message, extra 
   return transporter.sendMail(mailOptions);
 };
 
-
 // top business
 
-const sendTopBusinessesDigestMail = (email, name, category, businesses = []) => {
+const sendTopBusinessesDigestMail = (
+  email,
+  name,
+  category,
+  businesses = [],
+) => {
   /*
   console.log(
     "DIGEST MAIL → EMAIL:", email,
@@ -175,10 +195,16 @@ const sendTopBusinessesDigestMail = (email, name, category, businesses = []) => 
   return Promise.resolve();
 };
 
-
 // ─── NEW: Listing submitted / pending mail ────────────────────────────────────
 // Call this after step-6 save in updateListingStep.
-const sendListingSubmittedMail = (email, name, businessName, category, submissionDate, dashboardUrl) => {
+const sendListingSubmittedMail = (
+  email,
+  name,
+  businessName,
+  category,
+  submissionDate,
+  dashboardUrl,
+) => {
   /*
   console.log("📧 sendListingSubmittedMail →", email, name, businessName);
 
@@ -406,10 +432,15 @@ const formatPreferredContactSlot = (datetime) => {
   return new Intl.DateTimeFormat("en-US", options).format(new Date(datetime));
 };
 
-
-// enquiry and all 
+// enquiry and all
 // ─── 1. ENQUIRY RECEIVED — sent to listing owner ──────────────────────────────
-const sendEnquiryReceivedMail = (ownerEmail, ownerName, businessName, listingSlug, enquirer) => {
+const sendEnquiryReceivedMail = (
+  ownerEmail,
+  ownerName,
+  businessName,
+  listingSlug,
+  enquirer,
+) => {
   /*
   console.log(
     "ENQUIRY MAIL → EMAIL:", ownerEmail,
@@ -455,7 +486,13 @@ const sendEnquiryReceivedMail = (ownerEmail, ownerName, businessName, listingSlu
 };
 
 // ─── 1.1 ENQUIRY CONFIRMATION — sent to enquirer ──────────────────────────────
-const sendEnquiryConfirmationMail = (enquirerEmail, enquirerName, businessName, listingSlug, message) => {
+const sendEnquiryConfirmationMail = (
+  enquirerEmail,
+  enquirerName,
+  businessName,
+  listingSlug,
+  message,
+) => {
   /*
   console.log(
     "ENQUIRY CONFIRMATION → EMAIL:", enquirerEmail,
@@ -494,7 +531,6 @@ const sendEnquiryConfirmationMail = (enquirerEmail, enquirerName, businessName, 
   console.log("Mail sending disabled for sendEnquiryConfirmationMail");
   return Promise.resolve();
 };
-
 
 // ─── 2. CLAIM SUBMITTED — sent to claimant ────────────────────────────────────
 const sendClaimSubmittedMail = (claimantEmail, claim, businessName) => {
@@ -542,7 +578,6 @@ const sendClaimSubmittedMail = (claimantEmail, claim, businessName) => {
   console.log("Mail sending disabled for sendClaimSubmittedMail");
   return Promise.resolve();
 };
-
 
 // ─── 3. CLAIM RECEIVED (ADMIN ALERT) — sent to admin ───────────────────────────
 const sendClaimReceivedAdminMail = (claim, businessName, listingSlug) => {
@@ -594,9 +629,15 @@ const sendClaimReceivedAdminMail = (claim, businessName, listingSlug) => {
   return Promise.resolve();
 };
 
-
 // ─── 4. LISTING REPORTED — sent to admin ──────────────────────────────────────
-const sendListingReportedMail = (adminEmail, report, businessName, listingSlug, pendingReportCount, isFlagged) => {
+const sendListingReportedMail = (
+  adminEmail,
+  report,
+  businessName,
+  listingSlug,
+  pendingReportCount,
+  isFlagged,
+) => {
   /*
   const recipient = adminEmail || emailConfig.ADMIN_EMAIL;
   console.log(
@@ -648,7 +689,13 @@ const sendListingReportedMail = (adminEmail, report, businessName, listingSlug, 
 };
 
 // ─── 5. REVIEW RECEIVED — sent to listing owner ───────────────────────────────
-const sendReviewReceivedMail = (ownerEmail, ownerName, businessName, listingSlug, review) => {
+const sendReviewReceivedMail = (
+  ownerEmail,
+  ownerName,
+  businessName,
+  listingSlug,
+  review,
+) => {
   /*
   console.log(
     "REVIEW RECEIVED MAIL → EMAIL:", ownerEmail,
@@ -693,9 +740,14 @@ const sendReviewReceivedMail = (ownerEmail, ownerName, businessName, listingSlug
   return Promise.resolve();
 };
 
-
 // ─── 6. REVIEW CONFIRMATION — sent to reviewer ───────────────────────────────
-const sendReviewConfirmationMail = (reviewerEmail, reviewerName, businessName, listingSlug, rating) => {
+const sendReviewConfirmationMail = (
+  reviewerEmail,
+  reviewerName,
+  businessName,
+  listingSlug,
+  rating,
+) => {
   /*
   console.log(
     "REVIEW CONFIRMATION MAIL → EMAIL:", reviewerEmail,
@@ -737,7 +789,6 @@ const sendReviewConfirmationMail = (reviewerEmail, reviewerName, businessName, l
   return Promise.resolve();
 };
 
-
 // ─── 7. REPORT CONFIRMATION — sent to reporter ───────────────────────────────
 const sendReportConfirmationMail = (reporterEmail, businessName, reason) => {
   /*
@@ -778,7 +829,13 @@ const sendReportConfirmationMail = (reporterEmail, businessName, reason) => {
 };
 
 // ─── 8. CLAIM NOTICE (TO OWNER) — sent to existing listing owner ─────────────
-const sendClaimNoticeToOwnerMail = (ownerEmail, ownerName, businessName, claimantName, reason) => {
+const sendClaimNoticeToOwnerMail = (
+  ownerEmail,
+  ownerName,
+  businessName,
+  claimantName,
+  reason,
+) => {
   /*
   console.log(
     "CLAIM OWNER NOTICE → EMAIL:", ownerEmail,
@@ -819,9 +876,14 @@ const sendClaimNoticeToOwnerMail = (ownerEmail, ownerName, businessName, claiman
   return Promise.resolve();
 };
 
-
 // ─── 9. REPORT NOTICE (TO OWNER) — sent to listing owner ─────────────────────
-const sendReportNoticeToOwnerMail = (ownerEmail, ownerName, businessName, listingSlug, reason) => {
+const sendReportNoticeToOwnerMail = (
+  ownerEmail,
+  ownerName,
+  businessName,
+  listingSlug,
+  reason,
+) => {
   /*
   console.log(
     "REPORT OWNER NOTICE → EMAIL:", ownerEmail,
@@ -861,7 +923,6 @@ const sendReportNoticeToOwnerMail = (ownerEmail, ownerName, businessName, listin
   console.log("Mail sending disabled for sendReportNoticeToOwnerMail");
   return Promise.resolve();
 };
-
 
 export {
   sendMail,

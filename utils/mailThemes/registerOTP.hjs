@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Account Verification - AddressGuru</title>
+  <title>Account Verification - AddressGuru UAE</title>
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet" />
   <style>
     body {
@@ -11,7 +11,7 @@
       padding: 0;
       background-color: #f6f7fb;
       font-family: 'Poppins', sans-serif;
-      color: #333;
+      color: #000000;
     }
 
     .wrapper {
@@ -81,7 +81,7 @@
 
     .note {
       font-size: 14px;
-      color: #777;
+      color: #000000;
       margin-top: 15px;
     }
 
@@ -107,7 +107,7 @@
       padding: 25px 20px;
       text-align: center;
       font-size: 13px;
-      color: #777;
+      color: #000000;
       border-top: 1px solid #eee;
     }
 
@@ -145,7 +145,7 @@
     <div class="container">
       <!-- Header -->
       <div class="header">
-        <img src="https://www.addressguru.in/images/logopng.png" alt="AddressGuru Logo">
+        <img src="https://www.addressguru.in/images/logopng.png" alt="AddressGuru UAE Logo">
         <h1>Verify Your Account</h1>
       </div>
 
@@ -153,7 +153,7 @@
       <div class="content">
         <p>Hi <strong>{{name}}</strong>,</p>
         <p>
-          Thank you for signing up with <strong>AddressGuru</strong>!  
+          Thank you for signing up with <strong>AddressGuru UAE</strong>!  
           To complete your account setup, please verify your email using the One-Time Password (OTP) below:
         </p>
 
@@ -169,12 +169,12 @@
         <p>If you didn’t create an account, you can safely ignore this email.</p>
 
         <p>Best regards,</p>
-        <p><strong>The AddressGuru Team</strong></p>
+        <p><strong>The AddressGuru UAE Team</strong></p>
       </div>
 
       <!-- Footer -->
       <div class="footer">
-        &copy; {{year}} <strong>AddressGuru</strong>. All rights reserved.<br>
+        &copy; {{year}} <strong>AddressGuru UAE</strong>. All rights reserved.<br>
         <a href="https://www.addressguru.ae">www.addressguru.ae</a> | <a href="mailto:support@addressguru.ae">support@addressguru.ae</a>
       </div>
     </div>
