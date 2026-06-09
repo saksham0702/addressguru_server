@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Listing Needs Updates — AddressGuru</title>
+  <title>Listing Needs Updates — AddressGuru UAE</title>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -11,7 +11,7 @@
     body {
       background-color: #f4f4f6;
       font-family: 'DM Sans', sans-serif;
-      color: #2d2d2d;
+      color: #000000;
       -webkit-font-smoothing: antialiased;
     }
 
@@ -73,7 +73,7 @@
 
     .greeting {
       font-size: 15px;
-      color: #2d2d2d;
+      color: #000000;
       line-height: 1.7;
       margin-bottom: 6px;
     }
@@ -81,7 +81,7 @@
 
     .intro-text {
       font-size: 14px;
-      color: #666;
+      color: #000000;
       line-height: 1.75;
       margin-bottom: 24px;
     }
@@ -106,14 +106,14 @@
       font-weight: 600;
       letter-spacing: 1px;
       text-transform: uppercase;
-      color: #9ca3af;
+      color: #000000;
     }
     .rejection-body {
       padding: 16px;
     }
     .rejection-body p {
       font-size: 14px;
-      color: #374151;
+      color: #000000;
       line-height: 1.75;
     }
 
@@ -126,12 +126,12 @@
       font-weight: 600;
       letter-spacing: 1px;
       text-transform: uppercase;
-      color: #9ca3af;
+      color: #000000;
       margin-bottom: 12px;
     }
     .tip-item {
       font-size: 13.5px;
-      color: #555;
+      color: #000000;
       line-height: 1.65;
       padding: 9px 0 9px 16px;
       position: relative;
@@ -164,7 +164,7 @@
     }
     .footer-copy {
       font-size: 11.5px;
-      color: #aaa;
+      color: #000000;
       line-height: 1.7;
     }
 
@@ -182,13 +182,13 @@
       .status-bar { background: #2a1010; border-bottom-color: #7f1d1d; }
       .status-text { color: #fca5a5; }
       .greeting { color: #e8e8e8; }
-      .intro-text { color: #9aa0b0; }
+      .intro-text { color: #000000; }
       .rejection-box { border-color: #2d3148; }
       .rejection-header { background: #13172a; border-bottom-color: #2d3148; }
-      .rejection-header-label { color: #6b7280; }
-      .rejection-body p { color: #c9d0e0; }
-      .tips-label { color: #6b7280; }
-      .tip-item { color: #9aa0b0; border-bottom-color: #252840; }
+      .rejection-header-label { color: #000000; }
+      .rejection-body p { color: #000000; }
+      .tips-label { color: #000000; }
+      .tip-item { color: #000000; border-bottom-color: #252840; }
       .footer { background: #13172a; border-top-color: #2d3148; }
       .footer-copy { color: rgba(255,255,255,0.25); }
     }
@@ -210,7 +210,7 @@
 
     <!-- HEADER -->
     <div class="header">
-      <img class="header-logo" src="https://www.addressguru.in/images/logopng.png" alt="AddressGuru" />
+      <img class="header-logo" src="https://www.addressguru.in/images/logopng.png" alt="AddressGuru UAE" />
     </div>
 
     <!-- BANNER -->
@@ -235,6 +235,18 @@
           <p>{{message}}</p>
         </div>
       </div>
+
+      {{#adminNote}}
+      <!-- ADMIN NOTES -->
+      <div class="rejection-box" style="margin-bottom: 24px;">
+        <div class="rejection-header">
+          <span class="rejection-header-label">Note:</span>
+        </div>
+        <div class="rejection-body">
+          <p>{{adminNote}}</p>
+        </div>
+      </div>
+      {{/adminNote}}
 
       <!-- TIPS -->
       <div class="tips-section">

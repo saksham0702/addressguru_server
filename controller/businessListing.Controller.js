@@ -1340,7 +1340,7 @@ export const deleteListing = async (req, res) => {
 export const updateListingStatus = async (req, res) => {
   try {
     const { id } = req.params;
-    const { status, rejectionReason } = req.body;
+    const { status, rejectionReason, adminNote } = req.body;
     const adminId = req.user._id;
 
     // ── Validate status value ───────────────────────────────────────────────
@@ -1376,11 +1376,13 @@ export const updateListingStatus = async (req, res) => {
       listing.approvedBy = adminId;
       listing.rejectedBy = null;
       listing.rejectionReason = null;
+      listing.adminNote = null;
     }
 
     if (status === "rejected") {
       listing.rejectedBy = adminId;
       listing.rejectionReason = rejectionReason.trim();
+      listing.adminNote = adminNote?.trim() || null;
       listing.approvedBy = null;
     }
 
@@ -1389,6 +1391,7 @@ export const updateListingStatus = async (req, res) => {
       listing.approvedBy = null;
       listing.rejectedBy = null;
       listing.rejectionReason = null;
+      listing.adminNote = null;
     }
 
     await listing.save();
@@ -1407,6 +1410,7 @@ export const updateListingStatus = async (req, res) => {
             listingUrl: `https://addressguru.ae/listing/${listing.slug}`,
             previewLink: `https://addressguru.ae/listing/${listing.slug}`,
             dashboardUrl: `https://addressguru.ae/dashboard`,
+            adminNote: status === "rejected" ? (adminNote?.trim() || null) : null,
           },
         );
         console.log(`✅ Mail sent to ${listing.email} for status: ${status}`);
@@ -1445,6 +1449,7 @@ export const updateListingStatus = async (req, res) => {
         approvedBy: listing.approvedBy,
         rejectedBy: listing.rejectedBy,
         rejectionReason: listing.rejectionReason,
+        adminNote: listing.adminNote,
       },
     });
   } catch (error) {
