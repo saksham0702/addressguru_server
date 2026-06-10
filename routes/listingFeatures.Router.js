@@ -17,6 +17,7 @@ import {
   adminListClaims,
   adminReviewClaim,
   getMyClaims,
+  transferOwnership,
 } from "../controller/claimListing.Controller.js";
 
 import {
@@ -91,10 +92,13 @@ router.get("/:type/:slug/claim", getClaimStatus);
 router.get("/my-claims", authenticate, getMyClaims);
 
 // Admin: list all claims
-router.get("/admin/claims", adminListClaims);
+router.get("/admin/claims", authenticate, adminListClaims);
 
 // Admin: approve or reject a claim
-router.patch("/admin/claims/:claimId", adminReviewClaim);
+router.patch("/admin/claims/:claimId", authenticate, adminReviewClaim);
+
+// Admin: transfer listing ownership to the claimant
+router.patch("/admin/claims/:claimId/transfer", authenticate, transferOwnership);
 
 // ════════════════════════════════════════════════════════════════
 //  REPORT AD  (Listing content violation report)
