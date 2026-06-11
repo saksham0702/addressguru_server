@@ -153,6 +153,13 @@ const businessListingSchema = new mongoose.Schema(
       ref: "User",
       default: null,
     },
+    // add to businessListingSchema
+    isClaimed: { type: Boolean, default: false },
+    claimedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      default: null,
+    },
 
     // added for search
     searchText: {

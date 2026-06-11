@@ -52,7 +52,7 @@ export const submitClaim = async (req, res) => {
     if (listing.isClaimed) {
       return res.status(400).json({
         success: false,
-        message: "This listing is already claimed.",
+        message: "This listing has already been claimed and verified by an owner.",
       });
     }
 
@@ -62,9 +62,15 @@ export const submitClaim = async (req, res) => {
     });
 
     if (existing) {
+      if (existing.email === email || (req.user?.email === email)) {
+        return res.status(400).json({
+          success: false,
+          message: "You have already submitted a claim for this listing. It is currently under review.",
+        });
+      }
       return res.status(400).json({
         success: false,
-        message: "A claim for this listing is already under review.",
+        message: "A claim for this listing is already under review from another user. No new claims are accepted at this time.",
       });
     }
 
@@ -282,6 +288,7 @@ export const adminReviewClaim = async (req, res) => {
         ] || {};
       if (model) {
         await model.findByIdAndUpdate(claim.listingId, {
+          createdBy: claim.claimedBy, // Update the actual owner
           isClaimed: true,
           claimedBy: claim.claimedBy,
           isVerified: true,
@@ -295,64 +302,91 @@ export const adminReviewClaim = async (req, res) => {
   }
 };
 
-// ─── PATCH /api/admin/claims/:claimId/transfer  (admin: transfer ownership) ───
+// ─── PATCH /api/admin/claims/:claimId/transfer ───────────────────────────────
 export const transferOwnership = async (req, res) => {
   try {
     const { claimId } = req.params;
-
     const claim = await ClaimBusiness.findById(claimId).lean();
+
     if (!claim) {
-      return res.status(404).json({ success: false, message: "Claim not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Claim not found" });
     }
 
-    // Find the user by the email on the claim
-    const user = await User.findOne({ email: claim.email }).select("_id").lean();
-    if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: "No registered user found for this claim's email.",
-      });
-    }
+    const modelKey = claim.listingModel
+      .toLowerCase()
+      .replace("businesslisting", "business");
 
-    // Only BusinessListing supports ownership transfer for now
-    if (claim.listingModel !== "BusinessListing") {
+    const resolveModule = await import("../utils/resolveListing.js");
+
+    const { model } = resolveModule.MODEL_MAP[modelKey] || {};
+
+    if (!model) {
       return res.status(400).json({
         success: false,
-        message: "Ownership transfer is only supported for Business Listings.",
+        message: `Ownership transfer is not supported for "${claim.listingModel}".`,
       });
     }
 
-    // Update the listing's owner
-    const updatedListing = await BusinessListing.findByIdAndUpdate(
-      claim.listingId,
-      {
-        createdBy: user._id,
-        isClaimed: true,
-        claimedBy: user._id,
-        isVerified: true,
-      },
-      { new: true }
-    ).select("_id businessName createdBy");
+    let targetUserId = claim.claimedBy ?? null;
 
-    if (!updatedListing) {
-      return res.status(404).json({ success: false, message: "Listing not found" });
+    if (!targetUserId) {
+      const user = await User.findOne({
+        email: claim.email,
+        isDeleted: false,
+      }).lean();
+
+      if (!user) {
+        return res.status(404).json({
+          success: false,
+          message: `No registered account found for "${claim.email}".`,
+        });
+      }
+      targetUserId = user._id;
     }
 
-    // Also mark the claim as approved
+    const listingBefore = await model.findById(claim.listingId).lean();
+
+    const updatedListing = await model.findByIdAndUpdate(
+      claim.listingId,
+      {
+        $set: {
+          createdBy: targetUserId,
+          isClaimed: true,
+          claimedBy: targetUserId,
+          isVerified: true,
+        },
+      },
+      { new: true },
+    );
+
+    if (!updatedListing) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Listing not found" });
+    }
+
     await ClaimBusiness.findByIdAndUpdate(claimId, {
       status: "approved",
+      claimedBy: targetUserId,
       approvedBy: req.user?._id,
       reviewedAt: new Date(),
-      adminNote: "Ownership transferred by admin",
+      adminNote: req.body.adminNote || "Ownership transferred by admin",
     });
 
+    const claimAfter = await ClaimBusiness.findById(claimId).lean();
     return res.json({
       success: true,
-      message: `Ownership of "${updatedListing.businessName}" successfully transferred to ${claim.email}.`,
-      data: { listingId: updatedListing._id, newOwnerId: user._id },
+      message: `Ownership transferred successfully.`,
+      data: {
+        listingId: updatedListing._id,
+        newOwnerId: targetUserId,
+      },
     });
   } catch (err) {
-    console.error("transferOwnership Error:", err);
-    return res.status(500).json({ success: false, message: "Server error" });
+    return res
+      .status(500)
+      .json({ success: false, message: "Server error", error: err.message });
   }
 };
