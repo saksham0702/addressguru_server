@@ -73,10 +73,10 @@ export const submitReport = async (req, res) => {
 
     // ── Notify admin via email ─────────────────────────────────────────────
     // try {
-    //   await sendListingReportedMail(
+    //    await sendListingReportedMail(
     //     null,
     //     { reason, description, ipAddress: req.ip },
-    //     listing.businessName || listing.slug,
+    //     listing.title || listing.businessName || listing.slug,
     //     listing.slug,
     //     pendingCount,
     //     isFlagged,
@@ -90,9 +90,9 @@ export const submitReport = async (req, res) => {
     // try {
     //   const reporterEmail = req.user?.email; // Assumes req.user is populated by auth middleware
     //   if (reporterEmail) {
-    //     await sendReportConfirmationMail(
+    //      await sendReportConfirmationMail(
     //       reporterEmail,
-    //       listing.businessName || listing.slug,
+    //       listing.title || listing.businessName || listing.slug,
     //       reason
     //     );
     //     console.log(`✅ Report confirmation mail sent to: ${reporterEmail}`);
@@ -114,7 +114,7 @@ export const submitReport = async (req, res) => {
         await sendReportNoticeToOwnerMail(
           ownerEmail,
           ownerName,
-          listing.businessName || listing.slug,
+          listing.title || listing.businessName || listing.slug,
           listing.slug,
           reason,
         );
@@ -212,7 +212,7 @@ export const getMyReports = async (req, res) => {
     const result = reports.map((r) => ({
       ...r,
       id: r._id,
-      title: r.listingId?.businessName || r.listingSlug,
+      title: r.listingId?.title || r.listingId?.businessName || r.listingSlug,
       reason: r.reason,
       message: r.description,
       status: r.status,

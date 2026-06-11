@@ -175,7 +175,7 @@
       <!-- Footer -->
       <div class="footer">
         &copy; {{year}} <strong>AddressGuru UAE</strong>. All rights reserved.<br>
-        <a href="https://www.addressguru.ae">www.addressguru.ae</a> | <a href="mailto:support@addressguru.ae">support@addressguru.ae</a>
+        <a href="https://www.addressguru.ae">addressguru.ae</a> | <a href="mailto:support@addressguru.ae">support@addressguru.ae</a>
       </div>
     </div>
   </div>
