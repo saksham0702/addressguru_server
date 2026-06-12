@@ -17,7 +17,7 @@ import {
   updateCategory,
   deleteCategory,
 } from "../controller/blog.Controller.js";
-import { authenticate } from "../middleware/userAuth.js";
+import { authenticate, optionalAuth } from "../middleware/userAuth.js";
 
 const router = express.Router();
 
@@ -39,7 +39,7 @@ router.get("/get-recent-blogs", getRecentBlogs);
 router.get("/get-most-viewed-blogs", getMostViewedBlogs);
 router.get("/get-featured-blogs", getFeaturedBlogs);
 router.get("/get-blogs-by-category/:categoryId", getBlogsByCategory);
-router.get("/get-blog-by-slug/:slug", getBlogBySlug); // keep last
+router.get("/get-blog-by-slug/:slug", optionalAuth, getBlogBySlug); // keep last
 router.get("/get-blog-categories", getCategories);
 
 // ── Admin ─────────────────────────────────────────────────────────────────────
