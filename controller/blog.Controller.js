@@ -197,10 +197,13 @@ export const getBlogsByCategory = async (req, res) => {
 // ── GET /blogs/:slug ───────────────────────────────────────────────────────────
 export const getBlogBySlug = async (req, res) => {
   try {
-    const blog = await Blog.findOne({
-      slug: req.params.slug,
-      status: "published",
-    })
+    const query = { slug: req.params.slug };
+    // Only filter for "published" if the user is NOT an admin
+    if (!req.user || req.user.role !== "admin") {
+      query.status = "published";
+    }
+
+    const blog = await Blog.findOne(query)
       .populate("category_id", "name slug")
       .populate("author", "name avatar designation profile_bio socialLinks")
       .populate("relatedPosts", "title slug coverImage publishedAt")
@@ -351,6 +354,12 @@ export const updateBlog = async (req, res) => {
       googleIndexingService.notify(
         `${APP_BASE_URL}/blog/${blog.slug}`,
         "URL_UPDATED",
+      );
+    } else {
+      // If it was published before but now draft, notify indexing of removal
+      googleIndexingService.notify(
+        `${APP_BASE_URL}/blog/${blog.slug}`,
+        "URL_DELETED",
       );
     }
 
