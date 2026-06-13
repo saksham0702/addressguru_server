@@ -1,5 +1,8 @@
 import Payment from "./payment.schema.js";
 import Plan from "../../model/plansSchema.js";
+import BusinessListing from "../../model/businessListingSchema.js";
+import Job from "../../model/jobsListingSchema.js";
+import MarketplaceListing from "../../model/marketplaceListingSchema.js";
 
 import {
   razorpayInstance,
@@ -8,6 +11,42 @@ import {
   generateReceipt,
   verifyPaymentSignature,
 } from "../../config/razorpay.config.js";
+
+/*
+|--------------------------------------------------------------------------
+| HELPER: UPDATE LISTING ON PAYMENT
+|--------------------------------------------------------------------------
+*/
+
+const updateListingOnPayment = async (listingId, planId, planType) => {
+  if (!listingId || !planId || !planType) return;
+
+  let model;
+  switch (planType) {
+    case "business":
+      model = BusinessListing;
+      break;
+    case "job":
+      model = Job;
+      break;
+    case "marketplace":
+      model = MarketplaceListing;
+      break;
+    default:
+      return;
+  }
+
+  try {
+    await model.findByIdAndUpdate(listingId, {
+      plan: planId,
+      isPublished: true,
+      status: "pending",
+    });
+    console.log(`✅ Listing ${listingId} (${planType}) updated successfully`);
+  } catch (err) {
+    console.warn(`❌ Failed to update listing ${listingId}:`, err.message);
+  }
+};
 
 /*
 |--------------------------------------------------------------------------
@@ -259,6 +298,15 @@ export const verifyPaymentService = async ({
 
   await payment.save();
 
+  // ✅ Automagically update listing
+  if (payment.listing && payment.plan) {
+    await updateListingOnPayment(
+      payment.listing,
+      payment.plan,
+      payment.notes?.planType || "business",
+    );
+  }
+
   return payment;
 };
 /*
@@ -323,6 +371,15 @@ export const handleWebhookService = async (webhookBody) => {
     payment.razorpay.international = paymentEntity.international || false;
 
     await payment.save();
+
+    // ✅ Automagically update listing
+    if (payment.listing && payment.plan) {
+      await updateListingOnPayment(
+        payment.listing,
+        payment.plan,
+        payment.notes?.planType || "business",
+      );
+    }
 
     /*
     |--------------------------------------------------------------------------

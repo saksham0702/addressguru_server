@@ -389,6 +389,30 @@ export const saveJobStep = async (req, res) => {
       }
     }
 
+    /* =========================
+       STEP 3 – PLAN & PUBLISH
+    ========================== */
+    if (step === 3) {
+      if (job.stepCompleted < 2) {
+        return errorData(
+          res,
+          400,
+          false,
+          "Please complete all previous steps before publishing",
+        );
+      }
+
+      job.plan = req.body.plan_id || null;
+      job.isPublished = true;
+      job.status = "pending"; // Admin still needs to approve
+      job.stepCompleted = Math.max(job.stepCompleted || 1, 3);
+
+      googleIndexingService.notify(
+        `${APP_BASE_URL}/job/${job.slug}`,
+        "URL_UPDATED",
+      );
+    }
+
     await job.save();
 
     // Return showThankYou flag for step 2 so frontend can show the popup
