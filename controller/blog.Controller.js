@@ -6,8 +6,9 @@ import fs from "fs";
 import path from "path";
 import googleIndexingService from "../services/googleIndexing.service.js";
 import { APP_BASE_URL } from "../services/constant.js";
+import User from "../model/userSchema.js";
 
-// ── Helper: delete old image file ─────────────────────────────────────────────
+// Helper: delete old image file
 const deleteFile = (filePath) => {
   if (!filePath) return;
   const fullPath = path.join(process.cwd(), filePath);
@@ -32,7 +33,7 @@ export const safeParse = (value) => {
   return [];
 };
 
-// ── Helper: format blog date for frontend ─────────────────────────────────────
+// Helper: format blog date for frontend
 const formatBlog = (blog) => {
   const obj = blog.toObject ? blog.toObject() : { ...blog };
   const dateSource = obj.publishedAt || obj.createdAt;
@@ -48,7 +49,7 @@ const formatBlog = (blog) => {
   };
 };
 
-// ── GET /blogs ─────────────────────────────────────────────────────────────────
+// GET /blogs
 export const getBlogs = async (req, res) => {
   try {
     const { page = 1, limit = 10, search } = req.query;
@@ -97,7 +98,7 @@ export const getBlogs = async (req, res) => {
   }
 };
 
-// ── GET /blogs/recent ─────────────────────────────────────────────────────────
+// GET /blogs/recent
 export const getRecentBlogs = async (req, res) => {
   try {
     const { limit = 6 } = req.query;
@@ -116,7 +117,7 @@ export const getRecentBlogs = async (req, res) => {
   }
 };
 
-// ── GET /blogs/most-viewed ────────────────────────────────────────────────────
+// GET /blogs/most-viewed
 export const getMostViewedBlogs = async (req, res) => {
   try {
     const { limit = 5 } = req.query;
@@ -141,7 +142,7 @@ export const getMostViewedBlogs = async (req, res) => {
   }
 };
 
-// ── GET /blogs/featured ───────────────────────────────────────────────────────
+// GET /blogs/featured
 export const getFeaturedBlogs = async (req, res) => {
   try {
     const blogs = await Blog.find({ status: "published", featured: true })
@@ -159,7 +160,7 @@ export const getFeaturedBlogs = async (req, res) => {
   }
 };
 
-// ── GET /blogs/category/:categoryId ──────────────────────────────────────────
+// GET /blogs/category/:categoryId
 export const getBlogsByCategory = async (req, res) => {
   try {
     const { page = 1, limit = 10 } = req.query;
@@ -194,13 +195,24 @@ export const getBlogsByCategory = async (req, res) => {
   }
 };
 
-// ── GET /blogs/:slug ───────────────────────────────────────────────────────────
+// GET /blogs/:slug
 export const getBlogBySlug = async (req, res) => {
   try {
     const query = { slug: req.params.slug };
-    // Only filter for "published" if the user is NOT an admin
-    if (!req.user || req.user.role !== "admin") {
+
+    // Guests can only see published blogs
+    if (!req.user?.id) {
       query.status = "published";
+    } else {
+      const user = await User.findById(req.user.id).select("roles");
+
+      const canViewDrafts = user?.roles?.some((role) =>
+        [1, 2, 3].includes(role),
+      );
+
+      if (!canViewDrafts) {
+        query.status = "published";
+      }
     }
 
     const blog = await Blog.findOne(query)
@@ -209,9 +221,10 @@ export const getBlogBySlug = async (req, res) => {
       .populate("relatedPosts", "title slug coverImage publishedAt")
       .lean();
 
-    if (!blog) return errorData(res, 404, false, "Blog not found");
+    if (!blog) {
+      return errorData(res, 404, false, "Blog not found");
+    }
 
-    // Increment view count (fire and forget)
     Blog.findByIdAndUpdate(blog._id, { $inc: { views: 1 } }).exec();
 
     return successData(
@@ -222,11 +235,12 @@ export const getBlogBySlug = async (req, res) => {
       formatBlog(blog),
     );
   } catch (error) {
+    console.error(error);
     return errorData(res, 500, false, "Internal server error");
   }
 };
 
-// ── POST /blogs/admin/blogs ───────────────────────────────────────────────────
+// POST /blogs/admin/blogs
 export const createBlog = async (req, res) => {
   try {
     const {
@@ -294,7 +308,7 @@ export const createBlog = async (req, res) => {
   }
 };
 
-// ── PUT /blogs/admin/blogs/:id ────────────────────────────────────────────────
+// PUT /blogs/admin/blogs/:id
 export const updateBlog = async (req, res) => {
   try {
     const blog = await Blog.findById(req.params.id);
@@ -369,7 +383,7 @@ export const updateBlog = async (req, res) => {
   }
 };
 
-// ── DELETE /blogs/admin/blogs/:id ─────────────────────────────────────────────
+// DELETE /blogs/admin/blogs/:id
 export const deleteBlog = async (req, res) => {
   try {
     const blog = await Blog.findById(req.params.id);
@@ -387,7 +401,7 @@ export const deleteBlog = async (req, res) => {
   }
 };
 
-// ── GET /blogs/admin/blogs ────────────────────────────────────────────────────
+// GET /blogs/admin/blogs
 export const adminGetAllBlogs = async (req, res) => {
   try {
     const { page = 1, limit = 10, status, search } = req.query;
@@ -398,8 +412,9 @@ export const adminGetAllBlogs = async (req, res) => {
 
     const total = await Blog.countDocuments(query);
     const blogs = await Blog.find(query)
+      .select("title slug coverImage status createdAt category_id author")
       .populate("category_id", "name")
-      .populate("author", "name avatar bio designation socialLinks profile_bio")
+      .populate("author", "name")
       .sort({ createdAt: -1 })
       .skip((Number(page) - 1) * Number(limit))
       .limit(Number(limit))
@@ -419,7 +434,7 @@ export const adminGetAllBlogs = async (req, res) => {
   }
 };
 
-// ── Blog Category Controllers ─────────────────────────────────────────────────
+// Blog Category Controllers
 
 // GET /blogs/categories
 export const getCategories = async (req, res) => {

@@ -39,7 +39,7 @@ router.get("/get-recent-blogs", getRecentBlogs);
 router.get("/get-most-viewed-blogs", getMostViewedBlogs);
 router.get("/get-featured-blogs", getFeaturedBlogs);
 router.get("/get-blogs-by-category/:categoryId", getBlogsByCategory);
-router.get("/get-blog-by-slug/:slug", optionalAuth, getBlogBySlug); // keep last
+router.get("/get-blog-by-slug/:slug", optionalAuth, getBlogBySlug);
 router.get("/get-blog-categories", getCategories);
 
 // ── Admin ─────────────────────────────────────────────────────────────────────
@@ -48,8 +48,8 @@ router.post("/admin/create-blog", authenticate, ...blogUpload, createBlog);
 router.put("/admin/update-blog/:id", authenticate, ...blogUpload, updateBlog);
 router.delete("/admin/delete-blog/:id", deleteBlog);
 
-router.post("/admin/create-category",  createCategory);
-router.put("/admin/update-category/:id",  updateCategory);
-router.delete("/admin/delete-category/:id",  deleteCategory);
+router.post("/admin/create-category", createCategory);
+router.put("/admin/update-category/:id", updateCategory);
+router.delete("/admin/delete-category/:id", deleteCategory);
 
 export default router;

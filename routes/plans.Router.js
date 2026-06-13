@@ -18,7 +18,7 @@ const router = express.Router();
 // ─── PUBLIC ROUTES ────────────────────────────────────────────────────────────
 
 // GET  /plans                  → all active plans (for frontend pricing page)
-router.get("/", getAllPlans);
+router.get("/get-all", getAllPlans);
 
 // GET  /plans/slug/:slug        → single plan by slug  e.g. /plans/slug/growth
 router.get("/slug/:slug", getPlanBySlug);
@@ -31,15 +31,14 @@ router.post("/upgrade", authenticate, upgradePlan);
 
 // ─── ADMIN ROUTES ─────────────────────────────────────────────────────────────
 
-
 // POST  /plans/seed             → one-time seed of 4 default UAE plans
-router.post("/seed",seedDefaultPlans);
+router.post("/seed", seedDefaultPlans);
 
 // POST  /plans                  → create a new plan
-router.post("/",    authenticate, createPlan);
+router.post("/", authenticate, createPlan);
 
 // PUT   /plans/:id              → update a plan
-router.put("/:id", authenticate, updatePlan); 
+router.put("/:id", authenticate, updatePlan);
 // DELETE /plans/:id             → soft-delete a plan
 router.delete("/:id", authenticate, deletePlan);
 
