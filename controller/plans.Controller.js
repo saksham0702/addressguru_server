@@ -11,11 +11,12 @@ import { createOrderService } from "../modules/payment/payment.service.js";
 
 // ─── GET ALL ACTIVE PLANS (public — for frontend listing page) ────────────────
 export const getAllPlans = async (req, res) => {
+  console.log("req.query", req.query.planType);
   try {
-    const { planType = "business" } = req.query;
+    const { planType } = req.query;
     const plans = await Plan.find({
-      isActive: true,
-      isDeleted: false,
+      // isActive: true,
+      // isDeleted: false,
       planType,
     })
       .sort({ displayOrder: 1 })
