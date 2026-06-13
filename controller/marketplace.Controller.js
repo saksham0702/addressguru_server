@@ -294,6 +294,7 @@ export const updateMarketplaceListingStep = async (req, res) => {
 
         listing.plan = req.body.plan_id || null;
         listing.isPublished = true;
+        listing.status = "pending";
         googleIndexingService.notify(
           `${APP_BASE_URL}/marketplace/${listing.slug}`,
           "URL_UPDATED",
