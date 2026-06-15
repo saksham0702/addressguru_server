@@ -201,19 +201,19 @@ export const getBlogBySlug = async (req, res) => {
     const query = { slug: req.params.slug };
 
     // Guests can only see published blogs
-    if (!req.user?.id) {
-      query.status = "published";
-    } else {
-      const user = await User.findById(req.user.id).select("roles");
+    // if (!req.user?.id) {
+    //   query.status = "published";
+    // } else {
+    //   const user = await User.findById(req.user.id).select("roles");
 
-      const canViewDrafts = user?.roles?.some((role) =>
-        [1, 2, 3, 4].includes(role),
-      );
+    //   const canViewDrafts = user?.roles?.some((role) =>
+    //     [1, 2, 3, 4].includes(role),
+    //   );
 
-      if (!canViewDrafts) {
-        query.status = "published";
-      }
-    }
+    //   if (!canViewDrafts) {
+    //     query.status = "published";
+    //   }
+    // }
 
     const blog = await Blog.findOne(query)
       .populate("category_id", "name slug")
