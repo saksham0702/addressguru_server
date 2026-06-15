@@ -176,7 +176,6 @@ export const updateCategory = async (req, res) => {
     return errorData(res, 500, false, "Internal server error");
   }
 };
-
 export const getCategoryByType = async (req, res) => {
   try {
     const { type } = req.params;
@@ -217,7 +216,6 @@ export const getCategoryById = async (req, res) => {
     return errorData(res, 500, false, "Internal server error");
   }
 };
-
 // ✅ Soft Delete Category
 export const deleteCategory = async (req, res) => {
   try {

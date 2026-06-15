@@ -333,6 +333,11 @@ export const getAllMarketplaceListings = async (req, res) => {
     // Base filter — only non-deleted listings
     const filter = { isDeleted: false };
 
+    // Default to 'approved' if no status is specified
+    if (!req.query.status) {
+      filter.status = "approved";
+    }
+
     // Optional filters from query params
     if (req.query.condition) filter.condition = req.query.condition;
 
@@ -373,6 +378,15 @@ export const getAllMarketplaceListings = async (req, res) => {
     // Free items toggle
     if (req.query.is_free === "true") filter["price.isFree"] = true;
 
+    // Search filter
+    if (req.query.search) {
+      const searchRegex = new RegExp(req.query.search, "i");
+      filter.$or = [
+        { title: searchRegex },
+        { description: searchRegex }
+      ];
+    }
+
     // ✅ Status filter with validation
     const VALID_STATUSES = ["pending", "approved", "rejected"];
     if (req.query.status) {
@@ -394,7 +408,7 @@ export const getAllMarketplaceListings = async (req, res) => {
 
     const [
       listings,
-      total,
+      totalFiltered,
       totalAll,
       totalPending,
       totalApproved,
@@ -417,21 +431,29 @@ export const getAllMarketplaceListings = async (req, res) => {
       MarketplaceListing.countDocuments({
         isDeleted: false,
         status: "pending",
-      }), // ✅
+      }),
       MarketplaceListing.countDocuments({
         isDeleted: false,
         status: "approved",
-      }), // ✅
+      }),
       MarketplaceListing.countDocuments({
         isDeleted: false,
         status: "rejected",
-      }), // ✅
+      }),
     ]);
 
-    // ✅ Return empty array instead of 404 — better UX for filtered results
+    const totalPages = Math.ceil(totalFiltered / limit);
+
     return successData(res, 200, true, "Listings fetched successfully", {
       listings,
-      pagination: { total, page, limit, totalPages: Math.ceil(total / limit) },
+      pagination: {
+        total: totalFiltered,
+        page,
+        limit,
+        totalPages,
+        hasMore: page < totalPages,
+        nextPage: page < totalPages ? page + 1 : null,
+      },
       totalAll,
       statusCounts: {
         pending: totalPending,

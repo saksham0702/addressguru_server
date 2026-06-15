@@ -207,7 +207,7 @@ export const getBlogBySlug = async (req, res) => {
       const user = await User.findById(req.user.id).select("roles");
 
       const canViewDrafts = user?.roles?.some((role) =>
-        [1, 2, 3].includes(role),
+        [1, 2, 3, 4].includes(role),
       );
 
       if (!canViewDrafts) {
