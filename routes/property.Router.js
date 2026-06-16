@@ -12,6 +12,9 @@ import {
   getApprovedListings,
   unpublishListing,
   publishListing,
+  updateLeadStatus,
+  upsertAdditionalFields,
+  getAdminCompletedListings,
 } from "../controller/property.Controller.js";
 import { setUploadFolder } from "../middleware/setUploadFolder.js";
 import upload from "../middleware/multerConfig.js";
@@ -45,15 +48,16 @@ router.get("/get-property-by-user", authenticate, getPropertyListingByUser);
 router.get("/get-listing-by-slug/:slug", getPropertyListingBySlug);
 router.patch("/mark-as-sold/:slug", authenticate, markPropertyListingAsSold);
 router.delete("/delete-listing/:slug", authenticate, deletePropertyListing);
-
-router.put(
-  "/:id/status",
-  authenticate,
-  updatePropertyListingStatus
-);
+router.put("/:id/status", authenticate, updatePropertyListingStatus);
 router.patch("/:identifier/unpublish", authenticate, unpublishListing);
 router.patch("/:identifier/publish", authenticate, publishListing);
-
 router.get("/get-approved-listings", getApprovedListings);
+router.get("/admin/listings", authenticate, getAdminCompletedListings);
+router.put(
+  "/:listingId/additional-fields",
+  authenticate,
+  upsertAdditionalFields,
+);
+router.patch("/:listingId/lead-status", authenticate, updateLeadStatus);
 
 export default router;

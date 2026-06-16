@@ -434,7 +434,7 @@ export const adminGetAllBlogs = async (req, res) => {
   }
 };
 
-// Blog Category Controllers
+//Category
 
 // GET /blogs/categories
 export const getCategories = async (req, res) => {

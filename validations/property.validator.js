@@ -12,6 +12,13 @@ const propertyStepSchema = {
     }),
 
     sub_category_id: Joi.string().allow("", null).optional(),
+    
+    soldBy: Joi.string().valid("broker", "agency", "owner").required().messages({
+      "any.required": "Please specify who is selling/renting the property",
+      "any.only": "Sold By must be one of: broker, agency, owner",
+    }),
+
+    cae_number: Joi.string().allow("", null).optional(),
 
     title: Joi.string().min(5).max(100).required().messages({
       "any.required": "Title is required",

@@ -32,6 +32,7 @@ const propertyListingSchema = new mongoose.Schema(
       required:true,
       enum:["broker","agency","owner"]
     },
+    cae_number: { type: String, default: null },
 
     /* =========================
        STEP 1 – PROPERTY INFO
@@ -144,6 +145,37 @@ const propertyListingSchema = new mongoose.Schema(
     isSold: { type: Boolean, default: false },
     createdBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
 
+    leadStatus: {
+      type: String,
+      enum: ["hot", "warm", "cold", "new"],
+      default: "new",
+    },
+    paymentStatus: {
+      type: String,
+      enum: ["pending", "paid", "failed"],
+      default: "pending",
+    },
+    adminNote: {
+      type: String,
+      default: null,
+    },
+    provider: {
+      type: String,
+      enum: ["google", "user"],
+      default: "user",
+    },
+    isClaimed: { type: Boolean, default: false },
+    claimedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      default: null,
+    },
+    cityNameLower: {
+      type: String,
+      index: true,
+      default: "",
+    },
+
     /* =========================
        SOFT DELETE
     ========================== */
@@ -154,11 +186,12 @@ const propertyListingSchema = new mongoose.Schema(
 
 // ── Indexes ───────────────────────────────────────────────────────────────────
 propertyListingSchema.index({ slug: 1 });
+propertyListingSchema.index({ title: 1, isDeleted: 1 }); // for duplicate check
 propertyListingSchema.index({ "price.amount": 1 });
 propertyListingSchema.index({ purpose: 1 });
 propertyListingSchema.index({ "area.size": 1, "area.unit": 1 });
 propertyListingSchema.index({ category: 1, subCategory: 1 });
 propertyListingSchema.index({ city: 1 });
-propertyListingSchema.index({ isSold: 1, isDeleted: 1, isPublished: 1 });
+propertyListingSchema.index({ isSold: 1, isDeleted: 1, isPublished: 1, isVerified: 1 });
 
 export default mongoose.model("PropertyListing", propertyListingSchema);

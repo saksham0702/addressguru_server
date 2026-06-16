@@ -10,6 +10,9 @@ import googleIndexingService from "../services/googleIndexing.service.js";
 import { APP_BASE_URL } from "../services/constant.js";
 import { sendApprovedAndRejectedListingMail } from "../utils/sendMail.js";
 import { sendPushNotification } from "../services/notification.service.js";
+import CitiesSchema from "../model/CitiesSchema.js";
+import Feature from "../model/featureSchema.js";
+import mongoose from "mongoose";
 
 // ─── Helper: validate additional fields ──────────────────────────────────────
 const validateAdditionalFields = async (additionalFields = []) => {
@@ -71,6 +74,7 @@ export const createPropertyListing = async (req, res) => {
       price_period = "one-time",
       area_size,
       area_unit = "sqft",
+      cae_number,
       payments = [],
       additional_fields = [],
     } = req.body;
@@ -130,12 +134,15 @@ export const createPropertyListing = async (req, res) => {
       },
       paymentModes: toArray(payments),
       additionalFields: validated,
+      cae_number,
       slug,
       stepCompleted: 1,
       isVerified: false,
       isPublished: false,
       isSold: false,
       createdBy: req.user?.id || null,
+      leadStatus: "new",
+      provider: "user",
     });
 
     // Update User statistics
@@ -148,6 +155,8 @@ export const createPropertyListing = async (req, res) => {
         },
       });
     }
+
+    await listing.save();
 
     return successData(
       res,
@@ -210,6 +219,7 @@ export const updatePropertyListingStep = async (req, res) => {
           price_period = "one-time",
           area_size,
           area_unit = "sqft",
+          cae_number,
           payments = [],
           additional_fields = [],
         } = req.body;
@@ -267,6 +277,8 @@ export const updatePropertyListingStep = async (req, res) => {
           period: price_period,
         };
         listing.area = { size: area_size || null, unit: area_unit };
+        listing.soldBy = soldBy || listing.soldBy;
+        listing.cae_number = cae_number || listing.cae_number;
         listing.paymentModes = toArray(payments);
         listing.additionalFields = validated;
         break;
@@ -298,6 +310,12 @@ export const updatePropertyListingStep = async (req, res) => {
           mapLat: req.body.map_lat ? Number(req.body.map_lat) : null,
           mapLng: req.body.map_lng ? Number(req.body.map_lng) : null,
         };
+
+        // Update cityNameLower
+        if (listing.city) {
+          const cityDoc = await CitiesSchema.findById(listing.city);
+          listing.cityNameLower = cityDoc?.name?.toLowerCase() || "";
+        }
         break;
       }
 
@@ -333,6 +351,13 @@ export const updatePropertyListingStep = async (req, res) => {
     listing.stepCompleted = Math.max(listing.stepCompleted, Number(step));
     await listing.save();
 
+    if (listing.city) {
+      const cityDoc = await CitiesSchema.findById(listing.city);
+      listing.cityNameLower = cityDoc?.name?.toLowerCase() || "";
+    }
+
+    await listing.save();
+
     return successData(res, 200, true, `Step ${step} saved successfully`, {
       id: listing._id,
       slug: listing.slug,
@@ -340,6 +365,75 @@ export const updatePropertyListingStep = async (req, res) => {
     });
   } catch (error) {
     console.warn("Update property listing step error:", error);
+    return errorData(res, 500, false, "Internal server error");
+  }
+};
+
+// ─── UPDATE LEAD STATUS ──────────────────────────────────────────────────────
+export const updateLeadStatus = async (req, res) => {
+  try {
+    const { listingId } = req.params;
+    const { leadStatus } = req.body;
+
+    const VALID_LEAD_STATUSES = ["hot", "warm", "cold", "new"];
+    if (!VALID_LEAD_STATUSES.includes(leadStatus)) {
+      return errorData(res, 400, false, "Invalid lead status");
+    }
+
+    const listing = await PropertyListing.findByIdAndUpdate(
+      listingId,
+      { leadStatus },
+      { new: true }
+    );
+
+    if (!listing) return errorData(res, 404, false, "Listing not found");
+
+    return successData(res, 200, true, "Lead status updated", {
+      id: listing._id,
+      leadStatus: listing.leadStatus,
+    });
+  } catch (error) {
+    console.warn("Update lead status error:", error);
+    return errorData(res, 500, false, "Internal server error");
+  }
+};
+
+// ─── UPSERT ADDITIONAL FIELDS ────────────────────────────────────────────────
+export const upsertAdditionalFields = async (req, res) => {
+  try {
+    const { listingId } = req.params;
+    const { additional_fields = [] } = req.body;
+
+    const listing = await PropertyListing.findOne({ _id: listingId, isDeleted: false });
+    if (!listing) return errorData(res, 404, false, "Listing not found");
+
+    const user = await User.findById(req.user.id);
+    const isAdmin = user?.roles?.includes(1);
+    if (listing.createdBy?.toString() !== req.user.id.toString() && !isAdmin) {
+      return errorData(res, 403, false, "Forbidden");
+    }
+
+    let parsedAdditionalFields = additional_fields;
+    if (typeof additional_fields === "string") {
+      try {
+        parsedAdditionalFields = JSON.parse(additional_fields);
+      } catch {
+        parsedAdditionalFields = [];
+      }
+    }
+
+    const { errors, validated } = await validateAdditionalFields(parsedAdditionalFields);
+    if (errors.length) return errorData(res, 400, false, "Validation failed", { errors });
+
+    listing.additionalFields = validated;
+    await listing.save();
+
+    return successData(res, 200, true, "Additional fields updated", {
+      id: listing._id,
+      additionalFields: listing.additionalFields,
+    });
+  } catch (error) {
+    console.warn("Upsert additional fields error:", error);
     return errorData(res, 500, false, "Internal server error");
   }
 };
@@ -366,6 +460,14 @@ export const getAllPropertiesWithPaginationAndFilters = async (req, res) => {
     if (req.query.is_verified !== undefined)
       filter.isVerified = req.query.is_verified === "true";
     if (req.query.provider) filter.provider = req.query.provider;
+
+    if (req.query.payment_mode_id) {
+      const ids = req.query.payment_mode_id
+        .split(",")
+        .filter(Boolean)
+        .map((id) => new mongoose.Types.ObjectId(id.trim()));
+      filter.paymentModes = { $in: ids };
+    }
 
     // ✅ Purpose / Listing Type (Handle numeric IDs or strings)
     const purposeVal = req.query.purpose || req.query.rent_or_sell;
@@ -806,6 +908,45 @@ export const updatePropertyListingStatus = async (req, res) => {
   } catch (error) {
     console.error("updatePropertyListingStatus error:", error);
     return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// ─── GET ADMIN COMPLETED LISTINGS ────────────────────────────────────────────
+export const getAdminCompletedListings = async (req, res) => {
+  try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 20;
+    const skip = (page - 1) * limit;
+
+    const filter = {
+      isDeleted: false,
+      stepCompleted: 5,
+    };
+
+    if (req.query.status) filter.status = req.query.status;
+
+    const [listings, total] = await Promise.all([
+      PropertyListing.find(filter)
+        .populate("category", "name")
+        .populate("city", "name")
+        .populate("createdBy", "name email")
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean(),
+      PropertyListing.countDocuments(filter),
+    ]);
+
+    return successData(res, 200, true, "Admin listings fetched successfully", {
+      listings,
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    });
+  } catch (error) {
+    console.warn("Get admin listings error:", error);
+    return errorData(res, 500, false, "Internal server error");
   }
 };
 
