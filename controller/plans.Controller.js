@@ -80,17 +80,18 @@ export const createPlan = async (req, res) => {
       tagline,
       planType,
       displayOrder,
-      price,
-      billingCycle,
-      features,
       limits,
       flags,
       theme,
       ctaLabel,
       isHighlighted,
+      planCode,
+      currency,
+      durationInDays,
     } = req.body;
 
     if (!name) return errorData(res, 400, false, "Plan name is required");
+    if (!planCode) return errorData(res, 400, false, "Plan code is required");
     if (price === undefined || price === null)
       return errorData(res, 400, false, "Plan price is required");
 
@@ -118,6 +119,9 @@ export const createPlan = async (req, res) => {
       theme: theme || "default",
       ctaLabel: ctaLabel || "Get Started",
       isHighlighted: isHighlighted ?? false,
+      planCode: planCode.toUpperCase().trim(),
+      currency: currency || "AED",
+      durationInDays: durationInDays || 0,
     });
 
     return successData(res, 201, true, "Plan created successfully", {
@@ -151,6 +155,10 @@ export const updatePlan = async (req, res) => {
       "ctaLabel",
       "isHighlighted",
       "isActive",
+      "planCode",
+      "currency",
+      "planType",
+      "durationInDays",
     ];
 
     for (const field of allowedFields) {
