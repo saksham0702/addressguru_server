@@ -249,12 +249,34 @@ export const updateMarketplaceListingStep = async (req, res) => {
 
       /* ── STEP 2 – MEDIA (IMAGES) ── */
       case 2: {
-        if (req.files?.images?.length > 0) {
-          const newImages = req.files.images.map((img) => img.path);
-          listing.images = [...(listing.images || []), ...newImages];
-        } else {
-          return errorData(res, 400, false, "No images provided");
+        const hasNewImages = req.files?.images?.length > 0;
+
+        // Collect existing images sent from frontend (already saved paths)
+        let existingImages = req.body.images
+          ? Array.isArray(req.body.images)
+            ? req.body.images
+            : [req.body.images]
+          : [];
+
+        // Filter to only string paths (existing), not file objects
+        existingImages = existingImages.filter(
+          (img) => typeof img === "string",
+        );
+
+        const hasAnyImages = hasNewImages || existingImages.length > 0;
+
+        if (!hasAnyImages) {
+          return errorData(res, 400, false, "Please upload at least one image");
         }
+
+        // Handle images — cap at 10 total
+        const newImages = hasNewImages
+          ? req.files.images.map((img) => img.path)
+          : [];
+
+        const combined = [...existingImages, ...newImages];
+        listing.images = combined.slice(0, 10);
+
         break;
       }
 
@@ -381,10 +403,7 @@ export const getAllMarketplaceListings = async (req, res) => {
     // Search filter
     if (req.query.search) {
       const searchRegex = new RegExp(req.query.search, "i");
-      filter.$or = [
-        { title: searchRegex },
-        { description: searchRegex }
-      ];
+      filter.$or = [{ title: searchRegex }, { description: searchRegex }];
     }
 
     // ✅ Status filter with validation
@@ -580,7 +599,6 @@ export const getMarketplaceListingByUser = async (req, res) => {
       },
       listings,
     });
-
   } catch (error) {
     console.warn("Marketplace listing fetch error:", error);
     return errorData(res, 500, false, "Internal server error");
@@ -755,15 +773,19 @@ export const updateMarketplaceListingStatus = async (req, res) => {
         console.log(`✅ Mail sent to ${listing.email} for status: ${status}`);
 
         if (listing.createdBy) {
-          const pushTitle = status === "approved" ? "Marketplace Listing Approved 🎉" : "Marketplace Listing Rejected ❌";
-          const pushBody = status === "approved"
-            ? `Congratulations! Your marketplace listing "${listing.title}" has been successfully approved.`
-            : `We're sorry, your marketplace listing "${listing.title}" was rejected. ${rejectionReason ? 'Reason: ' + rejectionReason.trim() : ''}`;
+          const pushTitle =
+            status === "approved"
+              ? "Marketplace Listing Approved 🎉"
+              : "Marketplace Listing Rejected ❌";
+          const pushBody =
+            status === "approved"
+              ? `Congratulations! Your marketplace listing "${listing.title}" has been successfully approved.`
+              : `We're sorry, your marketplace listing "${listing.title}" was rejected. ${rejectionReason ? "Reason: " + rejectionReason.trim() : ""}`;
 
           await sendPushNotification(listing.createdBy, pushTitle, pushBody, {
             type: "MARKETPLACE_LISTING_STATUS",
             listingId: listing._id.toString(),
-            status: status
+            status: status,
           });
         }
       } catch (mailError) {
@@ -810,7 +832,13 @@ export const getApprovedListings = async (req, res) => {
     if (!listings.length)
       return errorData(res, 404, false, "No listings found");
 
-    return successData(res, 200, true, "Listing fetched successfully", listings || []); // Ensure array
+    return successData(
+      res,
+      200,
+      true,
+      "Listing fetched successfully",
+      listings || [],
+    ); // Ensure array
   } catch (error) {
     console.warn("Marketplace listing fetch error:", error);
     return errorData(res, 500, false, "Internal server error");
@@ -837,16 +865,10 @@ export const getMarketplaceCategoryInfo = async (req, res) => {
       }).sort({ createdAt: 1 }),
     ]);
 
-    return successData(
-      res,
-      200,
-      true,
-      "Category info fetched successfully",
-      {
-        subCategories: subCategories || [],
-        additionalFields: additionalFields || [],
-      },
-    );
+    return successData(res, 200, true, "Category info fetched successfully", {
+      subCategories: subCategories || [],
+      additionalFields: additionalFields || [],
+    });
   } catch (error) {
     console.warn("Marketplace category info fetch error:", error);
     return errorData(res, 500, false, "Internal server error");
@@ -862,9 +884,9 @@ export const publishListing = async (req, res) => {
     const listing = await MarketplaceListing.findOne({
       $or: [
         { _id: isObjectId ? identifier : undefined },
-        { slug: identifier }
+        { slug: identifier },
       ].filter(Boolean),
-      isDeleted: false
+      isDeleted: false,
     });
 
     if (!listing) return errorData(res, 404, false, "Listing not found");
@@ -877,7 +899,12 @@ export const publishListing = async (req, res) => {
       listing.createdBy.toString() !== req.user.id.toString() &&
       !userRole
     ) {
-      return errorData(res, 403, false, "Forbidden: you do not own this listing");
+      return errorData(
+        res,
+        403,
+        false,
+        "Forbidden: you do not own this listing",
+      );
     }
 
     listing.isPublished = true;
@@ -909,9 +936,9 @@ export const unpublishListing = async (req, res) => {
     const listing = await MarketplaceListing.findOne({
       $or: [
         { _id: isObjectId ? identifier : undefined },
-        { slug: identifier }
+        { slug: identifier },
       ].filter(Boolean),
-      isDeleted: false
+      isDeleted: false,
     });
 
     if (!listing) return errorData(res, 404, false, "Listing not found");
@@ -924,7 +951,12 @@ export const unpublishListing = async (req, res) => {
       listing.createdBy.toString() !== req.user.id.toString() &&
       !userRole
     ) {
-      return errorData(res, 403, false, "Forbidden: you do not own this listing");
+      return errorData(
+        res,
+        403,
+        false,
+        "Forbidden: you do not own this listing",
+      );
     }
 
     listing.isPublished = false;

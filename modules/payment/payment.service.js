@@ -432,6 +432,7 @@ export const getAllPaymentsService = async ({
   limit = 10,
   status,
   search,
+  minAmount,
 }) => {
   const skip = (page - 1) * limit;
   const filter = {};
@@ -443,6 +444,10 @@ export const getAllPaymentsService = async ({
 
   if (status && status !== "all") {
     filter.status = status;
+  }
+
+  if (minAmount) {
+    filter.amount = { $gt: parseFloat(minAmount) };
   }
 
   if (search) {

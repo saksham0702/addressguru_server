@@ -125,7 +125,7 @@ export const verifyPayment = async (req, res) => {
 
 export const getAllPayments = async (req, res) => {
   try {
-    const { page = 1, limit = 10, status, search } = req.query;
+    const { page = 1, limit = 10, status, search, minAmount } = req.query;
 
     const userId = req.user.id || req.user._id;
 
@@ -140,6 +140,7 @@ export const getAllPayments = async (req, res) => {
       limit: parseInt(limit),
       status,
       search,
+      minAmount,
     });
 
     return res.status(200).json({ success: true, data });
