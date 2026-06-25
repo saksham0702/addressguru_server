@@ -3,7 +3,10 @@ import User from "../model/userSchema.js";
 import ListingStats from "../model/listingStatsSchema.js";
 import Category from "../model/categoriesSchema.js";
 import { resolveListing, MODEL_MAP } from "../utils/resolveListing.js";
-import { sendEnquiryReceivedMail, sendEnquiryConfirmationMail } from "../utils/sendMail.js";
+import {
+  sendEnquiryReceivedMail,
+  sendEnquiryConfirmationMail,
+} from "../utils/sendMail.js";
 
 const normalizeCategory = (cat) => {
   const c = cat?.toLowerCase();
@@ -22,7 +25,10 @@ export const sendEnquiry = async (req, res) => {
     const { fullName, email, countryCode, mobileNumber, message } = req.body;
 
     if (!fullName || !email || !mobileNumber)
-      return res.status(422).json({ success: false, message: "fullName, email and mobileNumber are required" });
+      return res.status(422).json({
+        success: false,
+        message: "fullName, email and mobileNumber are required",
+      });
 
     const typeNormalized = normalizeCategory(type);
     const { listing, modelName } = await resolveListing(slug, typeNormalized);
@@ -60,7 +66,7 @@ export const sendEnquiry = async (req, res) => {
       await listing.constructor.findByIdAndUpdate(listing._id, {
         $inc: { "stats.enquiries": 1 },
       });
-    } catch (e) { }
+    } catch (e) {}
 
     // ── Send mail to listing owner ─────────────────────────────────────────
     try {
@@ -70,15 +76,20 @@ export const sendEnquiry = async (req, res) => {
         : null;
 
       const ownerEmail = listing.email || owner?.email;
-      const ownerName = listing.contactPersonName || owner?.name || listing.businessName;
+      const ownerName =
+        listing.contactPersonName || owner?.name || listing.businessName;
 
       if (ownerEmail) {
+        // A listing is considered claimed if it has a createdBy user
+        const isClaimed = !!listing.createdBy;
+
         await sendEnquiryReceivedMail(
           ownerEmail,
           ownerName,
           listing.businessName || listing.slug,
           listing.slug,
           { fullName, email, countryCode, mobileNumber, message },
+          isClaimed,
         );
         console.log(`✅ Enquiry mail sent to owner: ${ownerEmail}`);
       }
@@ -87,18 +98,6 @@ export const sendEnquiry = async (req, res) => {
     }
 
     // ── Send mail to enquirer ──────────────────────────────────────────────
-    try {
-      await sendEnquiryConfirmationMail(
-        email,
-        fullName,
-        listing.businessName || listing.slug,
-        listing.slug,
-        message
-      );
-      console.log(`✅ Enquiry confirmation mail sent to enquirer: ${email}`);
-    } catch (confMailErr) {
-      console.warn("❌ Enquiry confirmation mail failed:", confMailErr.message);
-    }
 
     return res.status(201).json({
       success: true,
@@ -106,7 +105,10 @@ export const sendEnquiry = async (req, res) => {
       data: { id: enquiry._id },
     });
   } catch (err) {
-    if (err.status) return res.status(err.status).json({ success: false, message: err.message });
+    if (err.status)
+      return res
+        .status(err.status)
+        .json({ success: false, message: err.message });
     console.warn("sendEnquiry:", err);
     return res.status(500).json({ success: false, message: "Server error" });
   }
@@ -123,34 +125,36 @@ export const getMyLeads = async (req, res) => {
     console.log("category = ", category);
     console.log("listingId = ", listingId);
 
-
     const type = normalizeCategory(category);
     const entry = MODEL_MAP[type];
 
     if (!entry) {
-      return res.status(400).json({ success: false, message: "Invalid category" });
+      return res
+        .status(400)
+        .json({ success: false, message: "Invalid category" });
     }
 
     // console.log("entry = ", entry);
-
 
     const { model, modelName } = entry;
 
     const filter = {
       listingOwner: req.user.id,
       listingModel: modelName,
-      isDeleted: false
+      isDeleted: false,
     };
 
     // console.log("filter = ", filter);
 
     if (listingId && listingId !== "" && listingId !== "All") {
       // Find all listings belonging to this category for the user
-      const listingIds = await model.find({
-        createdBy: req.user.id,
-        _id: listingId,
-        isDeleted: false
-      }).distinct("_id");
+      const listingIds = await model
+        .find({
+          createdBy: req.user.id,
+          _id: listingId,
+          isDeleted: false,
+        })
+        .distinct("_id");
 
       console.log("listingIds = ", listingIds);
 
@@ -173,9 +177,8 @@ export const getMyLeads = async (req, res) => {
     // console.log("enquiries = ", enquiries);
     // console.log("total = ", total);
 
-
     // Transform to match frontend CardEnquires expectations
-    const result = enquiries.map(enq => ({
+    const result = enquiries.map((enq) => ({
       id: enq._id,
       name: enq.fullName,
       ph_number: enq.mobileNumber,
@@ -183,7 +186,8 @@ export const getMyLeads = async (req, res) => {
       email: enq.email,
       message: enq.message || "",
       created_at: enq.createdAt,
-      title: enq.listingId?.businessName || enq.listingId?.title || enq.listingSlug,
+      title:
+        enq.listingId?.businessName || enq.listingId?.title || enq.listingSlug,
       listingId: enq.listingId?._id || enq.listingId,
     }));
 
@@ -191,7 +195,12 @@ export const getMyLeads = async (req, res) => {
       success: true,
       result,
       total,
-      pagination: { total, page: +page, limit: +limit, pages: Math.ceil(total / +limit) },
+      pagination: {
+        total,
+        page: +page,
+        limit: +limit,
+        pages: Math.ceil(total / +limit),
+      },
     });
   } catch (err) {
     console.error("getMyLeads Error:", err);
@@ -209,41 +218,49 @@ export const getMyLeadsStats = async (req, res) => {
     const type = normalizeCategory(category);
 
     // 1. Get ALL possible categories for this type
-    const categories = await Category.find({ type, isDeleted: false }).select("name").lean();
+    const categories = await Category.find({ type, isDeleted: false })
+      .select("name")
+      .lean();
 
     const entry = MODEL_MAP[type];
     if (!entry) {
-      return res.status(400).json({ success: false, message: "Invalid category" });
+      return res
+        .status(400)
+        .json({ success: false, message: "Invalid category" });
     }
 
     const { model, modelName } = entry;
 
     // 2. For each category, count enquiries across user's listings in that category
-    const stats = await Promise.all(categories.map(async (cat) => {
-      const listingIds = await model.find({
-        createdBy: req.user.id,
-        category: cat._id,
-        isDeleted: false
-      }).distinct("_id");
+    const stats = await Promise.all(
+      categories.map(async (cat) => {
+        const listingIds = await model
+          .find({
+            createdBy: req.user.id,
+            category: cat._id,
+            isDeleted: false,
+          })
+          .distinct("_id");
 
-      const count = await Enquiry.countDocuments({
-        listingId: { $in: listingIds },
-        listingModel: modelName,
-        isDeleted: false
-      });
+        const count = await Enquiry.countDocuments({
+          listingId: { $in: listingIds },
+          listingModel: modelName,
+          isDeleted: false,
+        });
 
-      return {
-        id: cat._id,
-        title: cat.name,
-        queries: count
-      };
-    }));
+        return {
+          id: cat._id,
+          title: cat.name,
+          queries: count,
+        };
+      }),
+    );
 
     return res.json({
       success: true,
       results: {
-        data: stats
-      }
+        data: stats,
+      },
     });
   } catch (err) {
     console.error("getMyLeadsStats Error:", err);
@@ -274,10 +291,18 @@ export const getEnquiries = async (req, res) => {
     return res.json({
       success: true,
       data: enquiries,
-      pagination: { total, page: +page, limit: +limit, pages: Math.ceil(total / +limit) },
+      pagination: {
+        total,
+        page: +page,
+        limit: +limit,
+        pages: Math.ceil(total / +limit),
+      },
     });
   } catch (err) {
-    if (err.status) return res.status(err.status).json({ success: false, message: err.message });
+    if (err.status)
+      return res
+        .status(err.status)
+        .json({ success: false, message: err.message });
     return res.status(500).json({ success: false, message: "Server error" });
   }
 };
@@ -292,11 +317,13 @@ export const updateEnquiryStatus = async (req, res) => {
     const enquiry = await Enquiry.findByIdAndUpdate(
       req.params.enquiryId,
       { status },
-      { new: true }
+      { new: true },
     );
 
     if (!enquiry)
-      return res.status(404).json({ success: false, message: "Enquiry not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Enquiry not found" });
 
     return res.json({ success: true, data: enquiry });
   } catch (err) {
@@ -304,15 +331,11 @@ export const updateEnquiryStatus = async (req, res) => {
   }
 };
 
-
-// for admin 
+// for admin
 // controllers/adminEnquiry.controller.js
-
-
 export const getAllBusinessEnquiries = async (req, res) => {
   try {
     const { page = 1, limit = 20, status, search } = req.query;
-
     const filter = {
       listingModel: "BusinessListing",
       isDeleted: false,
@@ -337,7 +360,7 @@ export const getAllBusinessEnquiries = async (req, res) => {
         .sort({ createdAt: -1 })
         .skip((+page - 1) * +limit)
         .limit(+limit)
-        .populate("listingId", "name slug")     // optional
+        .populate("listingId", "name slug") // optional
         .populate("listingOwner", "name email"),
 
       Enquiry.countDocuments(filter),

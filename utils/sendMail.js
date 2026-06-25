@@ -6,6 +6,38 @@ import Hogan from "hogan.js";
 import { emailConfig } from "../services/constant.js";
 import path from "path";
 
+//helper
+const maskName = (name = "") => {
+  const parts = name.split(" ");
+
+  return parts
+    .map((part) =>
+      part.length <= 1 ? "*" : part[0] + "*".repeat(part.length - 1),
+    )
+    .join(" ");
+};
+const maskEmail = (email = "") => {
+  const [user, domain] = email.split("@");
+
+  if (!user || !domain) return "***";
+
+  return `${user.slice(0, 2)}***@${domain}`;
+};
+
+const maskPhone = (phone = "") => {
+  const str = String(phone);
+
+  if (str.length <= 3) return "***";
+
+  return `${"*".repeat(str.length - 3)}${str.slice(-3)}`;
+};
+
+const truncateMessage = (message = "") => {
+  if (!message) return "";
+
+  return message.length > 80 ? `${message.substring(0, 80)}...` : message;
+};
+
 const sendSuccessMail = (email, name) => {
   const templatePath = path.resolve("utils/mailThemes/register.hjs");
   const template = fs.readFileSync(templatePath, "utf-8");
@@ -434,55 +466,75 @@ const formatPreferredContactSlot = (datetime) => {
 
 // enquiry and all
 // ─── 1. ENQUIRY RECEIVED — sent to listing owner ──────────────────────────────
-const sendEnquiryReceivedMail = (
+const sendEnquiryReceivedMail = async (
   ownerEmail,
   ownerName,
   businessName,
   listingSlug,
   enquirer,
+  isClaimed = true,
 ) => {
-  /*
-  console.log(
-    "ENQUIRY MAIL → EMAIL:", ownerEmail,
-    "| Business:", businessName,
-    "| From:", enquirer.fullName
-  );
+  try {
+    console.log(
+      "ENQUIRY MAIL → EMAIL:",
+      ownerEmail,
+      "| Business:",
+      businessName,
+      "| From:",
+      enquirer.fullName,
+    );
 
-  const templatePath = path.resolve("utils/mailThemes/EnquiryReceived.hjs");
-  const template = fs.readFileSync(templatePath, "utf-8");
-  const compiledTemplate = Hogan.compile(template);
+    const templatePath = path.resolve("utils/mailThemes/EnquiryReceived.hjs");
 
-  const mailBody = compiledTemplate.render({
-    ownerName,
-    businessName,
-    listingSlug,
-    fullName: enquirer.fullName,
-    email: enquirer.email,
-    countryCode: enquirer.countryCode || "91",
-    mobileNumber: enquirer.mobileNumber,
-    message: enquirer.message || null,
-    year: new Date().getFullYear(),
-  });
+    const template = fs.readFileSync(templatePath, "utf-8");
+    const compiledTemplate = Hogan.compile(template);
 
-  const transporter = nodemailer.createTransport({
-    host: emailConfig.SMTP_HOST,
-    port: emailConfig.SMTP_PORT,
-    secure: true,
-    auth: { user: emailConfig.SMTP_EMAIL, pass: emailConfig.SMTP_PASS },
-  });
+    const mailBody = compiledTemplate.render({
+      ownerName,
+      businessName,
+      listingSlug,
 
-  const mailOptions = {
-    from: '"AddressGuru UAE" <addressguruuae@gmail.com>',
-    to: ownerEmail,
-    subject: `📩 New Enquiry for ${businessName} — AddressGuru UAE`,
-    text: `You have a new enquiry from ${enquirer.fullName} for your listing ${businessName}.`,
-    html: mailBody,
-  };
+      leadName: enquirer.fullName,
+      leadEmail: enquirer.email,
+      leadPhone: enquirer.mobileNumber,
+      countryCode: enquirer.countryCode || "971",
 
-  return transporter.sendMail(mailOptions);
-  */
-  console.log("Mail sending disabled for sendEnquiryReceivedMail");
-  return Promise.resolve();
+      previewMessage: enquirer.message,
+      isClaimed,
+
+      dashboardUrl: "https://addressguru.ae/dashboard",
+      year: new Date().getFullYear(),
+    });
+
+    const transporter = nodemailer.createTransport({
+      host: emailConfig.SMTP_HOST,
+      port: emailConfig.SMTP_PORT,
+      secure: true,
+      auth: {
+        user: emailConfig.SMTP_EMAIL,
+        pass: emailConfig.SMTP_PASS,
+      },
+    });
+
+    // Verify SMTP first
+    await transporter.verify();
+
+    const mailOptions = {
+      from: `"AddressGuru UAE" <${emailConfig.SMTP_EMAIL}>`,
+      to: ownerEmail,
+      subject: `📩 New Enquiry for ${businessName} — AddressGuru UAE`,
+      text: `You have received a new enquiry for ${businessName}.`,
+      html: mailBody,
+    };
+
+    const info = await transporter.sendMail(mailOptions);
+    console.log("✅ ENQUIRY MAIL SENT:", info.messageId);
+
+    return info;
+  } catch (err) {
+    console.error("❌ ENQUIRY MAIL ERROR:", err.message);
+    throw err;
+  }
 };
 
 // ─── 1.1 ENQUIRY CONFIRMATION — sent to enquirer ──────────────────────────────
@@ -493,13 +545,16 @@ const sendEnquiryConfirmationMail = (
   listingSlug,
   message,
 ) => {
-  /*
   console.log(
-    "ENQUIRY CONFIRMATION → EMAIL:", enquirerEmail,
-    "| Business:", businessName
+    "ENQUIRY CONFIRMATION → EMAIL:",
+    enquirerEmail,
+    "| Business:",
+    businessName,
   );
 
-  const templatePath = path.resolve("utils/mailThemes/EnquirerConfirmation.hjs");
+  const templatePath = path.resolve(
+    "utils/mailThemes/EnquirerConfirmation.hjs",
+  );
   const template = fs.readFileSync(templatePath, "utf-8");
   const compiledTemplate = Hogan.compile(template);
 
@@ -527,7 +582,7 @@ const sendEnquiryConfirmationMail = (
   };
 
   return transporter.sendMail(mailOptions);
-  */
+
   console.log("Mail sending disabled for sendEnquiryConfirmationMail");
   return Promise.resolve();
 };
