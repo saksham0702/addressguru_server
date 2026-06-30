@@ -1296,11 +1296,14 @@ export const deleteListing = async (req, res) => {
     });
     if (!listing) return errorData(res, 404, false, "Listing not found");
 
-    // Ownership check
+    // Ownership check (Admins are allowed to delete any listing)
+    const user = req.user?.id ? await User.findById(req.user.id) : null;
+    const isAdmin = user?.roles?.includes(1) || false;
+
     if (
       listing.createdBy &&
-      req.user?._id &&
-      listing.createdBy.toString() !== req.user._id.toString()
+      listing.createdBy.toString() !== req.user.id.toString() &&
+      !isAdmin
     ) {
       return errorData(
         res,
