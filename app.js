@@ -47,8 +47,8 @@ import sitemapRouter from "./routes/sitemap.Router.js";
 import searchRouter from "./modules/search/search.routes.js";
 import { initializeFirebase } from "./services/firebase.js";
 import paymentRouter from "./modules/payment/payment.routes.js";
-import loggerMiddleware from "./modules/logs/log.middleware.js";
-import logRouter from "./modules/logs/log.routes.js";
+import loggerMiddleware from "./modules/audit-logs/log.middleware.js";
+import logRouter from "./modules/audit-logs/log.routes.js";
 import { optionalAuth } from "./middleware/userAuth.js";
 
 var app = express();
