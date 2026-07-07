@@ -37,7 +37,7 @@ import blogRouter from "./routes/blog.Router.js";
 import propertyRouter from "./routes/property.Router.js";
 import plansRouter from "./routes/plans.Router.js";
 import statisticsRouter from "./routes/statistics.Routes.js";
-import RoomsRouter from "./routes/rooms.Router.js"
+import RoomsRouter from "./routes/rooms.Router.js";
 import followUpRouter from "./routes/followUp.Router.js";
 import followUpConfigRouter from "./routes/followUpConfig.Router.js";
 import templateRouter from "./routes/template.Router.js";
@@ -47,7 +47,9 @@ import sitemapRouter from "./routes/sitemap.Router.js";
 import searchRouter from "./modules/search/search.routes.js";
 import { initializeFirebase } from "./services/firebase.js";
 import paymentRouter from "./modules/payment/payment.routes.js";
-
+import loggerMiddleware from "./modules/logs/log.middleware.js";
+import logRouter from "./modules/logs/log.routes.js";
+import { optionalAuth } from "./middleware/userAuth.js";
 
 var app = express();
 
@@ -86,8 +88,10 @@ app.use(
 app.use(logs("dev"));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use(loggerMiddleware);
 
 app.use(cookieParser());
+app.use(optionalAuth);
 app.use(express.static(join(__dirname, "public")));
 
 // Serve uploaded images publicly
@@ -155,7 +159,7 @@ app.use(`/cities`, citiesRouter);
 
 app.use(`/jobs-listing`, jobsListingRouter);
 app.use(`/admin/users`, adminUserRouter);
-app.use(`/features`, featureRouter);  
+app.use(`/features`, featureRouter);
 app.use(`/blogs`, blogRouter);
 app.use(`/property-listings`, propertyRouter);
 app.use(`/google-listing`, googleListingRoutes);
@@ -164,16 +168,17 @@ app.use(`/`, listingFeaturesRoutes);
 app.use(`/applications`, jobApplicationRoutes);
 app.use(`/plans`, plansRouter);
 app.use(`/statistics`, statisticsRouter);
-app.use('/rooms', RoomsRouter)
-app.use('/seo-content', seoContentRouter)
-app.use('/sitemap', sitemapRouter)
+app.use("/rooms", RoomsRouter);
+app.use("/seo-content", seoContentRouter);
+app.use("/sitemap", sitemapRouter);
 
 app.use(`/follow-ups`, followUpRouter);
 app.use(`/followup-config`, followUpConfigRouter);
 app.use(`/template`, templateRouter);
 app.use(`/notifications`, notificationRouter);
-app.use('/search', searchRouter);
-app.use('/payment', paymentRouter);
+app.use("/search", searchRouter);
+app.use("/payment", paymentRouter);
+app.use("/logs", logRouter);
 
 app.get("/test-cookie", (req, res) => {
   console.log("cookies:", req.cookies);
@@ -182,7 +187,6 @@ app.get("/test-cookie", (req, res) => {
 
 // app.use("/", indexRouter);
 // app.use("/users", usersRouter);
-
 
 // catch 404 and forward to error handler
 app.use(function (req, res, next) {
@@ -198,7 +202,8 @@ app.use(function (err, req, res, next) {
   res.locals.error = req.app.get("env") === "development" ? err : {};
   // Log error with Winston
   logger.error(
-    `${err.status || 500} - ${err.message} - ${req.originalUrl} - ${req.method
+    `${err.status || 500} - ${err.message} - ${req.originalUrl} - ${
+      req.method
     } - ${req.ip}`,
   );
 
