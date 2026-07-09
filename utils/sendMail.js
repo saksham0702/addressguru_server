@@ -1,10 +1,9 @@
-//
-
 import nodemailer from "nodemailer";
 import fs from "fs";
 import Hogan from "hogan.js";
 import { emailConfig } from "../services/constant.js";
 import path from "path";
+import { sendEmail } from "../services/email/emailService.js";
 
 //helper
 const maskName = (name = "") => {
@@ -170,7 +169,6 @@ const sendApprovedAndRejectedListingMail = (
 };
 
 // top business
-
 const sendTopBusinessesDigestMail = (
   email,
   name,

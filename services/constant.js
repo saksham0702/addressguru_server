@@ -90,7 +90,6 @@ export const ROLE_PREFIX = {
   USER: "user",
 };
 
-
 // FOURSQUARE MAP API
 export const FOURSQUARE_API_KEY = process.env.FOURSQUARE_API_KEY;
 
@@ -103,9 +102,36 @@ export const GOOGLE_API_KEY = process.env.GOOGLE_API_KEY;
 //   USER: "user",
 // };
 
-
 // Firebase
-export const FIREBASE_SERVICE_ACCOUNT_PATH = process.env.FIREBASE_SERVICE_ACCOUNT_PATH;
+export const FIREBASE_SERVICE_ACCOUNT_PATH =
+  process.env.FIREBASE_SERVICE_ACCOUNT_PATH;
 
 // Google Indexing API
-export const GOOGLE_INDEXING_SERVICE_PATH = process.env.GOOGLE_INDEXING_SERVICE_PATH
+export const GOOGLE_INDEXING_SERVICE_PATH =
+  process.env.GOOGLE_INDEXING_SERVICE_PATH;
+
+// export const emailConfig = {
+//   mailboxes: {
+//     default: {
+//       email: process.env.DEFAULT_EMAIL,
+//       name: "AddressGuru UAE",
+//     },
+
+//     otp: {
+//       email: process.env.OTP_EMAIL,
+//       name: "AddressGuru OTP",
+//     },
+
+//     info: {
+//       email: process.env.INFO_EMAIL,
+//       name: "AddressGuru Support",
+//     },
+
+//     listing: {
+//       email: process.env.LISTING_EMAIL,
+//       name: "AddressGuru Listings",
+//     },
+//   },
+
+//   ADMIN_EMAIL: process.env.ADMIN_EMAIL,
+// };
