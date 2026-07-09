@@ -50,11 +50,14 @@ import paymentRouter from "./modules/payment/payment.routes.js";
 import loggerMiddleware from "./modules/audit-logs/log.middleware.js";
 import logRouter from "./modules/audit-logs/log.routes.js";
 import { optionalAuth } from "./middleware/userAuth.js";
+import brokenLinkScannerRoutes from "./modules/brokenlinkscanner/brokenlinkscanner.router.js";
+import { startBrokenLinkCron } from "./modules/brokenlinkscanner/brokenlinkscanner.cron.js";
 
 var app = express();
 
 // ─── Startup Services ──────────────────────────────────────────────────────
 connectDB();
+startBrokenLinkCron();
 initializeFirebase();
 // await seedFeatures();
 
@@ -179,6 +182,7 @@ app.use(`/notifications`, notificationRouter);
 app.use("/search", searchRouter);
 app.use("/payment", paymentRouter);
 app.use("/logs", logRouter);
+app.use("/api/broken-links", brokenLinkScannerRoutes);
 
 app.get("/test-cookie", (req, res) => {
   console.log("cookies:", req.cookies);
