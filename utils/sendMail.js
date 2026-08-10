@@ -3,7 +3,7 @@ import fs from "fs";
 import Hogan from "hogan.js";
 import { emailConfig } from "../services/constant.js";
 import path from "path";
-import { sendEmail } from "../services/email/emailService.js";
+// import { sendEmail } from "../services/email/emailService.js";
 
 //helper
 const maskName = (name = "") => {
