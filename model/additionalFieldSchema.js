@@ -47,6 +47,7 @@ const additionalFieldSchema = new mongoose.Schema(
     is_quickinfo: { type: Boolean, default: false, index: true },
     is_description: { type: Boolean, default: false, index: true },
     is_additional: { type: Boolean, default: false, index: true },
+    is_filter_out: { type: Boolean, default: false, index: true },
 
     checkbox_items: {
       type: [String],

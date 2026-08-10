@@ -340,7 +340,10 @@ export const updatePropertyListingStep = async (req, res) => {
         }
         listing.plan = req.body.plan_id || null;
         listing.isPublished = true;
-        googleIndexingService.notify(`${APP_BASE_URL}/property/${listing.slug}`, "URL_UPDATED");
+        googleIndexingService.notify(
+          `${APP_BASE_URL}/property/${listing.slug}`,
+          "URL_UPDATED",
+        );
         break;
       }
 
@@ -383,7 +386,7 @@ export const updateLeadStatus = async (req, res) => {
     const listing = await PropertyListing.findByIdAndUpdate(
       listingId,
       { leadStatus },
-      { new: true }
+      { new: true },
     );
 
     if (!listing) return errorData(res, 404, false, "Listing not found");
@@ -404,7 +407,10 @@ export const upsertAdditionalFields = async (req, res) => {
     const { listingId } = req.params;
     const { additional_fields = [] } = req.body;
 
-    const listing = await PropertyListing.findOne({ _id: listingId, isDeleted: false });
+    const listing = await PropertyListing.findOne({
+      _id: listingId,
+      isDeleted: false,
+    });
     if (!listing) return errorData(res, 404, false, "Listing not found");
 
     const user = await User.findById(req.user.id);
@@ -422,8 +428,11 @@ export const upsertAdditionalFields = async (req, res) => {
       }
     }
 
-    const { errors, validated } = await validateAdditionalFields(parsedAdditionalFields);
-    if (errors.length) return errorData(res, 400, false, "Validation failed", { errors });
+    const { errors, validated } = await validateAdditionalFields(
+      parsedAdditionalFields,
+    );
+    if (errors.length)
+      return errorData(res, 400, false, "Validation failed", { errors });
 
     listing.additionalFields = validated;
     await listing.save();
@@ -453,7 +462,8 @@ export const getAllPropertiesWithPaginationAndFilters = async (req, res) => {
 
     // Optional filters from query params
     if (req.query.category_id) filter.category = req.query.category_id;
-    if (req.query.sub_category_id) filter.subCategory = req.query.sub_category_id;
+    if (req.query.sub_category_id)
+      filter.subCategory = req.query.sub_category_id;
     if (req.query.city_id) filter.city = req.query.city_id;
     if (req.query.is_published !== undefined)
       filter.isPublished = req.query.is_published === "true";
@@ -472,15 +482,17 @@ export const getAllPropertiesWithPaginationAndFilters = async (req, res) => {
     // ✅ Purpose / Listing Type (Handle numeric IDs or strings)
     const purposeVal = req.query.purpose || req.query.rent_or_sell;
     if (purposeVal) {
-      const purposeMap = { "1": "rent", "2": "sale", "3": "lease" };
+      const purposeMap = { 1: "rent", 2: "sale", 3: "lease" };
       filter.purpose = purposeMap[purposeVal] || purposeVal;
     }
 
     // ✅ Price Range Filter
     if (req.query.price_min || req.query.price_max) {
       filter["price.amount"] = {};
-      if (req.query.price_min) filter["price.amount"].$gte = Number(req.query.price_min);
-      if (req.query.price_max) filter["price.amount"].$lte = Number(req.query.price_max);
+      if (req.query.price_min)
+        filter["price.amount"].$gte = Number(req.query.price_min);
+      if (req.query.price_max)
+        filter["price.amount"].$lte = Number(req.query.price_max);
     }
 
     // ✅ Beds, Baths, Furnishing (stored in additionalFields)
@@ -572,9 +584,9 @@ export const getAllPropertiesWithPaginationAndFilters = async (req, res) => {
         .lean(),
       PropertyListing.countDocuments(filter),
       PropertyListing.countDocuments({ isDeleted: false }),
-      PropertyListing.countDocuments({ isDeleted: false, status: "pending" }),   // ✅
-      PropertyListing.countDocuments({ isDeleted: false, status: "approved" }),  // ✅
-      PropertyListing.countDocuments({ isDeleted: false, status: "rejected" }),  // ✅
+      PropertyListing.countDocuments({ isDeleted: false, status: "pending" }), // ✅
+      PropertyListing.countDocuments({ isDeleted: false, status: "approved" }), // ✅
+      PropertyListing.countDocuments({ isDeleted: false, status: "rejected" }), // ✅
     ]);
 
     // console.log("properties", properties);
@@ -633,11 +645,9 @@ export const getPropertyListingByUser = async (req, res) => {
     const id = req.user?.id;
     if (!id) return errorData(res, 400, false, "Id is required");
 
-
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 20;
     const skip = (page - 1) * limit;
-
 
     // const listing = await PropertyListing.find({
     //   createdBy: id,
@@ -649,7 +659,15 @@ export const getPropertyListingByUser = async (req, res) => {
     //   .populate("additionalFields.field_id", "field_label field_type")
     //   .lean();
 
-    const [listings, total, pendingCount, approvedCount, rejectedCount, publishedCount, verifiedCount] = await Promise.all([
+    const [
+      listings,
+      total,
+      pendingCount,
+      approvedCount,
+      rejectedCount,
+      publishedCount,
+      verifiedCount,
+    ] = await Promise.all([
       PropertyListing.find({
         createdBy: id,
         isDeleted: false,
@@ -709,7 +727,6 @@ export const getPropertyListingByUser = async (req, res) => {
       },
       listings,
     });
-
   } catch (error) {
     console.warn("Property listing fetch error:", error);
     return errorData(res, 500, false, "Internal server error");
@@ -783,7 +800,10 @@ export const deletePropertyListing = async (req, res) => {
     listing.isDeleted = true;
     await listing.save();
 
-    googleIndexingService.notify(`${APP_BASE_URL}/property/${listing.slug}`, "URL_DELETED");
+    googleIndexingService.notify(
+      `${APP_BASE_URL}/property/${listing.slug}`,
+      "URL_DELETED",
+    );
 
     // Update User statistics
     if (listing.createdBy) {
@@ -791,7 +811,7 @@ export const deletePropertyListing = async (req, res) => {
         $inc: {
           statistics_activeListings: -1,
           statistics_totalListings: -1,
-          statistics_PropertiesListings: -1
+          statistics_PropertiesListings: -1,
         },
       });
     }
@@ -844,13 +864,11 @@ export const updatePropertyListingStatus = async (req, res) => {
       listing.approvedBy = adminId;
       listing.rejectedBy = null;
       listing.rejectionReason = null;
-
     } else if (status === "rejected") {
       listing.status = "rejected";
       listing.rejectedBy = adminId;
       listing.rejectionReason = rejectionReason.trim();
       listing.approvedBy = null;
-
     } else if (status === "unapproved") {
       listing.status = "pending";
       listing.approvedBy = null;
@@ -866,22 +884,26 @@ export const updatePropertyListingStatus = async (req, res) => {
       try {
         await sendApprovedAndRejectedListingMail(
           listing.email,
-          listing.title,        // property title as identifier in the mail
+          listing.title, // property title as identifier in the mail
           status,
           status === "rejected" ? rejectionReason.trim() : null,
         );
         console.log(`✅ Mail sent to ${listing.email} for status: ${status}`);
 
         if (listing.createdBy) {
-          const pushTitle = status === "approved" ? "Property Approved 🎉" : "Property Rejected ❌";
-          const pushBody = status === "approved"
-            ? `Congratulations! Your property listing "${listing.title}" has been successfully approved.`
-            : `We're sorry, your property listing "${listing.title}" was rejected. ${rejectionReason ? 'Reason: ' + rejectionReason.trim() : ''}`;
+          const pushTitle =
+            status === "approved"
+              ? "Property Approved 🎉"
+              : "Property Rejected ❌";
+          const pushBody =
+            status === "approved"
+              ? `Congratulations! Your property listing "${listing.title}" has been successfully approved.`
+              : `We're sorry, your property listing "${listing.title}" was rejected. ${rejectionReason ? "Reason: " + rejectionReason.trim() : ""}`;
 
           await sendPushNotification(listing.createdBy, pushTitle, pushBody, {
             type: "PROPERTY_LISTING_STATUS",
             listingId: listing._id.toString(),
-            status: status
+            status: status,
           });
         }
       } catch (mailError) {
@@ -904,7 +926,6 @@ export const updatePropertyListingStatus = async (req, res) => {
         rejectionReason: listing.rejectionReason,
       },
     });
-
   } catch (error) {
     console.error("updatePropertyListingStatus error:", error);
     return res.status(500).json({ success: false, message: error.message });
@@ -968,7 +989,12 @@ export const getApprovedListings = async (req, res) => {
     if (!listings.length)
       return errorData(res, 404, false, "No listings found");
 
-    return successData(res, 200, true, "Listings fetched successfully", { listings, page, limit, total: listings.length });
+    return successData(res, 200, true, "Listings fetched successfully", {
+      listings,
+      page,
+      limit,
+      total: listings.length,
+    });
   } catch (error) {
     console.error("Property listing fetch error:", error);
     return errorData(res, 500, false, "Internal server error");
@@ -984,9 +1010,9 @@ export const publishListing = async (req, res) => {
     const listing = await PropertyListing.findOne({
       $or: [
         { _id: isObjectId ? identifier : undefined },
-        { slug: identifier }
+        { slug: identifier },
       ].filter(Boolean),
-      isDeleted: false
+      isDeleted: false,
     });
 
     if (!listing) return errorData(res, 404, false, "Listing not found");
@@ -999,7 +1025,12 @@ export const publishListing = async (req, res) => {
       listing.createdBy.toString() !== req.user.id.toString() &&
       !userRole
     ) {
-      return errorData(res, 403, false, "Forbidden: you do not own this listing");
+      return errorData(
+        res,
+        403,
+        false,
+        "Forbidden: you do not own this listing",
+      );
     }
 
     listing.isPublished = true;
@@ -1031,9 +1062,9 @@ export const unpublishListing = async (req, res) => {
     const listing = await PropertyListing.findOne({
       $or: [
         { _id: isObjectId ? identifier : undefined },
-        { slug: identifier }
+        { slug: identifier },
       ].filter(Boolean),
-      isDeleted: false
+      isDeleted: false,
     });
 
     if (!listing) return errorData(res, 404, false, "Listing not found");
@@ -1046,7 +1077,12 @@ export const unpublishListing = async (req, res) => {
       listing.createdBy.toString() !== req.user.id.toString() &&
       !userRole
     ) {
-      return errorData(res, 403, false, "Forbidden: you do not own this listing");
+      return errorData(
+        res,
+        403,
+        false,
+        "Forbidden: you do not own this listing",
+      );
     }
 
     listing.isPublished = false;
@@ -1065,6 +1101,40 @@ export const unpublishListing = async (req, res) => {
     });
   } catch (error) {
     console.warn("Listing unpublish error:", error);
+    return errorData(res, 500, false, "Internal server error");
+  }
+};
+
+// property additional field
+export const getPropertyAdditionalFields = async (req, res) => {
+  try {
+    const { category_id } = req.params;
+    const { subcategory_id } = req.query;
+
+    if (!category_id) {
+      return errorData(res, 400, false, "Category id is required");
+    }
+
+    const filter = {
+      category_id,
+      is_deleted: false,
+      is_active: true,
+      ...(subcategory_id && { subcategory_id }),
+    };
+
+    const additionalFields = await AdditionalField.find(filter).sort({
+      createdAt: 1,
+    });
+
+    return successData(
+      res,
+      200,
+      true,
+      "Property additional fields fetched successfully",
+      additionalFields,
+    );
+  } catch (error) {
+    console.warn("Property additional fields fetch error:", error);
     return errorData(res, 500, false, "Internal server error");
   }
 };

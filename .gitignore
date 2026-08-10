@@ -12,6 +12,10 @@ yarn-error.log
 .env
 .env.local
 .env.*.local
+scripts/*
+seeds/*
+*.zip
+imports/*
 
 # Logs
 src/logs/
@@ -33,7 +37,7 @@ Thumbs.db
 dist/
 build/
 
-uploads/
+uploads/*
 
 # Docker
 .dockerignore

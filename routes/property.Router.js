@@ -20,6 +20,7 @@ import { setUploadFolder } from "../middleware/setUploadFolder.js";
 import upload from "../middleware/multerConfig.js";
 import { validatePropertyStep } from "../middleware/validateProperty.js";
 import { authenticate } from "../middleware/userAuth.js";
+import { getPropertyAdditionalFields } from "../controller/property.Controller.js";
 
 const router = express.Router();
 
@@ -57,6 +58,11 @@ router.put(
   "/:listingId/additional-fields",
   authenticate,
   upsertAdditionalFields,
+);
+
+router.get(
+  "/property-additional-fields/:category_id",
+  getPropertyAdditionalFields,
 );
 router.patch("/:listingId/lead-status", authenticate, updateLeadStatus);
 

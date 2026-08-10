@@ -50,7 +50,7 @@ const planSchema = new mongoose.Schema(
     },
 
     /* PRICING (AED — UAE Dirham) */
-    
+
     currency: {
       type: String,
       default: "AED",
@@ -61,9 +61,24 @@ const planSchema = new mongoose.Schema(
       type: Number,
       required: true,
       default: 0,
-      // 0 = free plan
+      // 0 = free plan — this is the ACTUAL amount charged, unchanged behavior
     },
 
+    // ── NEW ──────────────────────────────────────────────────────────────
+    actualPrice: {
+      type: Number,
+      default: null,
+      // e.g. 99 — shown struck-through on frontend. null = no discount badge
+    },
+
+    discountPercentage: {
+      type: Number,
+      default: 0,
+      min: 0,
+      max: 100,
+      // auto-computed below, don't set this manually from the frontend
+    },
+    // ─────────────────────────────────────────────────────────────────────
     billingCycle: {
       type: String,
       enum: ["year", "month", "one_time"],
@@ -145,4 +160,17 @@ planSchema.index({ slug: 1 });
 planSchema.index({ isActive: 1, isDeleted: 1 });
 planSchema.index({ displayOrder: 1 });
 
+// Auto-derive discountPercentage from actualPrice vs price on every save.
+// This fires on Plan.create() and plan.save() (both used in your controller),
+// so admins only ever type actualPrice + price — never the percentage.
+planSchema.pre("save", function (next) {
+  if (this.actualPrice && this.actualPrice > this.price) {
+    this.discountPercentage = Math.round(
+      ((this.actualPrice - this.price) / this.actualPrice) * 100,
+    );
+  } else {
+    this.discountPercentage = 0;
+  }
+  next();
+});
 export default mongoose.model("Plan", planSchema);

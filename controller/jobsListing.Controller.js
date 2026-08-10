@@ -627,6 +627,7 @@ export const getAllJobsWithPaginationAndFilters = async (req, res) => {
           .populate("createdBy", "name email phone isOnline")
           .populate("approvedBy", "name email phone")
           .populate("rejectedBy", "name email phone")
+          .populate("plan")
           .sort({ createdAt: -1 })
           .skip(skip)
           .limit(limit)

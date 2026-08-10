@@ -148,6 +148,15 @@ const businessListingSchema = new mongoose.Schema(
       default: "user",
     },
 
+    // ── NEW: PLAN LIFECYCLE ─────────────────────────────────────────────
+    planStartedAt: { type: Date, default: null },
+    planExpiryDate: { type: Date, default: null, index: true },
+    planStatus: {
+      type: String,
+      enum: ["free", "active", "expired"],
+      default: "free",
+    },
+    // ─────────────────────────────────────────────────────────────────────
     approvedBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
@@ -167,6 +176,35 @@ const businessListingSchema = new mongoose.Schema(
       index: true,
     },
 
+    // In your businessListingSchema.js, add:
+
+    googlePlaceId: {
+      type: String,
+      default: null,
+      // index: true,
+    },
+
+    source: {
+      type: String,
+      enum: ["user", "google_places"],
+      default: "user",
+    },
+
+    // If imported from GBP, reference to the extracted data
+    gbpPlace: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "GbpPlace",
+      default: null,
+    },
+
+    // ai stuff
+    aiEmbedding: {
+      type: [Number],
+      default: [],
+      select: false, // hidden from normal API responses; must .select("+aiEmbedding") explicitly
+    },
+    aiEmbeddingUpdatedAt: { type: Date, default: null },
+
     /* SOFT DELETE */
     isDeleted: { type: Boolean, default: false },
   },
@@ -179,7 +217,7 @@ businessListingSchema.index({ businessName: 1, isDeleted: 1 }); // for duplicate
 businessListingSchema.index({ category: 1, subCategory: 1 });
 businessListingSchema.index({ city: 1 });
 businessListingSchema.index({ isDeleted: 1, isPublished: 1, isVerified: 1 });
-
+businessListingSchema.index({ planStatus: 1, planExpiryDate: 1 }); // for the daily expiry sweep
 businessListingSchema.pre("save", function (next) {
   if (Array.isArray(this.socialLinks)) {
     this.socialLinks = this.socialLinks[0] || {};

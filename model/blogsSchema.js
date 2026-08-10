@@ -26,9 +26,15 @@ const blogSchema = new mongoose.Schema(
 
     status: {
       type: String,
-      enum: ["draft", "published", "archived"],
+      enum: ["draft", "published", "rejected"],
       default: "draft",
     },
+
+    rejectionReason: {
+      type: String,
+      default: null,
+    },
+
     publishedAt: { type: Date },
     featured: { type: Boolean, default: false },
     views: { type: Number, default: 0 },

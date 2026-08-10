@@ -13,9 +13,14 @@ import BrokenLinkScanner from "./brokernlinkscanner.model.js";
 import ScanProgress from "./brokenlinkscanner.progress.model.js";
 
 const BASE_URL = "https://addressguru.ae";
-const FETCH_TIMEOUT_MS = 5000; // hard cap per link, covers HEAD + GET combined
-const LINK_CONCURRENCY = 5; // small batch, not a full queue system
-const PAGES_PER_RUN = 20; // cap pages scanned per run so we don't hammer the server
+const FETCH_TIMEOUT_MS = 20000; // hard cap per link, covers HEAD + GET combined
+const LINK_CONCURRENCY = 10; // small batch, not a full queue system
+const PAGES_PER_RUN = 30; // cap pages scanned per run so we don't hammer the server
+
+export let shouldStop = false;
+export function cancelScanner() {
+  shouldStop = true;
+}
 
 async function getAllUrls() {
   const urls = [
@@ -123,7 +128,8 @@ async function fetchWithTimeout(url, options = {}, controller) {
     ...options,
     signal: controller.signal,
     headers: {
-      "User-Agent": "Mozilla/5.0 (compatible; AddressGuruLinkChecker/1.0)",
+      "User-Agent":
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
       ...options.headers,
     },
   });
@@ -253,6 +259,7 @@ async function getProgress() {
 // run scanner — only scans up to `limit` pages per call, resuming from where it left off
 async function runScanner(limit = PAGES_PER_RUN) {
   console.log("Starting Broken Link Scan...");
+  shouldStop = false;
 
   const urls = await getAllUrls();
   console.log(`Total pages tracked: ${urls.length}`);
@@ -281,6 +288,10 @@ async function runScanner(limit = PAGES_PER_RUN) {
   const linkCache = new Map();
 
   for (const page of batch) {
+    if (shouldStop) {
+      console.log("Scan cancelled by user stop request.");
+      break;
+    }
     console.log("Scanning:", page);
     await scanPage(page, linkCache);
   }

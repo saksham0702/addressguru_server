@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@aws-sdk/client-sesv2": "^3.1081.0",
+    "@google/genai": "^2.16.0",
     "apple-signin-auth": "^2.0.0",
     "axios": "^1.13.0",
     "bcrypt": "^6.0.0",
@@ -44,7 +45,8 @@
     "socket.io": "^4.8.3",
     "ua-parser-js": "^1.0.39",
     "winston": "^3.18.3",
-    "winston-mongodb": "^7.0.1"
+    "winston-mongodb": "^7.0.1",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@types/express": "^5.0.6",
