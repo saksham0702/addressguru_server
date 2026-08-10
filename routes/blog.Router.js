@@ -16,6 +16,8 @@ import {
   createCategory,
   updateCategory,
   deleteCategory,
+  reviewBlog,
+  getBlogsByUser,
 } from "../controller/blog.Controller.js";
 import { authenticate, optionalAuth } from "../middleware/userAuth.js";
 
@@ -51,5 +53,7 @@ router.delete("/admin/delete-blog/:id", deleteBlog);
 router.post("/admin/create-category", createCategory);
 router.put("/admin/update-category/:id", updateCategory);
 router.delete("/admin/delete-category/:id", deleteCategory);
+router.put("/admin/review-blog/:id", authenticate, reviewBlog);
 
+router.get("/user/:userId", authenticate, getBlogsByUser);
 export default router;

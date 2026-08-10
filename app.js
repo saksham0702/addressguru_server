@@ -52,6 +52,10 @@ import logRouter from "./modules/audit-logs/log.routes.js";
 import { optionalAuth } from "./middleware/userAuth.js";
 import brokenLinkScannerRoutes from "./modules/brokenlinkscanner/brokenlinkscanner.router.js";
 import { startBrokenLinkCron } from "./modules/brokenlinkscanner/brokenlinkscanner.cron.js";
+import aiSearchRouter from "./modules/ai-search/aiSearch.routes.js";
+import { loadBusinessEmbeddingCache } from "./modules/ai-search/businessSearch.service.js";
+import rateLimit from "express-rate-limit";
+// import gbpTrackerRoutes from "./modules/gbp-tracker/gbpTracker.routes.js";
 
 var app = express();
 
@@ -59,10 +63,11 @@ var app = express();
 connectDB();
 startBrokenLinkCron();
 initializeFirebase();
+loadBusinessEmbeddingCache();
 // await seedFeatures();
 
 // view engine setup
-app.set("trust proxy", true);
+app.set("trust proxy", 1);
 app.set("views", join(__dirname, "views"));
 app.set("view engine", "jade");
 const allowedOrigins = [
@@ -73,6 +78,17 @@ const allowedOrigins = [
   "*",
   // Add any other frontend origins here
 ];
+
+const globalLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 min
+  max: 300, // 300 requests per IP per 15 min across the whole API
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    success: false,
+    message: "Too many requests, please try again later.",
+  },
+});
 
 app.use(
   cors({
@@ -93,6 +109,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(loggerMiddleware);
 
+app.use(globalLimiter);
 app.use(cookieParser());
 app.use(optionalAuth);
 app.use(express.static(join(__dirname, "public")));
@@ -182,7 +199,9 @@ app.use(`/notifications`, notificationRouter);
 app.use("/search", searchRouter);
 app.use("/payment", paymentRouter);
 app.use("/logs", logRouter);
-app.use("/api/broken-links", brokenLinkScannerRoutes);
+app.use("/broken-links", brokenLinkScannerRoutes);
+app.use("/ai-search", aiSearchRouter);
+// app.use("/gbp-tracker", gbpTrackerRoutes);
 
 app.get("/test-cookie", (req, res) => {
   console.log("cookies:", req.cookies);

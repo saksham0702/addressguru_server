@@ -100,20 +100,20 @@ export const verifyPayment = async (req, res) => {
       });
     }
 
-    const payment = await verifyPaymentService({
+    const { payment, listing } = await verifyPaymentService({
       orderId: razorpay_order_id,
-
       paymentId: razorpay_payment_id,
-
       signature: razorpay_signature,
     });
 
     return res.status(200).json({
       success: true,
-
       message: "Payment verified successfully",
-
-      data: payment,
+      data: {
+        payment,
+        plan_expiry: listing?.planExpiryDate || null,
+        plan_status: listing?.planStatus || null,
+      },
     });
   } catch (error) {
     return res.status(400).json({
@@ -122,7 +122,6 @@ export const verifyPayment = async (req, res) => {
     });
   }
 };
-
 export const getAllPayments = async (req, res) => {
   try {
     const { page = 1, limit = 10, status, search, minAmount } = req.query;

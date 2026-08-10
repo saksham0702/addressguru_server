@@ -608,11 +608,11 @@ export const getMarketplaceListingByUser = async (req, res) => {
 /* ── MARK AS SOLD ── */
 export const markMarketplaceListingAsSold = async (req, res) => {
   try {
-    const { id } = req.params;
-    if (!id) return errorData(res, 400, false, "Listing id is required");
+    const { slug } = req.params;
+    if (!slug) return errorData(res, 400, false, "Slug is required");
 
     const listing = await MarketplaceListing.findOne({
-      _id: id,
+      slug,
       isDeleted: false,
     });
     if (!listing) return errorData(res, 404, false, "Listing not found");
@@ -620,8 +620,8 @@ export const markMarketplaceListingAsSold = async (req, res) => {
     // Ownership check
     if (
       listing.createdBy &&
-      req.user?._id &&
-      listing.createdBy.toString() !== req.user._id.toString()
+      req.user?.id &&
+      listing.createdBy.toString() !== req.user.id.toString()
     ) {
       return errorData(
         res,
@@ -642,7 +642,7 @@ export const markMarketplaceListingAsSold = async (req, res) => {
     }
 
     return successData(res, 200, true, "Listing marked as sold", {
-      id: listing._id,
+      slug: listing.slug,
     });
   } catch (error) {
     console.warn("Mark as sold error:", error);
@@ -653,20 +653,23 @@ export const markMarketplaceListingAsSold = async (req, res) => {
 /* ── SOFT DELETE ── */
 export const deleteMarketplaceListing = async (req, res) => {
   try {
-    const { id } = req.params;
-    if (!id) return errorData(res, 400, false, "Listing id is required");
+    const { slug } = req.params;
+    if (!slug) return errorData(res, 400, false, "Slug is required");
 
     const listing = await MarketplaceListing.findOne({
-      _id: id,
+      slug,
       isDeleted: false,
     });
     if (!listing) return errorData(res, 404, false, "Listing not found");
 
     // Ownership check
+    const user = await User.findById(req.user.id);
+    const isAdmin = user?.roles?.includes(1) || false;
+
     if (
       listing.createdBy &&
-      req.user?._id &&
-      listing.createdBy.toString() !== req.user._id.toString()
+      listing.createdBy.toString() !== req.user.id.toString() &&
+      !isAdmin
     ) {
       return errorData(
         res,

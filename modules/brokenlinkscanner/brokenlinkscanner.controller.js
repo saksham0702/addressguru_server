@@ -1,5 +1,4 @@
-// brokenlinkscanner.controller.js
-import runScanner from "./brokenlinkscanner.service.js";
+import runScanner, { cancelScanner } from "./brokenlinkscanner.service.js";
 import BrokenLinkScanner from "./brokernlinkscanner.model.js";
 
 let isScanRunning = false;
@@ -24,6 +23,13 @@ export const triggerScan = async (req, res) => {
   } finally {
     isScanRunning = false;
   }
+};
+
+// POST /api/broken-links/stop - stop scanning
+export const stopScan = (req, res) => {
+  cancelScanner();
+  isScanRunning = false;
+  res.status(200).json({ success: true, message: "Scan stop requested" });
 };
 
 // GET /api/broken-links - list all broken links found in the last run

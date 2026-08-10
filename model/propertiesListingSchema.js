@@ -29,8 +29,8 @@ const propertyListingSchema = new mongoose.Schema(
 
     soldBy: {
       type: String,
-      required:true,
-      enum:["broker","agency","owner"]
+      required: true,
+      enum: ["broker", "agency", "owner"],
     },
     cae_number: { type: String, default: null },
 
@@ -63,7 +63,7 @@ const propertyListingSchema = new mongoose.Schema(
       size: { type: Number, default: null },
       unit: {
         type: String,
-        enum: ["sqft", "sqm", "marla", "kanal"], // fixed: added marla & kanal
+        enum: ["sqft", "sqm"],
         default: "sqft",
       },
     },
@@ -192,6 +192,11 @@ propertyListingSchema.index({ purpose: 1 });
 propertyListingSchema.index({ "area.size": 1, "area.unit": 1 });
 propertyListingSchema.index({ category: 1, subCategory: 1 });
 propertyListingSchema.index({ city: 1 });
-propertyListingSchema.index({ isSold: 1, isDeleted: 1, isPublished: 1, isVerified: 1 });
+propertyListingSchema.index({
+  isSold: 1,
+  isDeleted: 1,
+  isPublished: 1,
+  isVerified: 1,
+});
 
 export default mongoose.model("PropertyListing", propertyListingSchema);

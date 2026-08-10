@@ -50,9 +50,6 @@ router.put(
 router.patch("/:identifier/unpublish", authenticate, unpublishListing);
 router.patch("/:identifier/publish", authenticate, publishListing);
 router.get("/get-approved-listings", getApprovedListings);
-router.patch("/mark-as-sold/:id", authenticate, markMarketplaceListingAsSold);
-router.delete("/delete-listing/:id", authenticate, deleteMarketplaceListing);
-
 router.get("/category-info/:categoryId", getMarketplaceCategoryInfo);
 
 export default router;

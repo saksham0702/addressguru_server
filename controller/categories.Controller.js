@@ -79,9 +79,17 @@ export const createCategory = async (req, res) => {
 // ✅ Get All Categories
 export const getCategories = async (req, res) => {
   try {
-    const categories = await Category.find({
+    const { limit } = req.query;
+
+    let query = Category.find({
       isDeleted: false,
     }).sort({ isPopular: -1, createdAt: -1 });
+
+    if (limit && !isNaN(limit)) {
+      query = query.limit(parseInt(limit, 10));
+    }
+
+    const categories = await query;
 
     if (!categories || categories.length === 0)
       return errorData(res, 404, false, "Category not found.");
@@ -179,14 +187,21 @@ export const updateCategory = async (req, res) => {
 export const getCategoryByType = async (req, res) => {
   try {
     const { type } = req.params;
+    const { limit } = req.query;
 
-    const category = await Category.find({
+    let query = Category.find({
       type,
       isDeleted: false,
     }).sort({
       isPopular: -1, // ✅ popular categories first
       createdAt: -1, // ✅ newest inside each group
     });
+
+    if (limit && !isNaN(limit)) {
+      query = query.limit(parseInt(limit, 10));
+    }
+
+    const category = await query;
 
     if (!category || category.length === 0) {
       return errorData(res, 404, false, "Category not found.");

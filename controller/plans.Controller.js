@@ -80,6 +80,10 @@ export const createPlan = async (req, res) => {
       tagline,
       planType,
       displayOrder,
+      price, // FIX: was missing
+      actualPrice, // NEW
+      billingCycle, // FIX: was missing
+      features, // FIX: was missing
       limits,
       flags,
       theme,
@@ -95,7 +99,19 @@ export const createPlan = async (req, res) => {
     if (price === undefined || price === null)
       return errorData(res, 400, false, "Plan price is required");
 
-    // Duplicate name check
+    if (
+      actualPrice !== undefined &&
+      actualPrice !== null &&
+      actualPrice < price
+    ) {
+      return errorData(
+        res,
+        400,
+        false,
+        "Actual price cannot be lower than the discounted price",
+      );
+    }
+
     const existing = await Plan.findOne({
       name: name.trim(),
       isDeleted: false,
@@ -112,6 +128,7 @@ export const createPlan = async (req, res) => {
       planType: planType || "business",
       displayOrder: displayOrder ?? 0,
       price,
+      actualPrice: actualPrice ?? null,
       billingCycle: billingCycle || "year",
       features: Array.isArray(features) ? features : [],
       limits: limits || {},
@@ -138,7 +155,6 @@ export const createPlan = async (req, res) => {
 export const updatePlan = async (req, res) => {
   try {
     const { id } = req.params;
-
     const plan = await Plan.findOne({ _id: id, isDeleted: false });
     if (!plan) return errorData(res, 404, false, "Plan not found");
 
@@ -147,6 +163,7 @@ export const updatePlan = async (req, res) => {
       "tagline",
       "displayOrder",
       "price",
+      "actualPrice", // NEW
       "billingCycle",
       "features",
       "limits",
@@ -162,12 +179,9 @@ export const updatePlan = async (req, res) => {
     ];
 
     for (const field of allowedFields) {
-      if (req.body[field] !== undefined) {
-        plan[field] = req.body[field];
-      }
+      if (req.body[field] !== undefined) plan[field] = req.body[field];
     }
 
-    // Re-slug if name changed
     if (req.body.name) {
       plan.slug = slugify(req.body.name, { lower: true, strict: true });
     }
@@ -184,6 +198,69 @@ export const updatePlan = async (req, res) => {
   }
 };
 
+// ...deletePlan, seedDefaultPlans — unchanged, keep as-is...
+
+// ─── UPGRADE PLAN (simulated payment endpoint) ────────────────────────────────
+export const upgradePlan = async (req, res) => {
+  try {
+    const { type, listing_id, plan_id } = req.body;
+    if (!type || !listing_id || !plan_id) {
+      return errorData(res, 400, false, "Missing required fields");
+    }
+
+    const plan = await Plan.findById(plan_id);
+    if (!plan) return errorData(res, 404, false, "Plan not found");
+
+    let Model;
+    if (type === "BUSINESS") Model = BusinessListing;
+    else if (type === "MARKETPLACE") Model = MarketplaceListing;
+    else if (type === "PROPERTIES") Model = PropertyListing;
+    else if (type === "JOBS") Model = JobListing;
+    else return errorData(res, 400, false, "Invalid listing type");
+
+    const listing = await Model.findById(listing_id);
+    if (!listing) return errorData(res, 404, false, "Listing not found");
+
+    if (listing.createdBy.toString() !== req.user.id.toString()) {
+      return errorData(res, 403, false, "Unauthorized");
+    }
+
+    /* FREE PLAN — inline for now, no dependency on payment.service.js */
+    if (plan.price === 0) {
+      listing.plan = plan._id;
+      listing.isPublished = true;
+      listing.planStartedAt = new Date();
+      listing.planExpiryDate = null;
+      listing.planStatus = "free";
+      // NOTE: only set these three if you've already added the fields
+      // to the listing schema — otherwise Mongoose just ignores them silently.
+      await listing.save();
+
+      return successData(res, 200, true, "Plan upgraded successfully", {
+        free_plan: true,
+      });
+    }
+
+    /* PAID PLAN */
+    const { order, payment } = await createOrderService({
+      userId: req.user.id,
+      planId: plan._id,
+      listingId: listing._id,
+    });
+
+    return successData(res, 200, true, "Payment initiated", {
+      free_plan: false,
+      payment_id: payment._id,
+      order_id: order.id,
+      amount: order.amount,
+      currency: order.currency,
+      key: process.env.RAZORPAY_KEY_ID,
+    });
+  } catch (error) {
+    console.log(error);
+    return errorData(res, 500, false, "Upgrade failed");
+  }
+};
 // ─── SOFT DELETE PLAN (admin) ─────────────────────────────────────────────────
 export const deletePlan = async (req, res) => {
   try {
@@ -376,94 +453,94 @@ export const seedDefaultPlans = async (req, res) => {
 };
 
 // ─── UPGRADE PLAN (simulated payment endpoint) ────────────────────────────────
-export const upgradePlan = async (req, res) => {
-  try {
-    const { type, listing_id, plan_id } = req.body;
+// export const upgradePlan = async (req, res) => {
+//   try {
+//     const { type, listing_id, plan_id } = req.body;
 
-    if (!type || !listing_id || !plan_id) {
-      return errorData(res, 400, false, "Missing required fields");
-    }
+//     if (!type || !listing_id || !plan_id) {
+//       return errorData(res, 400, false, "Missing required fields");
+//     }
 
-    const plan = await Plan.findById(plan_id);
+//     const plan = await Plan.findById(plan_id);
 
-    if (!plan) {
-      return errorData(res, 404, false, "Plan not found");
-    }
+//     if (!plan) {
+//       return errorData(res, 404, false, "Plan not found");
+//     }
 
-    let Model;
+//     let Model;
 
-    if (type === "BUSINESS") {
-      Model = BusinessListing;
-    } else if (type === "MARKETPLACE") {
-      Model = MarketplaceListing;
-    } else if (type === "PROPERTIES") {
-      Model = PropertyListing;
-    } else if (type === "JOBS") {
-      Model = JobListing;
-    } else {
-      return errorData(res, 400, false, "Invalid listing type");
-    }
+//     if (type === "BUSINESS") {
+//       Model = BusinessListing;
+//     } else if (type === "MARKETPLACE") {
+//       Model = MarketplaceListing;
+//     } else if (type === "PROPERTIES") {
+//       Model = PropertyListing;
+//     } else if (type === "JOBS") {
+//       Model = JobListing;
+//     } else {
+//       return errorData(res, 400, false, "Invalid listing type");
+//     }
 
-    const listing = await Model.findById(listing_id);
+//     const listing = await Model.findById(listing_id);
 
-    if (!listing) {
-      return errorData(res, 404, false, "Listing not found");
-    }
+//     if (!listing) {
+//       return errorData(res, 404, false, "Listing not found");
+//     }
 
-    if (listing.createdBy.toString() !== req.user.id.toString()) {
-      return errorData(res, 403, false, "Unauthorized");
-    }
+//     if (listing.createdBy.toString() !== req.user.id.toString()) {
+//       return errorData(res, 403, false, "Unauthorized");
+//     }
 
-    /*
-    |--------------------------------------------------------------------------
-    | FREE PLAN
-    |--------------------------------------------------------------------------
-    */
+//     /*
+//     |--------------------------------------------------------------------------
+//     | FREE PLAN
+//     |--------------------------------------------------------------------------
+//     */
 
-    if (plan.price === 0) {
-      listing.plan = plan._id;
+//     if (plan.price === 0) {
+//       listing.plan = plan._id;
 
-      listing.isPublished = true;
+//       listing.isPublished = true;
 
-      listing.publishedAt = new Date();
+//       listing.publishedAt = new Date();
 
-      await listing.save();
+//       await listing.save();
 
-      return successData(res, 200, true, "Plan upgraded successfully", {
-        free_plan: true,
-      });
-    }
+//       return successData(res, 200, true, "Plan upgraded successfully", {
+//         free_plan: true,
+//       });
+//     }
 
-    /*
-    |--------------------------------------------------------------------------
-    | PAID PLAN
-    |--------------------------------------------------------------------------
-    */
+//     /*
+//     |--------------------------------------------------------------------------
+//     | PAID PLAN
+//     |--------------------------------------------------------------------------
+//     */
 
-    const { order, payment } = await createOrderService({
-      userId: req.user.id,
+//     const { order, payment } = await createOrderService({
+//       userId: req.user.id,
 
-      planId: plan._id,
+//       planId: plan._id,
 
-      listingId: listing._id,
-    });
+//       listingId: listing._id,
+//     });
 
-    return successData(res, 200, true, "Payment initiated", {
-      free_plan: false,
+//     return successData(res, 200, true, "Payment initiated", {
+//       free_plan: false,
 
-      payment_id: payment._id,
+//       payment_id: payment._id,
 
-      order_id: order.id,
+//       order_id: order.id,
 
-      amount: order.amount,
+//       amount: order.amount,
 
-      currency: order.currency,
+//       currency: order.currency,
 
-      key: process.env.RAZORPAY_KEY_ID,
-    });
-  } catch (error) {
-    console.log(error);
+//       key: process.env.RAZORPAY_KEY_ID,
+//     });
+//   } catch (error) {
+//     console.log(error);
 
-    return errorData(res, 500, false, "Upgrade failed");
-  }
-};
+//     return errorData(res, 500, false, "Upgrade failed");
+//   }
+// };

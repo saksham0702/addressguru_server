@@ -100,7 +100,7 @@ const sendOTPMail = (email, name = "", otp) => {
 //  UPDATED: Approved / Rejected listing mail
 // Added optional `extra` param for richer approved template data.
 // Fully backward-compatible — existing callers with 4 args still work.
-const sendApprovedAndRejectedListingMail = (
+const sendApprovedAndRejectedListingMail = async (
   email,
   name,
   status,
@@ -164,6 +164,16 @@ const sendApprovedAndRejectedListingMail = (
     text: `Your listing status is: ${status}`,
     html: mailBody,
   };
+
+  console.log({
+    host: emailConfig.SMTP_HOST,
+    port: emailConfig.SMTP_PORT,
+    user: emailConfig.SMTP_EMAIL,
+    pass: emailConfig.SMTP_PASS ? "Present" : "Missing",
+  });
+
+  await transporter.verify();
+  console.log("SMTP Login Successful");
 
   return transporter.sendMail(mailOptions);
 };

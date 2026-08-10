@@ -16,6 +16,7 @@ const CREATABLE_FIELDS = [
   "is_inside_form",
   "checkbox_items",
   "dropdown_items",
+  "is_filter_out",
   "is_required",
   "placeholder",
 ];
@@ -30,6 +31,7 @@ const UPDATABLE_FIELDS = [
   "is_inside_form",
   "checkbox_items",
   "dropdown_items",
+  "is_filter_out",
   "is_required",
   "placeholder",
   "is_active",

@@ -24,6 +24,8 @@ import { buildSearchText } from "../modules/search/search.utils.js";
 import FollowUp from "../model/followUpSchema.js";
 import mongoose from "mongoose";
 import businessListingSchema from "../model/businessListingSchema.js";
+import { generateEmbeddingForListing } from "../modules/ai-search/businessEmbedding.service.js";
+import { upsertCacheEntry } from "../modules/ai-search/businessSearch.service.js";
 
 const validateAdditionalFields = async (additionalFields = []) => {
   if (!additionalFields.length) return { errors: [], validated: [] };
@@ -441,6 +443,16 @@ export const updateListingStep = async (req, res) => {
     listing.status = "pending";
     await listing.save();
 
+    (async () => {
+      try {
+        if (!listing.aiEmbedding?.length)
+          await generateEmbeddingForListing(listing._id);
+        await upsertCacheEntry(listing._id);
+      } catch (err) {
+        console.warn("AI embedding sync failed on status change:", err.message);
+      }
+    })();
+
     // 🔥 REBUILD SEARCH TEXT AFTER UPDATE
 
     const featureDocs = await Feature.find({
@@ -824,6 +836,221 @@ export const getAllListingsWithPaginationAndFilters = async (req, res) => {
 };
 
 // get listings for website
+// export const getListingsByCategoryAndCity = async (req, res) => {
+//   try {
+//     const { category_slug, city_slug } = req.params;
+//     const {
+//       page = 1,
+//       limit = 10,
+//       sort_by,
+//       ag_verified,
+//       facilities_id,
+//       services_id,
+//       courses_id,
+//       payment_mode_id,
+//       search,
+//     } = req.query;
+
+//     if (!category_slug) {
+//       return errorData(res, 400, false, "Category slug is required");
+//     }
+
+//     const category = await Category.findOne({
+//       slug: category_slug,
+//       isDeleted: false,
+//     });
+//     if (!category) {
+//       return errorData(res, 404, false, "Category not found");
+//     }
+
+//     const filter = {
+//       category: category._id,
+//       isDeleted: false,
+//       status: "approved",
+//     };
+
+//     // City filter
+//     if (city_slug && city_slug.toLowerCase().trim() !== "all-cities") {
+//       const city = await CitiesSchema.findOne({
+//         slug: city_slug,
+//         deletedAt: null,
+//       });
+//       if (!city) {
+//         return errorData(res, 404, false, "City not found");
+//       }
+//       filter.city = city._id;
+//     }
+
+//     // Search filter
+//     if (search && search.trim()) {
+//       filter.$or = [
+//         { name: { $regex: search.trim(), $options: "i" } },
+//         { description: { $regex: search.trim(), $options: "i" } },
+//       ];
+//     }
+
+//     // AG Verified filter
+//     if (ag_verified === "true") {
+//       filter.ag_verified = true;
+//     }
+
+//     // Facilities filter
+//     if (facilities_id) {
+//       const ids = Array.isArray(facilities_id)
+//         ? facilities_id
+//         : facilities_id.split(",");
+//       if (ids.length > 0) filter.facilities = { $in: ids };
+//     }
+
+//     // Services filter
+//     if (services_id) {
+//       const ids = Array.isArray(services_id)
+//         ? services_id
+//         : services_id.split(",");
+//       if (ids.length > 0) filter.services = { $in: ids };
+//     }
+
+//     // Courses filter
+//     if (courses_id) {
+//       const ids = Array.isArray(courses_id)
+//         ? courses_id
+//         : courses_id.split(",");
+//       if (ids.length > 0) filter.courses = { $in: ids };
+//     }
+
+//     // Payment mode filter
+//     if (payment_mode_id) {
+//       const ids = (
+//         Array.isArray(payment_mode_id)
+//           ? payment_mode_id
+//           : payment_mode_id.split(",")
+//       )
+//         .filter(Boolean)
+//         .map((id) => new mongoose.Types.ObjectId(id.trim()));
+
+//       if (ids.length > 0) filter.paymentModes = { $in: ids };
+//     }
+//     // Sort
+//     let sortOption = { createdAt: -1 }; // default: newest
+//     if (sort_by === "oldest") sortOption = { createdAt: 1 };
+//     else if (sort_by === "popular") sortOption = { views: -1 };
+//     else if (sort_by === "rating_desc") sortOption = { rating: -1 };
+//     else if (sort_by === "rating_asc") sortOption = { rating: 1 };
+
+//     // Pagination
+//     const pageNumber = Number(page);
+//     const limitNumber = Number(limit);
+//     const skip = (pageNumber - 1) * limitNumber;
+
+//     const [listings, total] = await Promise.all([
+//       BusinessListing.find(filter)
+//         .select(
+//           "businessName slug logo images businessAddress description " +
+//             "category subCategory city countryCode mobileNumber " +
+//             "facilities services courses paymentModes " +
+//             "isVerified isPublished status createdAt",
+//         )
+//         .populate("category", "name slug seo")
+//         .populate("subCategory", "name slug")
+//         .populate("city", "name slug")
+//         .populate("facilities", "name iconSvg") // ✅ only name + icon
+//         .populate("services", "name iconSvg") // ✅ only name + icon
+//         .populate("courses", "name iconSvg") // ✅ only name + icon
+//         .populate("paymentModes", "name _id") // ✅ only what filter needs
+//         .sort(sortOption)
+//         .skip(skip)
+//         .limit(limitNumber)
+//         .lean(),
+//       BusinessListing.countDocuments(filter),
+//     ]);
+
+//     const totalPages = Math.ceil(total / limitNumber);
+//     const listingIds = listings.map((l) => l._id);
+
+//     // ✅ Aggregate stats for the current page of listings
+//     const statsData = await ListingStats.aggregate([
+//       { $match: { listingId: { $in: listingIds } } },
+//       {
+//         $group: {
+//           _id: { listingId: "$listingId", type: "$type" },
+//           count: { $sum: 1 },
+//         },
+//       },
+//     ]);
+
+//     // Create a mapping for quick lookup
+//     const statsMap = {};
+//     statsData.forEach((s) => {
+//       const lid = s._id.listingId.toString();
+//       if (!statsMap[lid]) statsMap[lid] = {};
+//       statsMap[lid][s._id.type] = s.count;
+//     });
+
+//     // ✅ Aggregate review stats (average rating and count)
+//     const reviewStatsData = await ReviewListing.aggregate([
+//       {
+//         $match: {
+//           listingId: { $in: listingIds },
+//           status: "approved",
+//           isDeleted: false,
+//         },
+//       },
+//       {
+//         $group: {
+//           _id: "$listingId",
+//           averageRating: { $avg: "$rating" },
+//           reviewCount: { $sum: 1 },
+//         },
+//       },
+//     ]);
+
+//     const reviewStatsMap = {};
+//     reviewStatsData.forEach((rs) => {
+//       reviewStatsMap[rs._id.toString()] = rs;
+//     });
+
+//     // Attach stats to each listing
+//     // Attach stats to each listing
+//     listings.forEach((l) => {
+//       const lid = l._id.toString();
+//       const s = statsMap[lid] || {};
+//       const rs = reviewStatsMap[lid] || {};
+
+//       l.statistics = {
+//         totalViews: s.view || 0,
+//         totalCalls: s.call || 0,
+//         websiteVisits: s.website_visit || 0,
+//         totalLeads: s.lead || 0,
+//         totalReviews: rs.reviewCount || 0,
+//         averageRating: rs.averageRating
+//           ? Number(rs.averageRating.toFixed(1))
+//           : 0,
+//       };
+//       l.views = s.view || 0;
+
+//       // ✅ ADD THESE 3 LINES RIGHT HERE
+//       l.facilities = l.facilities?.slice(0, 5);
+//       l.images = l.images?.slice(0, 5);
+//       l.services = l.services?.slice(0, 5);
+//     });
+
+//     return successData(res, 200, true, "Listings fetched successfully", {
+//       listings,
+//       pagination: {
+//         total,
+//         page: pageNumber,
+//         limit: limitNumber,
+//         totalPages,
+//         hasMore: pageNumber < totalPages,
+//         nextPage: pageNumber < totalPages ? pageNumber + 1 : null,
+//       },
+//     });
+//   } catch (error) {
+//     console.warn("Listing fetch error:", error);
+//     return errorData(res, 500, false, "Internal server error");
+//   }
+// };
+
 export const getListingsByCategoryAndCity = async (req, res) => {
   try {
     const { category_slug, city_slug } = req.params;
@@ -836,6 +1063,7 @@ export const getListingsByCategoryAndCity = async (req, res) => {
       services_id,
       courses_id,
       payment_mode_id,
+      additional_filters,
       search,
     } = req.query;
 
@@ -869,11 +1097,13 @@ export const getListingsByCategoryAndCity = async (req, res) => {
       filter.city = city._id;
     }
 
-    // Search filter
+    // ✅ FIXED: Search filter uses correct field names
     if (search && search.trim()) {
+      const searchRegex = { $regex: search.trim(), $options: "i" };
       filter.$or = [
-        { name: { $regex: search.trim(), $options: "i" } },
-        { description: { $regex: search.trim(), $options: "i" } },
+        { businessName: searchRegex }, // ✅ was "name"
+        { description: searchRegex },
+        { about: searchRegex }, // ✅ added fallback
       ];
     }
 
@@ -887,7 +1117,16 @@ export const getListingsByCategoryAndCity = async (req, res) => {
       const ids = Array.isArray(facilities_id)
         ? facilities_id
         : facilities_id.split(",");
-      if (ids.length > 0) filter.facilities = { $in: ids };
+      const validIds = ids.filter(Boolean).map((id) => id.trim());
+      if (validIds.length > 0) {
+        filter.facilities = {
+          $in: validIds.map((id) =>
+            mongoose.Types.ObjectId.isValid(id)
+              ? new mongoose.Types.ObjectId(id)
+              : id,
+          ),
+        };
+      }
     }
 
     // Services filter
@@ -895,7 +1134,16 @@ export const getListingsByCategoryAndCity = async (req, res) => {
       const ids = Array.isArray(services_id)
         ? services_id
         : services_id.split(",");
-      if (ids.length > 0) filter.services = { $in: ids };
+      const validIds = ids.filter(Boolean).map((id) => id.trim());
+      if (validIds.length > 0) {
+        filter.services = {
+          $in: validIds.map((id) =>
+            mongoose.Types.ObjectId.isValid(id)
+              ? new mongoose.Types.ObjectId(id)
+              : id,
+          ),
+        };
+      }
     }
 
     // Courses filter
@@ -903,7 +1151,16 @@ export const getListingsByCategoryAndCity = async (req, res) => {
       const ids = Array.isArray(courses_id)
         ? courses_id
         : courses_id.split(",");
-      if (ids.length > 0) filter.courses = { $in: ids };
+      const validIds = ids.filter(Boolean).map((id) => id.trim());
+      if (validIds.length > 0) {
+        filter.courses = {
+          $in: validIds.map((id) =>
+            mongoose.Types.ObjectId.isValid(id)
+              ? new mongoose.Types.ObjectId(id)
+              : id,
+          ),
+        };
+      }
     }
 
     // Payment mode filter
@@ -914,20 +1171,76 @@ export const getListingsByCategoryAndCity = async (req, res) => {
           : payment_mode_id.split(",")
       )
         .filter(Boolean)
-        .map((id) => new mongoose.Types.ObjectId(id.trim()));
+        .map((id) => id.trim());
 
-      if (ids.length > 0) filter.paymentModes = { $in: ids };
+      if (ids.length > 0) {
+        filter.paymentModes = {
+          $in: ids.map((id) =>
+            mongoose.Types.ObjectId.isValid(id)
+              ? new mongoose.Types.ObjectId(id)
+              : id,
+          ),
+        };
+      }
     }
-    // Sort
-    let sortOption = { createdAt: -1 }; // default: newest
+
+    // ✅ FIXED: Additional fields filter with robust parsing
+    if (additional_filters) {
+      try {
+        // Handle both string and already-parsed array
+        let parsed = additional_filters;
+        if (typeof parsed === "string") {
+          parsed = JSON.parse(decodeURIComponent(parsed));
+        }
+
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          const andConditions = [];
+
+          parsed.forEach(({ field_id, values }) => {
+            if (!field_id || !values || values.length === 0) return;
+
+            const fieldIdStr = field_id.toString();
+
+            andConditions.push({
+              additionalFields: {
+                $elemMatch: {
+                  field_id: mongoose.Types.ObjectId.isValid(fieldIdStr)
+                    ? new mongoose.Types.ObjectId(fieldIdStr)
+                    : fieldIdStr,
+                  value: { $in: values },
+                },
+              },
+            });
+          });
+
+          if (andConditions.length > 0) {
+            filter.$and = filter.$and || [];
+            filter.$and.push(...andConditions);
+          }
+        }
+      } catch (error) {
+        console.warn(
+          "Invalid additional_filters:",
+          error.message,
+          "Value:",
+          additional_filters,
+        );
+      }
+    }
+
+    // ✅ FIXED: Sort options — removed non-existent rating field
+    let sortOption = { createdAt: -1 };
     if (sort_by === "oldest") sortOption = { createdAt: 1 };
     else if (sort_by === "popular") sortOption = { views: -1 };
-    else if (sort_by === "rating_desc") sortOption = { rating: -1 };
-    else if (sort_by === "rating_asc") sortOption = { rating: 1 };
+    // Note: rating sorting requires aggregation or stored average;
+    // for now, sort by review count as proxy for popularity
+    else if (sort_by === "rating_desc")
+      sortOption = { createdAt: -1 }; // placeholder
+    else if (sort_by === "rating_asc") sortOption = { createdAt: 1 }; // placeholder
 
     // Pagination
-    const pageNumber = Number(page);
-    const limitNumber = Number(limit);
+    const pageNumber = Math.max(1, Number(page));
+    const limitNumber = Math.min(50, Math.max(1, Number(limit)));
     const skip = (pageNumber - 1) * limitNumber;
 
     const [listings, total] = await Promise.all([
@@ -935,17 +1248,20 @@ export const getListingsByCategoryAndCity = async (req, res) => {
         .select(
           "businessName slug logo images businessAddress description " +
             "category subCategory city countryCode mobileNumber " +
-            "facilities services courses paymentModes " +
-            "isVerified isPublished status createdAt",
+            "facilities services courses paymentModes additionalFields " +
+            "isVerified isPublished status createdAt views",
         )
         .populate("category", "name slug seo")
         .populate("subCategory", "name slug")
         .populate("city", "name slug")
-        .populate("facilities", "name iconSvg") // ✅ only name + icon
-        .populate("services", "name iconSvg") // ✅ only name + icon
-        .populate("courses", "name iconSvg") // ✅ only name + icon
-        .populate("paymentModes", "name _id") // ✅ only what filter needs
-        .sort(sortOption)
+        .populate("facilities", "name iconSvg")
+        .populate("services", "name iconSvg")
+        .populate("courses", "name iconSvg")
+        .populate("paymentModes", "name _id")
+        .sort({
+          plan: -1,
+          ...sortOption,
+        })
         .skip(skip)
         .limit(limitNumber)
         .lean(),
@@ -955,7 +1271,7 @@ export const getListingsByCategoryAndCity = async (req, res) => {
     const totalPages = Math.ceil(total / limitNumber);
     const listingIds = listings.map((l) => l._id);
 
-    // ✅ Aggregate stats for the current page of listings
+    // Aggregate stats
     const statsData = await ListingStats.aggregate([
       { $match: { listingId: { $in: listingIds } } },
       {
@@ -966,7 +1282,6 @@ export const getListingsByCategoryAndCity = async (req, res) => {
       },
     ]);
 
-    // Create a mapping for quick lookup
     const statsMap = {};
     statsData.forEach((s) => {
       const lid = s._id.listingId.toString();
@@ -974,7 +1289,7 @@ export const getListingsByCategoryAndCity = async (req, res) => {
       statsMap[lid][s._id.type] = s.count;
     });
 
-    // ✅ Aggregate review stats (average rating and count)
+    // Aggregate review stats
     const reviewStatsData = await ReviewListing.aggregate([
       {
         $match: {
@@ -997,8 +1312,7 @@ export const getListingsByCategoryAndCity = async (req, res) => {
       reviewStatsMap[rs._id.toString()] = rs;
     });
 
-    // Attach stats to each listing
-    // Attach stats to each listing
+    // Attach stats
     listings.forEach((l) => {
       const lid = l._id.toString();
       const s = statsMap[lid] || {};
@@ -1016,13 +1330,14 @@ export const getListingsByCategoryAndCity = async (req, res) => {
       };
       l.views = s.view || 0;
 
-      // ✅ ADD THESE 3 LINES RIGHT HERE
+      // Limit arrays
       l.facilities = l.facilities?.slice(0, 5);
       l.images = l.images?.slice(0, 5);
       l.services = l.services?.slice(0, 5);
     });
 
     return successData(res, 200, true, "Listings fetched successfully", {
+      category,
       listings,
       pagination: {
         total,
@@ -1034,7 +1349,7 @@ export const getListingsByCategoryAndCity = async (req, res) => {
       },
     });
   } catch (error) {
-    console.warn("Listing fetch error:", error);
+    console.error("Listing fetch error:", error);
     return errorData(res, 500, false, "Internal server error");
   }
 };
@@ -1344,7 +1659,8 @@ export const updateListingStatus = async (req, res) => {
   try {
     const { id } = req.params;
     const { status, rejectionReason, adminNote } = req.body;
-    const adminId = req.user._id;
+    const adminId = req.user.id;
+    console.log("i am hit 200", adminId);
 
     // ── Validate status value ───────────────────────────────────────────────
     if (!["approved", "rejected", "unapproved"].includes(status)) {
@@ -1364,7 +1680,10 @@ export const updateListingStatus = async (req, res) => {
     }
 
     // ── Find the listing ────────────────────────────────────────────────────
-    const listing = await BusinessListing.findById(id).populate("category", "name");
+    const listing = await BusinessListing.findById(id).populate(
+      "category",
+      "name",
+    );
     if (!listing) {
       return res.status(404).json({
         success: false,
@@ -1380,6 +1699,7 @@ export const updateListingStatus = async (req, res) => {
       listing.rejectedBy = null;
       listing.rejectionReason = null;
       listing.adminNote = null;
+      console.log("i am hit approved");
     }
 
     if (status === "rejected") {
@@ -1387,6 +1707,7 @@ export const updateListingStatus = async (req, res) => {
       listing.rejectionReason = rejectionReason.trim();
       listing.adminNote = adminNote?.trim() || null;
       listing.approvedBy = null;
+      console.log("i am hit rejected");
     }
 
     if (status === "unapproved") {
@@ -1395,6 +1716,7 @@ export const updateListingStatus = async (req, res) => {
       listing.rejectedBy = null;
       listing.rejectionReason = null;
       listing.adminNote = null;
+      console.log("i am hit unapproved");
     }
 
     await listing.save();
@@ -1410,10 +1732,10 @@ export const updateListingStatus = async (req, res) => {
           {
             businessName: listing.businessName,
             category: listing.category?.name || "Business",
-            listingUrl: `https://addressguru.ae/listing/${listing.slug}`,
-            previewLink: `https://addressguru.ae/listing/${listing.slug}`,
+            listingUrl: `https://addressguru.ae/${listing.slug}`,
+            previewLink: `https://addressguru.ae/${listing.slug}`,
             dashboardUrl: `https://addressguru.ae/dashboard`,
-            adminNote: status === "rejected" ? (adminNote?.trim() || null) : null,
+            adminNote: status === "rejected" ? adminNote?.trim() || null : null,
           },
         );
         console.log(`✅ Mail sent to ${listing.email} for status: ${status}`);

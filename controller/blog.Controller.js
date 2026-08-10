@@ -364,6 +364,11 @@ export const updateBlog = async (req, res) => {
 
     await blog.save();
 
+    if (blog.status === "rejected" && (title || content || excerpt)) {
+      blog.status = "draft";
+      blog.rejectionReason = null;
+    }
+
     if (blog.status === "published") {
       googleIndexingService.notify(
         `${APP_BASE_URL}/blog/${blog.slug}`,
@@ -412,7 +417,9 @@ export const adminGetAllBlogs = async (req, res) => {
 
     const total = await Blog.countDocuments(query);
     const blogs = await Blog.find(query)
-      .select("title slug coverImage status createdAt category_id author")
+      .select(
+        "title slug coverImage status createdAt category_id author rejectionReason",
+      )
       .populate("category_id", "name")
       .populate("author", "name")
       .sort({ createdAt: -1 })
@@ -522,6 +529,84 @@ export const deleteCategory = async (req, res) => {
     await category.deleteOne();
     return successData(res, 200, true, "Category deleted successfully");
   } catch (error) {
+    return errorData(res, 500, false, "Internal server error");
+  }
+};
+
+// PUT /blogs/admin/review-blog/:id
+// PUT /blogs/admin/review-blog/:id
+export const reviewBlog = async (req, res) => {
+  try {
+    const { status, rejectionReason } = req.body;
+
+    if (!["published", "rejected"].includes(status)) {
+      return errorData(res, 400, false, "status must be published or rejected");
+    }
+
+    const blog = await Blog.findById(req.params.id);
+    if (!blog) return errorData(res, 404, false, "Blog not found");
+
+    if (status === "rejected") {
+      if (!rejectionReason?.trim()) {
+        return errorData(res, 400, false, "Rejection reason is required");
+      }
+      blog.status = "rejected";
+      blog.rejectionReason = rejectionReason.trim();
+    } else {
+      blog.status = "published";
+      blog.rejectionReason = null;
+      if (!blog.publishedAt) blog.publishedAt = new Date();
+    }
+
+    await blog.save();
+
+    if (blog.status === "published") {
+      googleIndexingService.notify(
+        `${APP_BASE_URL}/blog/${blog.slug}`,
+        "URL_UPDATED",
+      );
+    }
+
+    return successData(res, 200, true, `Blog ${status} successfully`, blog);
+  } catch (error) {
+    console.error(error);
+    return errorData(res, 500, false, "Internal server error");
+  }
+};
+// GET /blogs/user/:userId
+
+export const getBlogsByUser = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { page = 1, limit = 10 } = req.query;
+
+    const query = {
+      author: userId,
+    };
+
+    const total = await Blog.countDocuments(query);
+
+    const blogs = await Blog.find(query)
+      .select(
+        "title slug coverImage status createdAt category_id rejectionReason",
+      )
+      .populate("category_id", "name")
+      .sort({ createdAt: -1 })
+      .skip((Number(page) - 1) * Number(limit))
+      .limit(Number(limit))
+      .lean();
+
+    return successData(res, 200, true, "User blogs fetched successfully", {
+      blogs,
+      pagination: {
+        total,
+        page: Number(page),
+        limit: Number(limit),
+        totalPages: Math.ceil(total / Number(limit)),
+      },
+    });
+  } catch (error) {
+    console.error(error);
     return errorData(res, 500, false, "Internal server error");
   }
 };

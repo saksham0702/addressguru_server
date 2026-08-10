@@ -3,6 +3,7 @@ import Plan from "../../model/plansSchema.js";
 import BusinessListing from "../../model/businessListingSchema.js";
 import Job from "../../model/jobsListingSchema.js";
 import MarketplaceListing from "../../model/marketplaceListingSchema.js";
+import PropertyListing from "../../model/propertiesListingSchema.js"; // NEW
 
 import {
   razorpayInstance,
@@ -12,39 +13,77 @@ import {
   verifyPaymentSignature,
 } from "../../config/razorpay.config.js";
 
+const MODEL_BY_PLAN_TYPE = {
+  business: BusinessListing,
+  job: Job,
+  marketplace: MarketplaceListing,
+  property: PropertyListing, // FIX: was missing entirely — property listings never got updated
+};
+
 /*
 |--------------------------------------------------------------------------
-| HELPER: UPDATE LISTING ON PAYMENT
+| HELPER: UPDATE LISTING ON PAYMENT (or free-plan assignment)
 |--------------------------------------------------------------------------
+| Takes the FULL plan document (not just its id) because we need
+| plan.durationInDays and plan.price to compute the expiry + status.
+| plan._id itself is only ever read here, never mutated.
 */
 
-const updateListingOnPayment = async (listingId, planId, planType) => {
-  if (!listingId || !planId || !planType) return;
+export const updateListingOnPayment = async (
+  listingId,
+  plan,
+  planType,
+  ModelOverride = null,
+) => {
+  if (!listingId || !plan) return null;
 
-  let model;
-  switch (planType) {
-    case "business":
-      model = BusinessListing;
-      break;
-    case "job":
-      model = Job;
-      break;
-    case "marketplace":
-      model = MarketplaceListing;
-      break;
-    default:
-      return;
+  const model = ModelOverride || MODEL_BY_PLAN_TYPE[planType];
+  if (!model) {
+    console.warn(
+      `⚠️ Unknown planType "${planType}" — listing ${listingId} not updated`,
+    );
+    return null;
+  }
+
+  const now = new Date();
+  let planExpiryDate = null;
+  let planStatus = "active";
+
+  if (plan.price === 0) {
+    // Free plan — never expires
+    planStatus = "free";
+    planExpiryDate = null;
+  } else if (!plan.durationInDays || plan.durationInDays <= 0) {
+    // Paid plan with no duration set = lifetime/no expiry
+    planStatus = "active";
+    planExpiryDate = null;
+  } else {
+    planStatus = "active";
+    planExpiryDate = new Date(
+      now.getTime() + plan.durationInDays * 24 * 60 * 60 * 1000,
+    );
   }
 
   try {
-    await model.findByIdAndUpdate(listingId, {
-      plan: planId,
-      isPublished: true,
-      status: "pending",
-    });
-    console.log(`✅ Listing ${listingId} (${planType}) updated successfully`);
+    const updated = await model.findByIdAndUpdate(
+      listingId,
+      {
+        plan: plan._id, // unchanged — plan reference is never disturbed
+        isPublished: true,
+        status: "pending",
+        planStartedAt: now,
+        planExpiryDate,
+        planStatus,
+      },
+      { new: true },
+    );
+    console.log(
+      `✅ Listing ${listingId} (${planType}) updated — status: ${planStatus}, expires: ${planExpiryDate}`,
+    );
+    return updated;
   } catch (err) {
     console.warn(`❌ Failed to update listing ${listingId}:`, err.message);
+    return null;
   }
 };
 
@@ -59,69 +98,45 @@ export const createOrderService = async ({
   planId,
   listingId = null,
 }) => {
-  /*
-  |--------------------------------------------------------------------------
-  | FIND PLAN
-  |--------------------------------------------------------------------------
-  */
-
   const plan = await Plan.findById(planId);
+  if (!plan) throw new Error("Plan not found");
 
-  if (!plan) {
-    throw new Error("Plan not found");
-  }
-
-  /*
-  |--------------------------------------------------------------------------
-  | HANDLE FREE PLAN
-  |--------------------------------------------------------------------------
-  */
-
+  /* FREE PLAN */
   if (plan.price === 0) {
     const payment = await Payment.create({
       user: userId,
-
       plan: plan._id,
-
       listing: listingId,
-
       planSnapshot: {
         name: plan.name,
         slug: plan.slug,
         price: plan.price,
+        actualPrice: plan.actualPrice, // NEW
+        discountPercentage: plan.discountPercentage, // NEW
+        durationInDays: plan.durationInDays, // NEW
         billingCycle: plan.billingCycle,
         features: plan.features,
       },
-
       amount: 0,
-
       amountInSubunits: 0,
-
       currency: PAYMENT_CURRENCY,
-
       status: "captured",
-
       paidAt: new Date(),
-
-      notes: {
-        planType: plan.planType,
-        isFreePlan: true,
-      },
+      notes: { planType: plan.planType, isFreePlan: true },
     });
 
-    return {
-      isFreePlan: true,
-      payment,
-      order: null,
-    };
+    // FIX: previously the free-plan branch never touched the listing at
+    // all — createPayment() could be called with plan_id of a free plan
+    // and nothing would happen to the listing. Now it does, immediately,
+    // since status is already "captured" for free plans.
+    if (listingId) {
+      await updateListingOnPayment(listingId, plan, plan.planType);
+    }
+
+    return { isFreePlan: true, payment, order: null };
   }
 
-  /*
-  |--------------------------------------------------------------------------
-  | PREVENT DUPLICATE PENDING PAYMENTS
-  |--------------------------------------------------------------------------
-  */
-
+  /* PREVENT DUPLICATE PENDING PAYMENTS */
   const existingPayment = await Payment.findOne({
     user: userId,
     plan: planId,
@@ -132,9 +147,7 @@ export const createOrderService = async ({
   if (existingPayment) {
     return {
       isFreePlan: false,
-
       payment: existingPayment,
-
       order: {
         id: existingPayment.razorpay.orderId,
         amount: existingPayment.amountInSubunits,
@@ -143,23 +156,14 @@ export const createOrderService = async ({
     };
   }
 
-  /*
-  |--------------------------------------------------------------------------
-  | CREATE RAZORPAY ORDER
-  |--------------------------------------------------------------------------
-  */
-
+  /* CREATE RAZORPAY ORDER */
   const amountInSubunits = convertToSubunits(plan.price);
-
   const receipt = generateReceipt();
 
   const order = await razorpayInstance.orders.create({
     amount: amountInSubunits,
-
     currency: PAYMENT_CURRENCY,
-
     receipt,
-
     notes: {
       userId: userId.toString(),
       planId: plan._id.toString(),
@@ -167,59 +171,35 @@ export const createOrderService = async ({
     },
   });
 
-  /*
-  |--------------------------------------------------------------------------
-  | CREATE LOCAL PAYMENT RECORD
-  |--------------------------------------------------------------------------
-  */
-
   const payment = await Payment.create({
     user: userId,
-
     plan: plan._id,
-
     listing: listingId,
-
     planSnapshot: {
       name: plan.name,
       slug: plan.slug,
       price: plan.price,
+      actualPrice: plan.actualPrice, // NEW
+      discountPercentage: plan.discountPercentage, // NEW
+      durationInDays: plan.durationInDays, // NEW
       billingCycle: plan.billingCycle,
       features: plan.features,
     },
-
     amount: plan.price,
-
     amountInSubunits,
-
     currency: PAYMENT_CURRENCY,
-
     receipt,
-
-    razorpay: {
-      orderId: order.id,
-    },
-
-    notes: {
-      planType: plan.planType,
-    },
+    razorpay: { orderId: order.id },
+    notes: { planType: plan.planType },
   });
 
-  return {
-    isFreePlan: false,
-    order,
-    payment,
-  };
+  return { isFreePlan: false, order, payment };
 };
 
 /*
 |--------------------------------------------------------------------------
-| VERIFY PAYMENT
+| VERIFY PAYMENT (frontend signature check — temporary until webhook live)
 |--------------------------------------------------------------------------
-|
-| This ONLY verifies frontend signature.
-| Real success still depends on webhook.
-|
 */
 
 export const verifyPaymentService = async ({
@@ -227,204 +207,93 @@ export const verifyPaymentService = async ({
   paymentId,
   signature,
 }) => {
-  /*
-  |--------------------------------------------------------------------------
-  | VERIFY PAYMENT SIGNATURE
-  |--------------------------------------------------------------------------
-  */
   if (!orderId || !paymentId || !signature) {
     throw new Error("Invalid payment verification request");
   }
 
-  const isValid = verifyPaymentSignature({
-    orderId,
-    paymentId,
-    signature,
-  });
+  const isValid = verifyPaymentSignature({ orderId, paymentId, signature });
+  if (!isValid) throw new Error("Invalid payment signature");
 
-  if (!isValid) {
-    throw new Error("Invalid payment signature");
-  }
-
-  /*
-  |--------------------------------------------------------------------------
-  | FIND PAYMENT
-  |--------------------------------------------------------------------------
-  */
-
-  const payment = await Payment.findOne({
-    "razorpay.orderId": orderId,
-  });
-
-  if (!payment) {
-    throw new Error("Payment not found");
-  }
-
-  /*
-  |--------------------------------------------------------------------------
-  | PREVENT DUPLICATE PROCESSING
-  |--------------------------------------------------------------------------
-  */
+  const payment = await Payment.findOne({ "razorpay.orderId": orderId });
+  if (!payment) throw new Error("Payment not found");
 
   if (payment.status === "captured") {
-    return payment;
+    return { payment, listing: null };
   }
 
-  /*
-  |--------------------------------------------------------------------------
-  | SAVE PAYMENT DETAILS
-  |--------------------------------------------------------------------------
-  */
-
   payment.razorpay.paymentId = paymentId;
-
   payment.razorpay.signature = signature;
-
-  /*
-  |--------------------------------------------------------------------------
-  | TEMPORARY SUCCESS
-  |--------------------------------------------------------------------------
-  |
-  | Since webhook is not configured yet,
-  | we are marking payment captured here.
-  |
-  | REMOVE THIS LATER WHEN WEBHOOK IS ACTIVE
-  |
-  */
-
   payment.status = "captured";
-
   payment.paidAt = new Date();
-
   await payment.save();
 
-  // ✅ Automagically update listing
+  let listing = null;
   if (payment.listing && payment.plan) {
-    await updateListingOnPayment(
+    const plan = await Plan.findById(payment.plan); // need durationInDays/price, not just the id
+    listing = await updateListingOnPayment(
       payment.listing,
-      payment.plan,
-      payment.notes?.planType || "business",
+      plan,
+      payment.notes?.planType || plan?.planType || "business",
     );
   }
 
-  return payment;
+  return { payment, listing };
 };
+
 /*
 |--------------------------------------------------------------------------
-| HANDLE WEBHOOK
+| HANDLE WEBHOOK — real source of truth
 |--------------------------------------------------------------------------
-|
-| THIS IS THE REAL SOURCE OF TRUTH
-|
 */
 
 export const handleWebhookService = async (webhookBody) => {
   const { event, payload } = webhookBody;
 
-  /*
-  |--------------------------------------------------------------------------
-  | PAYMENT CAPTURED
-  |--------------------------------------------------------------------------
-  */
-
   if (event === "payment.captured") {
     const paymentEntity = payload.payment.entity;
-
     const payment = await Payment.findOne({
       "razorpay.orderId": paymentEntity.order_id,
     });
-
-    if (!payment) {
-      return;
-    }
-
-    /*
-    |--------------------------------------------------------------------------
-    | PREVENT DUPLICATE WEBHOOK PROCESSING
-    |--------------------------------------------------------------------------
-    */
-
-    if (payment.status === "captured") {
-      return;
-    }
-
-    /*
-    |--------------------------------------------------------------------------
-    | UPDATE PAYMENT
-    |--------------------------------------------------------------------------
-    */
+    if (!payment) return;
+    if (payment.status === "captured") return;
 
     payment.status = "captured";
-
     payment.paidAt = new Date();
-
     payment.webhookEvent = event;
-
     payment.razorpay.paymentId = paymentEntity.id;
-
     payment.razorpay.method = paymentEntity.method || null;
-
     payment.razorpay.email = paymentEntity.email || null;
-
     payment.razorpay.contact = paymentEntity.contact || null;
-
     payment.razorpay.international = paymentEntity.international || false;
-
     await payment.save();
 
-    // ✅ Automagically update listing
     if (payment.listing && payment.plan) {
+      const plan = await Plan.findById(payment.plan);
       await updateListingOnPayment(
         payment.listing,
-        payment.plan,
-        payment.notes?.planType || "business",
+        plan,
+        payment.notes?.planType || plan?.planType || "business",
       );
     }
-
-    /*
-    |--------------------------------------------------------------------------
-    | UPGRADE LISTING HERE
-    |--------------------------------------------------------------------------
-    |
-    | Example:
-    |
-    | listing.isFeatured = true
-    |
-    */
   }
-
-  /*
-  |--------------------------------------------------------------------------
-  | PAYMENT FAILED
-  |--------------------------------------------------------------------------
-  */
 
   if (event === "payment.failed") {
     const paymentEntity = payload.payment.entity;
-
     const payment = await Payment.findOne({
       "razorpay.orderId": paymentEntity.order_id,
     });
-
-    if (!payment) {
-      return;
-    }
+    if (!payment) return;
 
     payment.status = "failed";
-
     payment.failedAt = new Date();
-
     payment.webhookEvent = event;
-
     payment.failureReason = paymentEntity.error_description || "Payment failed";
-
     payment.razorpay.paymentId = paymentEntity.id;
-
     await payment.save();
   }
 };
 
-// invoices
+// getAllPaymentsService unchanged — keep yours as-is
 export const getAllPaymentsService = async ({
   userId,
   isAdmin,
@@ -436,20 +305,9 @@ export const getAllPaymentsService = async ({
 }) => {
   const skip = (page - 1) * limit;
   const filter = {};
-
-  // Non-admin sees only their own
-  if (!isAdmin) {
-    filter.user = userId;
-  }
-
-  if (status && status !== "all") {
-    filter.status = status;
-  }
-
-  if (minAmount) {
-    filter.amount = { $gt: parseFloat(minAmount) };
-  }
-
+  if (!isAdmin) filter.user = userId;
+  if (status && status !== "all") filter.status = status;
+  if (minAmount) filter.amount = { $gt: parseFloat(minAmount) };
   if (search) {
     const regex = new RegExp(search, "i");
     filter.$or = [
@@ -474,11 +332,6 @@ export const getAllPaymentsService = async ({
 
   return {
     payments,
-    pagination: {
-      total,
-      page,
-      limit,
-      totalPages: Math.ceil(total / limit),
-    },
+    pagination: { total, page, limit, totalPages: Math.ceil(total / limit) },
   };
 };

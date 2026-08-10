@@ -1,16 +1,19 @@
+// routes/sitemapRoutes.js
 import express from "express";
 import {
   getRootSitemap,
-  getSectionSitemap,
-  getSectionCategorySitemap,
-  getCityListingsSitemap
+  getSectionMeta,
+  getShardedListings,
+  getListingCategoryCityMeta,
+  getListingCategoryCityShard,
 } from "../controller/sitemap.Controller.js";
 
 const router = express.Router();
 
-router.get("/", getRootSitemap);
-router.get("/:section", getSectionSitemap);
-router.get("/:section/:type", getSectionCategorySitemap); // type corresponds to category slug
-router.get("/:section/:slug/:city", getCityListingsSitemap);
+router.get("/root", getRootSitemap);
+router.get("/section/:section/meta", getSectionMeta);
+router.get("/section/:section/shard", getShardedListings); // ?page=1
+router.get("/listing/categories/meta", getListingCategoryCityMeta);
+router.get("/listing/categories/shard", getListingCategoryCityShard); // ?page=1
 
 export default router;
