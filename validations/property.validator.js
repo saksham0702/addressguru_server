@@ -106,9 +106,7 @@ const propertyStepSchema = {
       "string.max": "Name must not exceed 50 characters",
     }),
 
-    email: Joi.string().email().required().messages({
-      "any.required": "Email is required",
-      "string.empty": "Email is required",
+    email: Joi.string().email().allow("", null).optional().messages({
       "string.email": "Please provide a valid email address",
     }),
 

@@ -256,6 +256,7 @@ export const createBlog = async (req, res) => {
       seoDescription,
       seoKeywords,
       seoOgImage,
+      slug: customSlug,
     } = req.body;
 
     if (!req.user?.id) {
@@ -264,8 +265,10 @@ export const createBlog = async (req, res) => {
     if (!title) return errorData(res, 400, false, "Title is required");
     if (!content) return errorData(res, 400, false, "Content is required");
 
-    // Auto-generate unique slug
-    let slug = slugify(title, { lower: true, strict: true });
+    // Use custom slug if provided, otherwise auto-generate from title
+    let slug = customSlug
+      ? slugify(customSlug, { lower: true, strict: true })
+      : slugify(title, { lower: true, strict: true });
     const existing = await Blog.findOne({ slug });
     if (existing) slug = `${slug}-${Date.now()}`;
 
@@ -327,6 +330,7 @@ export const updateBlog = async (req, res) => {
       seoDescription,
       seoKeywords,
       seoOgImage,
+      slug: customSlug,
     } = req.body;
 
     // New cover image → delete old
@@ -335,17 +339,25 @@ export const updateBlog = async (req, res) => {
       blog.coverImage = normalizePath(req.files.coverImage[0].path); // ✅ Normalize here
     }
 
-    // Re-slug only if title changed
-    if (title && title !== blog.title) {
+    // Update slug: prefer explicit custom slug, else re-slug when title changes
+    if (customSlug && customSlug.trim()) {
+      const sanitised = slugify(customSlug, { lower: true, strict: true });
+      const conflict = await Blog.findOne({
+        slug: sanitised,
+        _id: { $ne: blog._id },
+      });
+      blog.slug = conflict ? `${sanitised}-${Date.now()}` : sanitised;
+    } else if (title && title !== blog.title) {
       let newSlug = slugify(title, { lower: true, strict: true });
       const conflict = await Blog.findOne({
         slug: newSlug,
         _id: { $ne: blog._id },
       });
-      if (conflict) newSlug = `${newSlug}-${Date.now()}`; // ✅ Fixed from previous issue
+      if (conflict) newSlug = `${newSlug}-${Date.now()}`;
       blog.slug = newSlug;
-      blog.title = title;
     }
+
+    if (title) blog.title = title;
 
     if (content !== undefined) blog.content = content;
     if (excerpt !== undefined) blog.excerpt = excerpt;
