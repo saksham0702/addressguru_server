@@ -4,25 +4,66 @@ import MarketplaceListing from "../model/marketplaceListingSchema.js";
 import PropertyListing from "../model/propertiesListingSchema.js";
 import JobListing from "../model/jobsListingSchema.js";
 import { successData, errorData } from "../services/helper.js";
+import User from "../model/userSchema.js";
 // import { createPaymentRecord } from "../modules/payment/payment.service.js";
 
 import slugify from "slugify";
 import { createOrderService } from "../modules/payment/payment.service.js";
 
-// ─── GET ALL ACTIVE PLANS (public — for frontend listing page) ────────────────
+// ─── GET ALL ACTIVE PLANS ──────────────────────────────────────────────────
+
 export const getAllPlans = async (req, res) => {
-  console.log("req.query", req.query.planType);
   try {
     const { planType } = req.query;
-    const plans = await Plan.find({
-      // isActive: true,
-      // isDeleted: false,
-      planType,
-    })
+
+    const plans = await Plan.find({ planType })
       .sort({ displayOrder: 1 })
       .lean();
 
-    if (!plans.length) return errorData(res, 404, false, "No plans found");
+    if (!plans.length) {
+      return errorData(res, 404, false, "No plans found");
+    }
+
+    /*
+     * Only modify pricing when there is an authenticated user.
+     *
+     * optionalAuth gives us:
+     * req.user = { id: "..." }
+     *
+     * The actual roles are stored in User.roles, so fetch them
+     * from MongoDB here instead of expecting them in the JWT.
+     */
+    let userRoles = [];
+
+    if (req.user?.id) {
+      const user = await User.findById(req.user.id).select("roles").lean();
+
+      userRoles = Array.isArray(user?.roles) ? user.roles : [];
+    }
+
+    console.log("Plans user:", req.user);
+    console.log("Plans user roles:", userRoles);
+
+    /*
+     * Roles:
+     * 1 = admin
+     * 2 = editor
+     * 3 = agent
+     *
+     * These roles get the FIRST plan for free.
+     */
+    const isFreeAccessRole = userRoles.some((role) =>
+      [2, 3].includes(Number(role)),
+    );
+
+    if (isFreeAccessRole && plans[0]) {
+      plans[0] = {
+        ...plans[0],
+        price: 0,
+        actualPrice: plans[0].price,
+        discountPercentage: plans[0].price > 0 ? 100 : 0,
+      };
+    }
 
     return successData(res, 200, true, "Plans fetched successfully", { plans });
   } catch (error) {
@@ -200,7 +241,7 @@ export const updatePlan = async (req, res) => {
 
 // ...deletePlan, seedDefaultPlans — unchanged, keep as-is...
 
-// ─── UPGRADE PLAN (simulated payment endpoint) ────────────────────────────────
+// ─── UPGRADE PLAN ───────────────────────────────────────────────────────────
 export const upgradePlan = async (req, res) => {
   try {
     const { type, listing_id, plan_id } = req.body;
@@ -225,15 +266,19 @@ export const upgradePlan = async (req, res) => {
       return errorData(res, 403, false, "Unauthorized");
     }
 
-    /* FREE PLAN — inline for now, no dependency on payment.service.js */
-    if (plan.price === 0) {
+    // admin (1), editor (2), agent (3) get the first plan free at checkout too
+    const userRoles = req.user?.role;
+    const isFreeAccessRole =
+      Array.isArray(userRoles) && userRoles.some((r) => [1, 2, 3].includes(r));
+    const isFirstPlan = plan.displayOrder === 1;
+    const roleGetsItFree = isFreeAccessRole && isFirstPlan;
+
+    if (plan.price === 0 || roleGetsItFree) {
       listing.plan = plan._id;
       listing.isPublished = true;
       listing.planStartedAt = new Date();
       listing.planExpiryDate = null;
-      listing.planStatus = "free";
-      // NOTE: only set these three if you've already added the fields
-      // to the listing schema — otherwise Mongoose just ignores them silently.
+      listing.planStatus = roleGetsItFree ? "role_free" : "free";
       await listing.save();
 
       return successData(res, 200, true, "Plan upgraded successfully", {

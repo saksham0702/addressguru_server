@@ -1,6 +1,19 @@
 // ─── models/planSchema.js ─────────────────────────────────────────────────────
 import mongoose from "mongoose";
 
+// ── NEW: one row of the tick/cross comparison table ──────────────────────────
+// value can be:
+//   true / false   → rendered as a check / cross icon
+//   a string        → rendered as text (e.g. "Priority", "Premium Verified")
+const tableFeatureSchema = new mongoose.Schema(
+  {
+    key: { type: String, required: true }, // stable id, e.g. "websiteLinkDisplay"
+    label: { type: String, required: true }, // display text, e.g. "Website Link Display"
+    value: { type: mongoose.Schema.Types.Mixed, default: false },
+  },
+  { _id: false },
+);
+
 const planSchema = new mongoose.Schema(
   {
     /*
@@ -10,7 +23,7 @@ const planSchema = new mongoose.Schema(
       type: String,
       required: true,
       trim: true,
-      // e.g. "Free Plan", "Starter Plan", "Growth Plan", "Featured Plan"
+      // e.g. "Free Plan", "Starter Plan", "Growth Plan", "Premium Plan"
     },
 
     planType: {
@@ -24,19 +37,20 @@ const planSchema = new mongoose.Schema(
       unique: true,
       lowercase: true,
       trim: true,
-      // e.g. "free", "starter", "growth", "featured"
+      // e.g. "free", "starter", "growth", "premium"
     },
 
     tagline: {
       type: String,
       default: null,
-      // e.g. "Most Popular", "Best Visibility" — shown as badge on card
+      // e.g. "Most Popular" — shown as badge on card/table header
     },
 
     displayOrder: {
       type: Number,
       default: 0,
-      // controls left-to-right ordering on frontend
+      // controls left-to-right ordering on frontend — also used by the
+      // migration script to map plans onto comparison-table columns
     },
 
     durationInDays: {
@@ -61,10 +75,9 @@ const planSchema = new mongoose.Schema(
       type: Number,
       required: true,
       default: 0,
-      // 0 = free plan — this is the ACTUAL amount charged, unchanged behavior
+      // 0 = free plan — this is the ACTUAL amount charged
     },
 
-    // ── NEW ──────────────────────────────────────────────────────────────
     actualPrice: {
       type: Number,
       default: null,
@@ -78,7 +91,7 @@ const planSchema = new mongoose.Schema(
       max: 100,
       // auto-computed below, don't set this manually from the frontend
     },
-    // ─────────────────────────────────────────────────────────────────────
+
     billingCycle: {
       type: String,
       enum: ["year", "month", "one_time"],
@@ -86,27 +99,31 @@ const planSchema = new mongoose.Schema(
     },
 
     /* =========================
-       FEATURES / PERKS
-       stored as array of strings for easy rendering on frontend
+       NEW — COMPARISON TABLE
+       One row per feature, shared key across all plans of a planType
+       so the frontend can build a single table (rows = features,
+       columns = plans). This is what drives the tick/cross table design.
+    ========================== */
+    tableFeatures: {
+      type: [tableFeatureSchema],
+      default: [],
+    },
+
+    /* =========================
+       LEGACY — kept as-is so marketplace/property/job plans
+       (which still use the old bullet-list card design) are unaffected.
+       Not used by the new business comparison table.
     ========================== */
     features: {
       type: [String],
       default: [],
-      // e.g. ["Basic Listing", "100 Words Description", "No Website Link"]
     },
 
-    /* =========================
-       LIMITS
-    ========================== */
     limits: {
       descriptionWords: { type: Number, default: 100 },
       businessImages: { type: Number, default: 0 },
-      // 0 = not allowed
     },
 
-    /* =========================
-       FEATURE FLAGS
-    ========================== */
     flags: {
       websiteLinkAllowed: { type: Boolean, default: false },
       imagesGalleryAllowed: { type: Boolean, default: false },
@@ -128,7 +145,6 @@ const planSchema = new mongoose.Schema(
        UI / DISPLAY
     ========================== */
     theme: {
-      // controls card colour accent on frontend
       type: String,
       enum: ["default", "blue", "green", "gold"],
       default: "default",
@@ -137,13 +153,11 @@ const planSchema = new mongoose.Schema(
     ctaLabel: {
       type: String,
       default: "Get Started",
-      // button text: "Get Started", "Get Listed", "Get Featured"
     },
 
     isHighlighted: {
       type: Boolean,
       default: false,
-      // true = "Most Popular" banner
     },
 
     /* =========================
@@ -161,8 +175,6 @@ planSchema.index({ isActive: 1, isDeleted: 1 });
 planSchema.index({ displayOrder: 1 });
 
 // Auto-derive discountPercentage from actualPrice vs price on every save.
-// This fires on Plan.create() and plan.save() (both used in your controller),
-// so admins only ever type actualPrice + price — never the percentage.
 planSchema.pre("save", function (next) {
   if (this.actualPrice && this.actualPrice > this.price) {
     this.discountPercentage = Math.round(
@@ -173,4 +185,5 @@ planSchema.pre("save", function (next) {
   }
   next();
 });
+
 export default mongoose.model("Plan", planSchema);

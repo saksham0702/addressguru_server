@@ -192,6 +192,7 @@ export const register = async (req, res) => {
       name,
       email,
       phone,
+      country_code,
       whatsapp_same,
       password,
       avatar,
@@ -221,7 +222,15 @@ export const register = async (req, res) => {
 
     // check duplicate phone if provided
     if (phone) {
-      const existingPhone = await User.findOne({ phone });
+      const code = country_code || "+971";
+      const fullPhone = `${code}${phone}`;
+      const existingPhone = await User.findOne({
+        $or: [
+          { phone },
+          { phone: fullPhone },
+          ...(phone.startsWith("+") ? [{ phone: phone.replace(/^\+\d{1,4}/, "") }] : [])
+        ]
+      });
       if (existingPhone) {
         return successData(
           res,
@@ -240,6 +249,7 @@ export const register = async (req, res) => {
       name,
       email,
       phone,
+      country_code: country_code || "+971",
       whatsapp_same,
       password: hashedPassword,
       avatar,
