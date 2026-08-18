@@ -10,15 +10,14 @@ import {
   seedDefaultPlans,
   upgradePlan,
 } from "../controller/plans.Controller.js";
-import { authenticate } from "../middleware/userAuth.js";
-// import { isAdmin } from "../middleware/roleAuth.js"; // ← uncomment when you add admin role guard
+import { authenticate, optionalAuth } from "../middleware/userAuth.js";
 
 const router = express.Router();
 
 // ─── PUBLIC ROUTES ────────────────────────────────────────────────────────────
 
 // GET  /plans                  → all active plans (for frontend pricing page)
-router.get("/get-all", getAllPlans);
+router.get("/get-all", optionalAuth, getAllPlans);
 
 // GET  /plans/slug/:slug        → single plan by slug  e.g. /plans/slug/growth
 router.get("/slug/:slug", getPlanBySlug);

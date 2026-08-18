@@ -37,6 +37,14 @@ export const validateUser = Joi.object({
       "string.pattern.base": "Phone number format is invalid.",
     }),
 
+  country_code: Joi.string()
+    .trim()
+    .optional()
+    .allow(null, "")
+    .messages({
+      "string.pattern.base": "Country code format is invalid.",
+    }),
+
   whatsapp_same: Joi.boolean().optional(),
 
   password: Joi.string().min(6).required().messages({

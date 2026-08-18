@@ -12,6 +12,7 @@ import {
   generateReceipt,
   verifyPaymentSignature,
 } from "../../config/razorpay.config.js";
+import User from "../../model/userSchema.js";
 
 const MODEL_BY_PLAN_TYPE = {
   business: BusinessListing,
@@ -99,44 +100,93 @@ export const createOrderService = async ({
   listingId = null,
 }) => {
   const plan = await Plan.findById(planId);
-  if (!plan) throw new Error("Plan not found");
 
-  /* FREE PLAN */
-  if (plan.price === 0) {
+  if (!plan) {
+    throw new Error("Plan not found");
+  }
+
+  // Get user's roles from DB
+  const user = await User.findById(userId).select("roles").lean();
+
+  const userRoles = Array.isArray(user?.roles) ? user.roles : [];
+
+  // Roles 2 and 3 get the first plan free
+  const isFreeAccessRole = userRoles.some((role) =>
+    [2, 3].includes(Number(role)),
+  );
+
+  // Check whether this is the first plan
+  let isFirstPlan = false;
+
+  if (isFreeAccessRole) {
+    const firstPlan = await Plan.findOne({
+      planType: plan.planType,
+    })
+      .sort({ displayOrder: 1 })
+      .select("_id")
+      .lean();
+
+    isFirstPlan = firstPlan?._id?.toString() === plan._id.toString();
+  }
+
+  // Role 2/3 + first plan = free
+  const isRoleBasedFreePlan = isFreeAccessRole && isFirstPlan;
+
+  /*
+   * FREE PLAN
+   */
+  if (plan.price === 0 || isRoleBasedFreePlan) {
+    const freePlan = plan.toObject();
+
+    // Make it free only for this transaction
+    freePlan.price = 0;
+    freePlan.actualPrice = plan.price;
+    freePlan.discountPercentage =
+      plan.price > 0 ? 100 : plan.discountPercentage || 0;
+
     const payment = await Payment.create({
       user: userId,
       plan: plan._id,
       listing: listingId,
+
       planSnapshot: {
         name: plan.name,
         slug: plan.slug,
-        price: plan.price,
-        actualPrice: plan.actualPrice, // NEW
-        discountPercentage: plan.discountPercentage, // NEW
-        durationInDays: plan.durationInDays, // NEW
+        price: 0,
+        actualPrice: plan.price,
+        discountPercentage: plan.price > 0 ? 100 : plan.discountPercentage || 0,
+        durationInDays: plan.durationInDays,
         billingCycle: plan.billingCycle,
         features: plan.features,
       },
+
       amount: 0,
       amountInSubunits: 0,
       currency: PAYMENT_CURRENCY,
+
       status: "captured",
       paidAt: new Date(),
-      notes: { planType: plan.planType, isFreePlan: true },
+
+      notes: {
+        planType: plan.planType,
+        isFreePlan: true,
+      },
     });
 
-    // FIX: previously the free-plan branch never touched the listing at
-    // all — createPayment() could be called with plan_id of a free plan
-    // and nothing would happen to the listing. Now it does, immediately,
-    // since status is already "captured" for free plans.
     if (listingId) {
-      await updateListingOnPayment(listingId, plan, plan.planType);
+      await updateListingOnPayment(listingId, freePlan, plan.planType);
     }
 
-    return { isFreePlan: true, payment, order: null };
+    return {
+      isFreePlan: true,
+      payment,
+      order: null,
+    };
   }
 
-  /* PREVENT DUPLICATE PENDING PAYMENTS */
+  /*
+   * PAID PLAN
+   */
   const existingPayment = await Payment.findOne({
     user: userId,
     plan: planId,
@@ -156,7 +206,6 @@ export const createOrderService = async ({
     };
   }
 
-  /* CREATE RAZORPAY ORDER */
   const amountInSubunits = convertToSubunits(plan.price);
   const receipt = generateReceipt();
 
@@ -175,25 +224,38 @@ export const createOrderService = async ({
     user: userId,
     plan: plan._id,
     listing: listingId,
+
     planSnapshot: {
       name: plan.name,
       slug: plan.slug,
       price: plan.price,
-      actualPrice: plan.actualPrice, // NEW
-      discountPercentage: plan.discountPercentage, // NEW
-      durationInDays: plan.durationInDays, // NEW
+      actualPrice: plan.actualPrice,
+      discountPercentage: plan.discountPercentage,
+      durationInDays: plan.durationInDays,
       billingCycle: plan.billingCycle,
       features: plan.features,
     },
+
     amount: plan.price,
     amountInSubunits,
     currency: PAYMENT_CURRENCY,
+
     receipt,
-    razorpay: { orderId: order.id },
-    notes: { planType: plan.planType },
+
+    razorpay: {
+      orderId: order.id,
+    },
+
+    notes: {
+      planType: plan.planType,
+    },
   });
 
-  return { isFreePlan: false, order, payment };
+  return {
+    isFreePlan: false,
+    order,
+    payment,
+  };
 };
 
 /*
