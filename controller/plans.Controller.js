@@ -125,6 +125,7 @@ export const createPlan = async (req, res) => {
       actualPrice, // NEW
       billingCycle, // FIX: was missing
       features, // FIX: was missing
+      tableFeatures, // NEW: comparison table features
       limits,
       flags,
       theme,
@@ -172,6 +173,7 @@ export const createPlan = async (req, res) => {
       actualPrice: actualPrice ?? null,
       billingCycle: billingCycle || "year",
       features: Array.isArray(features) ? features : [],
+      tableFeatures: Array.isArray(tableFeatures) ? tableFeatures : [],
       limits: limits || {},
       flags: flags || {},
       theme: theme || "default",
@@ -207,6 +209,7 @@ export const updatePlan = async (req, res) => {
       "actualPrice", // NEW
       "billingCycle",
       "features",
+      "tableFeatures", // NEW: comparison table features
       "limits",
       "flags",
       "theme",
@@ -221,6 +224,10 @@ export const updatePlan = async (req, res) => {
 
     for (const field of allowedFields) {
       if (req.body[field] !== undefined) plan[field] = req.body[field];
+    }
+
+    if (req.body.tableFeatures !== undefined) {
+      plan.markModified("tableFeatures");
     }
 
     if (req.body.name) {
