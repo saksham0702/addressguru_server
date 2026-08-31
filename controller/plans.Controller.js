@@ -259,43 +259,94 @@ export const upgradePlan = async (req, res) => {
     const plan = await Plan.findById(plan_id);
     if (!plan) return errorData(res, 404, false, "Plan not found");
 
+    const normalizedType = type.toString().toUpperCase().trim();
     let Model;
-    if (type === "BUSINESS") Model = BusinessListing;
-    else if (type === "MARKETPLACE") Model = MarketplaceListing;
-    else if (type === "PROPERTIES") Model = PropertyListing;
-    else if (type === "JOBS") Model = JobListing;
+    if (normalizedType === "BUSINESS") Model = BusinessListing;
+    else if (normalizedType === "MARKETPLACE") Model = MarketplaceListing;
+    else if (normalizedType === "PROPERTIES" || normalizedType === "PROPERTY")
+      Model = PropertyListing;
+    else if (normalizedType === "JOBS" || normalizedType === "JOB")
+      Model = JobListing;
     else return errorData(res, 400, false, "Invalid listing type");
 
     const listing = await Model.findById(listing_id);
     if (!listing) return errorData(res, 404, false, "Listing not found");
 
-    if (listing.createdBy.toString() !== req.user.id.toString()) {
+    // Extract user ID safely across various JWT payload formats
+    const userId = req.user?.id || req.user?._id || req.user;
+    if (!userId) {
+      return errorData(res, 401, false, "Invalid user authentication");
+    }
+
+    // Fetch user roles from DB
+    const userDoc = await User.findById(userId).select("roles role").lean();
+    const userRoles = Array.isArray(userDoc?.roles)
+      ? userDoc.roles
+      : userDoc?.role
+        ? [userDoc.role]
+        : Array.isArray(req.user?.roles)
+          ? req.user.roles
+          : req.user?.role
+            ? [req.user.role]
+            : [];
+
+    const isAdmin = userRoles.map(Number).includes(1);
+
+    // If NOT admin, verify ownership
+    if (
+      !isAdmin &&
+      listing.createdBy &&
+      listing.createdBy.toString() !== userId.toString()
+    ) {
       return errorData(res, 403, false, "Unauthorized");
     }
 
-    // admin (1), editor (2), agent (3) get the first plan free at checkout too
-    const userRoles = req.user?.role;
-    const isFreeAccessRole =
-      Array.isArray(userRoles) && userRoles.some((r) => [1, 2, 3].includes(r));
+    // ADMIN OVERRIDE — Direct Plan Assignment without payment
+    if (isAdmin) {
+      await Model.findByIdAndUpdate(
+        listing_id,
+        {
+          plan: plan._id,
+          isPublished: true,
+          planStartedAt: new Date(),
+          planExpiryDate: null,
+          planStatus: "admin_assigned",
+        },
+        { new: true, runValidators: false },
+      );
+
+      return successData(res, 200, true, "Plan updated by Admin successfully", {
+        free_plan: true,
+        admin_override: true,
+      });
+    }
+
+    // REGULAR USER FLOW
+    const isFreeAccessRole = userRoles.some((r) => [2, 3].includes(Number(r)));
     const isFirstPlan = plan.displayOrder === 1;
     const roleGetsItFree = isFreeAccessRole && isFirstPlan;
 
     if (plan.price === 0 || roleGetsItFree) {
-      listing.plan = plan._id;
-      listing.isPublished = true;
-      listing.planStartedAt = new Date();
-      listing.planExpiryDate = null;
-      listing.planStatus = roleGetsItFree ? "role_free" : "free";
-      await listing.save();
+      await Model.findByIdAndUpdate(
+        listing_id,
+        {
+          plan: plan._id,
+          isPublished: true,
+          planStartedAt: new Date(),
+          planExpiryDate: null,
+          planStatus: roleGetsItFree ? "role_free" : "free",
+        },
+        { new: true, runValidators: false },
+      );
 
       return successData(res, 200, true, "Plan upgraded successfully", {
         free_plan: true,
       });
     }
 
-    /* PAID PLAN */
+    /* PAID PLAN — Initiate Razorpay Order */
     const { order, payment } = await createOrderService({
-      userId: req.user.id,
+      userId,
       planId: plan._id,
       listingId: listing._id,
     });
@@ -309,8 +360,8 @@ export const upgradePlan = async (req, res) => {
       key: process.env.RAZORPAY_KEY_ID,
     });
   } catch (error) {
-    console.log(error);
-    return errorData(res, 500, false, "Upgrade failed");
+    console.error("upgradePlan error details:", error);
+    return errorData(res, 500, false, error.message || "Upgrade failed");
   }
 };
 // ─── SOFT DELETE PLAN (admin) ─────────────────────────────────────────────────
