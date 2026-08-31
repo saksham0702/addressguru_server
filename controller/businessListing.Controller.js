@@ -1097,13 +1097,13 @@ export const getListingsByCategoryAndCity = async (req, res) => {
       filter.city = city._id;
     }
 
-    // ✅ FIXED: Search filter uses correct field names
+    // Search filter
     if (search && search.trim()) {
       const searchRegex = { $regex: search.trim(), $options: "i" };
       filter.$or = [
-        { businessName: searchRegex }, // ✅ was "name"
+        { businessName: searchRegex },
         { description: searchRegex },
-        { about: searchRegex }, // ✅ added fallback
+        { about: searchRegex },
       ];
     }
 
@@ -1184,10 +1184,9 @@ export const getListingsByCategoryAndCity = async (req, res) => {
       }
     }
 
-    // ✅ FIXED: Additional fields filter with robust parsing
+    // Additional fields filter
     if (additional_filters) {
       try {
-        // Handle both string and already-parsed array
         let parsed = additional_filters;
         if (typeof parsed === "string") {
           parsed = JSON.parse(decodeURIComponent(parsed));
@@ -1228,15 +1227,12 @@ export const getListingsByCategoryAndCity = async (req, res) => {
       }
     }
 
-    // ✅ FIXED: Sort options — removed non-existent rating field
+    // Sort options
     let sortOption = { createdAt: -1 };
     if (sort_by === "oldest") sortOption = { createdAt: 1 };
     else if (sort_by === "popular") sortOption = { views: -1 };
-    // Note: rating sorting requires aggregation or stored average;
-    // for now, sort by review count as proxy for popularity
-    else if (sort_by === "rating_desc")
-      sortOption = { createdAt: -1 }; // placeholder
-    else if (sort_by === "rating_asc") sortOption = { createdAt: 1 }; // placeholder
+    else if (sort_by === "rating_desc") sortOption = { createdAt: -1 };
+    else if (sort_by === "rating_asc") sortOption = { createdAt: 1 };
 
     // Pagination
     const pageNumber = Math.max(1, Number(page));
@@ -1249,7 +1245,7 @@ export const getListingsByCategoryAndCity = async (req, res) => {
           "businessName slug logo images businessAddress description " +
             "category subCategory city countryCode mobileNumber " +
             "facilities services courses paymentModes additionalFields " +
-            "isVerified isPublished status createdAt views",
+            "isVerified isPublished status createdAt views plan", // ✅ added "plan"
         )
         .populate("category", "name slug seo")
         .populate("subCategory", "name slug")
@@ -1258,6 +1254,7 @@ export const getListingsByCategoryAndCity = async (req, res) => {
         .populate("services", "name iconSvg")
         .populate("courses", "name iconSvg")
         .populate("paymentModes", "name _id")
+        .populate("plan", "flags") // ✅ NEW — only pull the flags, nothing else
         .sort({
           plan: -1,
           ...sortOption,
@@ -1312,7 +1309,7 @@ export const getListingsByCategoryAndCity = async (req, res) => {
       reviewStatsMap[rs._id.toString()] = rs;
     });
 
-    // Attach stats
+    // Attach stats + plan-gated fields
     listings.forEach((l) => {
       const lid = l._id.toString();
       const s = statsMap[lid] || {};
@@ -1329,6 +1326,13 @@ export const getListingsByCategoryAndCity = async (req, res) => {
           : 0,
       };
       l.views = s.view || 0;
+
+      // ── PLAN-BASED GATING (same rule as single-listing controller) ──────
+      const planFlags = l.plan?.flags || {};
+      l.canEnquire = !!planFlags.leadEnquiryForm;
+      l.isTrusted = !!planFlags.highlightBadge; // true only on Premium tier
+      delete l.plan; // don't leak raw plan/flags to the client
+      // ──────────────────────────────────────────────────────────────────
 
       // Limit arrays
       l.facilities = l.facilities?.slice(0, 5);
@@ -1359,6 +1363,7 @@ export const getListingBySlug = async (req, res) => {
   try {
     const { slug } = req.params;
     if (!slug) return errorData(res, 400, false, "Listing slug is required");
+
     const listing = await BusinessListing.findOne({
       slug,
       isDeleted: false,
@@ -1366,7 +1371,6 @@ export const getListingBySlug = async (req, res) => {
       .populate("category", "name iconSvg slug seo")
       .populate("subCategory", "name iconSvg slug")
       .populate("city", "name iconSvg slug")
-      .populate("additionalFields.field_id", "field_label field_type")
       .populate(
         "additionalFields.field_id",
         "field_label field_type is_logo is_quickinfo is_description is_additional",
@@ -1375,27 +1379,33 @@ export const getListingBySlug = async (req, res) => {
       .populate("services", "name iconSvg")
       .populate("paymentModes", "name iconSvg")
       .populate("courses", "name iconSvg")
+      .populate("plan", "flags") // ✅ same rule as search controller
       .lean();
+
     if (!listing) return errorData(res, 404, false, "Listing not found");
 
-    // ✅ Get aggregated stats for this listing
+    // ── PLAN-BASED FEATURE GATING ──────────────────────────────────────────
+    const planFlags = listing.plan?.flags || {};
+
+    if (!planFlags.websiteLinkAllowed) {
+      listing.websiteLink = null;
+    }
+    listing.canEnquire = !!planFlags.leadEnquiryForm;
+    listing.isTrusted = !!planFlags.highlightBadge;
+
+    delete listing.plan;
+    // ─────────────────────────────────────────────────────────────────────
+
     const aggregatedStats = await ListingStats.aggregate([
       { $match: { listingId: listing._id } },
       { $group: { _id: "$type", count: { $sum: 1 } } },
     ]);
 
-    const statsMap = {
-      view: 0,
-      call: 0,
-      website_visit: 0,
-      lead: 0,
-      review: 0,
-    };
+    const statsMap = { view: 0, call: 0, website_visit: 0, lead: 0, review: 0 };
     aggregatedStats.forEach((s) => {
       statsMap[s._id] = s.count;
     });
 
-    // ✅ Attach stats to response
     listing.statistics = {
       totalViews: statsMap.view,
       totalCalls: statsMap.call,
@@ -1403,7 +1413,6 @@ export const getListingBySlug = async (req, res) => {
       websiteVisits: statsMap.website_visit,
     };
 
-    // ✅ Get review stats & reviews
     const reviews = await ReviewListing.find({
       listingId: listing._id,
       status: "approved",
@@ -1422,26 +1431,21 @@ export const getListingBySlug = async (req, res) => {
     listing.statistics.totalReviews = reviewCount;
     listing.statistics.averageRating = Number(averageRating.toFixed(1));
     listing.reviews = reviews;
-
-    // Keep backward compatibility
     listing.views = statsMap.view;
+
     const groupedFields = {
       logo: [],
       quickinfo: [],
       description: [],
       additional: [],
     };
-
     listing.additionalFields.forEach((field) => {
       const loc = field.field_id;
-
       if (loc?.is_logo) groupedFields.logo.push(field);
       else if (loc?.is_quickinfo) groupedFields.quickinfo.push(field);
       else if (loc?.is_description) groupedFields.description.push(field);
       else groupedFields.additional.push(field);
     });
-
-    // attach to response
     listing.groupedFields = groupedFields;
 
     return successData(res, 200, true, "Listing fetched successfully", listing);
