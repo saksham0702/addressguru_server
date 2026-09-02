@@ -52,7 +52,7 @@ const formatBlog = (blog) => {
 // GET /blogs
 export const getBlogs = async (req, res) => {
   try {
-    const { page = 1, limit = 10, search } = req.query;
+    const { page = 1, limit = 15, search, category } = req.query;
 
     const query = { status: "published" };
     if (search) {
@@ -61,6 +61,18 @@ export const getBlogs = async (req, res) => {
         { excerpt: { $regex: search, $options: "i" } },
         { tags: { $in: [new RegExp(search, "i")] } },
       ];
+    }
+    if (category) {
+      if (category.match(/^[0-9a-fA-F]{24}$/)) {
+        query.category_id = category;
+      } else {
+        const catObj = await BlogCategory.findOne({ slug: category });
+        if (catObj) {
+          query.category_id = catObj._id;
+        } else {
+          query.category_id = category;
+        }
+      }
     }
 
     const total = await Blog.countDocuments(query);

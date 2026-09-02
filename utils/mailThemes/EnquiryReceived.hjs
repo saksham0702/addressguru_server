@@ -88,7 +88,7 @@
         </div>
         <div class="data-row">
           <span class="data-label">Phone</span>
-          <span class="data-value"><a href="tel:{{countryCode}}{{leadPhone}}">+{{countryCode}} {{leadPhone}}</a></span>
+          <span class="data-value"><a href="tel:{{leadPhone}}">{{leadPhone}}</a></span>
         </div>
         
         {{#message}}
