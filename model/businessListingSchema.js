@@ -153,7 +153,7 @@ const businessListingSchema = new mongoose.Schema(
     planExpiryDate: { type: Date, default: null, index: true },
     planStatus: {
       type: String,
-      enum: ["free", "active", "expired"],
+      enum: ["free", "active", "expired", "role_free", "admin_assigned"],
       default: "free",
     },
     // ─────────────────────────────────────────────────────────────────────

@@ -249,7 +249,7 @@
         </div>
         <div class="info-body">
           <div class="info-row">
-            <span class="info-label">Business</span>
+            <span class="info-label">Title</span>
             <span class="info-value">{{businessName}}</span>
           </div>
           <div class="info-row">
