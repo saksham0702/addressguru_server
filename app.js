@@ -57,6 +57,10 @@ import { loadBusinessEmbeddingCache } from "./modules/ai-search/businessSearch.s
 import rateLimit from "express-rate-limit";
 // import gbpTrackerRoutes from "./modules/gbp-tracker/gbpTracker.routes.js";
 
+import whatsappRouter from "./modules/whatsapp/whatsapp.route.js";
+import { restoreSessionOnBoot } from "./modules/whatsapp/services/whatsappClient.js";
+import "./modules/whatsapp/whatsapEventhandler.js"; // registers business-event listeners
+
 var app = express();
 
 // ─── Startup Services ──────────────────────────────────────────────────────
@@ -64,6 +68,7 @@ connectDB();
 startBrokenLinkCron();
 initializeFirebase();
 loadBusinessEmbeddingCache();
+restoreSessionOnBoot();
 // await seedFeatures();
 
 // view engine setup
@@ -171,6 +176,7 @@ app.use(`/social-login`, socialRouter);
 app.use(`/categories`, categoryRouter);
 app.use(`/sub-categories`, subCategoriesRouter);
 app.use(`/business-listing`, businessListingRouter);
+app.use(`/whatsapp`, whatsappRouter);
 
 // app.use(`/${API_PREFIX}/${ROLE_PREFIX.USER}`, usersRouter);
 app.use(`/user`, usersRouter);
