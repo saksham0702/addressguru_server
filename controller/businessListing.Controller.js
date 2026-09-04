@@ -1386,12 +1386,19 @@ export const getListingBySlug = async (req, res) => {
 
     // ── PLAN-BASED FEATURE GATING ──────────────────────────────────────────
     const planFlags = listing.plan?.flags || {};
+    const isLoggedIn = !!(req.user?.id || req.user?._id);
 
-    if (!planFlags.websiteLinkAllowed) {
-      listing.websiteLink = null;
+    if (!isLoggedIn) {
+      if (!planFlags.websiteLinkAllowed) {
+        listing.websiteLink = null;
+      }
+      listing.canEnquire = !!planFlags.leadEnquiryForm;
+      listing.isTrusted = !!planFlags.highlightBadge;
+    } else {
+      // Authenticated user (owner / dashboard edit / admin / logged-in user): return full data
+      listing.canEnquire = true;
+      listing.isTrusted = !!planFlags.highlightBadge;
     }
-    listing.canEnquire = !!planFlags.leadEnquiryForm;
-    listing.isTrusted = !!planFlags.highlightBadge;
 
     delete listing.plan;
     // ─────────────────────────────────────────────────────────────────────

@@ -73,7 +73,7 @@ router.get(
   getListingsByCategoryAndCity,
 );
 router.get("/get-all-listings", getAllListingsWithPaginationAndFilters);
-router.get("/get-listing-by-slug/:slug", getListingBySlug);
+router.get("/get-listing-by-slug/:slug", optionalAuth, getListingBySlug);
 router.get("/get-recent-listings", getRecentListings);
 router.delete("/delete-listing/:slug", authenticate, deleteListing);
 
