@@ -50,6 +50,12 @@ const paymentSchema = new mongoose.Schema(
       },
     },
 
+    flashDealClaim: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "FlashDealClaim",
+      default: null,
+    },
+
     // PAYMENT
     amount: {
       type: Number,

@@ -59,6 +59,7 @@ import rateLimit from "express-rate-limit";
 
 import whatsappRouter from "./modules/whatsapp/whatsapp.route.js";
 import { restoreSessionOnBoot } from "./modules/whatsapp/services/whatsappClient.js";
+import flashDealRoutes from "./modules/flash-deal/flashDeal.routes.js";
 import "./modules/whatsapp/whatsapEventhandler.js"; // registers business-event listeners
 
 var app = express();
@@ -207,6 +208,7 @@ app.use("/payment", paymentRouter);
 app.use("/logs", logRouter);
 app.use("/broken-links", brokenLinkScannerRoutes);
 app.use("/ai-search", aiSearchRouter);
+app.use("/flash-deals", flashDealRoutes);
 // app.use("/gbp-tracker", gbpTrackerRoutes);
 
 app.get("/test-cookie", (req, res) => {
