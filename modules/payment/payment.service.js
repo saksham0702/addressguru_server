@@ -4,6 +4,12 @@ import BusinessListing from "../../model/businessListingSchema.js";
 import Job from "../../model/jobsListingSchema.js";
 import MarketplaceListing from "../../model/marketplaceListingSchema.js";
 import PropertyListing from "../../model/propertiesListingSchema.js"; // NEW
+import FlashDeal from "../flash-deal/flashDealSchema.js";
+import FlashDealClaim from "../flash-deal/flashDealClaimSchema.js";
+import {
+  getClaimOrThrow,
+  markClaimPurchased,
+} from "../flash-deal/FlashDealService.js";
 
 import {
   razorpayInstance,
@@ -396,4 +402,103 @@ export const getAllPaymentsService = async ({
     payments,
     pagination: { total, page, limit, totalPages: Math.ceil(total / limit) },
   };
+};
+
+/*
+|--------------------------------------------------------------------------
+| CREATE FLASH-DEAL ORDER
+|--------------------------------------------------------------------------
+| Same shape as createOrderService, but the price comes from the deal,
+| not the plan, and it locks the claim to prevent double-spend / re-use.
+*/
+export const createFlashDealOrderService = async ({
+  userId,
+  claimId,
+  listingId = null,
+}) => {
+  const claim = await getClaimOrThrow(userId, claimId); // throws if expired/used
+  const deal = claim.deal;
+  const plan = deal.basePlan;
+
+  if (!deal.isActive) throw new Error("This deal is no longer available");
+
+  const finalListingId = listingId || claim.listing;
+
+  /* FREE FLASH DEAL (dealPrice === 0) */
+  if (deal.dealPrice === 0) {
+    const payment = await Payment.create({
+      user: userId,
+      plan: plan._id,
+      listing: finalListingId,
+      flashDealClaim: claim._id,
+      planSnapshot: {
+        name: `${deal.name} — ${plan.name}`,
+        slug: plan.slug,
+        price: 0,
+        actualPrice: plan.price,
+        discountPercentage: 100,
+        durationInDays: plan.durationInDays,
+        billingCycle: plan.billingCycle,
+        features: plan.features,
+      },
+      amount: 0,
+      amountInSubunits: 0,
+      currency: deal.currency || PAYMENT_CURRENCY,
+      status: "captured",
+      paidAt: new Date(),
+      notes: { planType: plan.planType, isFlashDeal: true },
+    });
+
+    if (finalListingId) {
+      await updateListingOnPayment(finalListingId, plan, plan.planType);
+    }
+    await markClaimPurchased(claim._id);
+
+    return { isFreePlan: true, payment, order: null };
+  }
+
+  /* PAID FLASH DEAL */
+  const amountInSubunits = convertToSubunits(deal.dealPrice);
+  const receipt = generateReceipt();
+
+  const order = await razorpayInstance.orders.create({
+    amount: amountInSubunits,
+    currency: PAYMENT_CURRENCY,
+    receipt,
+    notes: {
+      userId: userId.toString(),
+      planId: plan._id.toString(),
+      flashDealClaimId: claim._id.toString(),
+    },
+  });
+
+  const discountPercentage =
+    plan.price > 0
+      ? Math.round(((plan.price - deal.dealPrice) / plan.price) * 100)
+      : 0;
+
+  const payment = await Payment.create({
+    user: userId,
+    plan: plan._id,
+    listing: finalListingId,
+    flashDealClaim: claim._id,
+    planSnapshot: {
+      name: `${deal.name} — ${plan.name}`,
+      slug: plan.slug,
+      price: deal.dealPrice,
+      actualPrice: plan.price,
+      discountPercentage,
+      durationInDays: plan.durationInDays,
+      billingCycle: plan.billingCycle,
+      features: plan.features,
+    },
+    amount: deal.dealPrice,
+    amountInSubunits,
+    currency: PAYMENT_CURRENCY,
+    receipt,
+    razorpay: { orderId: order.id },
+    notes: { planType: plan.planType, isFlashDeal: true },
+  });
+
+  return { isFreePlan: false, order, payment };
 };
