@@ -26,6 +26,7 @@ import mongoose from "mongoose";
 import businessListingSchema from "../model/businessListingSchema.js";
 import { generateEmbeddingForListing } from "../modules/ai-search/businessEmbedding.service.js";
 import { upsertCacheEntry } from "../modules/ai-search/businessSearch.service.js";
+import { sendTextMessage } from "../modules/whatsapp/services/whatsappMessage.js";
 
 const validateAdditionalFields = async (additionalFields = []) => {
   if (!additionalFields.length) return { errors: [], validated: [] };
@@ -1734,23 +1735,62 @@ export const updateListingStatus = async (req, res) => {
 
     // ── Send mail & notification ────────────────────────────────────────────
     if (status !== "unapproved") {
-      try {
-        await sendApprovedAndRejectedListingMail(
-          listing.email,
-          listing.contactPersonName || listing.businessName,
-          status,
-          status === "rejected" ? rejectionReason.trim() : null,
-          {
-            businessName: listing.businessName,
-            category: listing.category?.name || "Business",
-            listingUrl: `https://addressguru.ae/${listing.slug}`,
-            previewLink: `https://addressguru.ae/${listing.slug}`,
-            dashboardUrl: `https://addressguru.ae/dashboard`,
-            adminNote: status === "rejected" ? adminNote?.trim() || null : null,
-          },
-        );
-        console.log(`✅ Mail sent to ${listing.email} for status: ${status}`);
+      const shouldSendEmail = req.body.sendEmail !== false;
+      const shouldSendWhatsapp = req.body.sendWhatsapp === true || !!req.body.whatsappMessage;
 
+      if (shouldSendEmail) {
+        try {
+          await sendApprovedAndRejectedListingMail(
+            listing.email,
+            listing.contactPersonName || listing.businessName,
+            status,
+            status === "rejected" ? rejectionReason.trim() : null,
+            {
+              businessName: listing.businessName,
+              category: listing.category?.name || "Business",
+              listingUrl: `https://addressguru.ae/${listing.slug}`,
+              previewLink: `https://addressguru.ae/${listing.slug}`,
+              dashboardUrl: `https://addressguru.ae/dashboard`,
+              adminNote: status === "rejected" ? adminNote?.trim() || null : null,
+            },
+          );
+          console.log(`✅ Mail sent to ${listing.email} for status: ${status}`);
+        } catch (mailError) {
+          console.warn("❌ Mail send failed:", mailError.message);
+        }
+      }
+
+      // ── Send WhatsApp Message ──
+      if (shouldSendWhatsapp) {
+        try {
+          const phone = req.body.whatsappPhone || listing.mobileNumber;
+          const countryCode = req.body.whatsappCountryCode || listing.countryCode || "971";
+          const recipientName = listing.contactPersonName || listing.businessName || "Valued Partner";
+          const categoryName = listing.category?.name || "Business";
+          const listingUrl = `https://addressguru.ae/${listing.slug}`;
+          const dashboardUrl = `https://addressguru.ae/dashboard`;
+
+          let text = req.body.whatsappMessage;
+          if (!text) {
+            if (status === "approved") {
+              text = `Hello *${recipientName}*, 🎉 Congratulations! Your business listing *${listing.businessName}* has been approved and is now live on AddressGuru UAE.\n\n📍 *Listing Details:*\n• *Title:* ${listing.businessName}\n• *Category:* ${categoryName}\n• *Live URL:* ${listingUrl}\n\nYou can manage your listing anytime from your dashboard:\n👉 ${dashboardUrl}\n\nThank you for choosing AddressGuru UAE!`;
+            } else if (status === "rejected") {
+              const reasonText = rejectionReason ? rejectionReason.trim() : "Details need revision";
+              const noteText = adminNote ? `\n\n📝 *Admin Note:*\n${adminNote.trim()}` : "";
+              text = `Hello *${recipientName}*, Thank you for submitting *${listing.businessName}* on AddressGuru UAE. Our team reviewed your listing, but it requires updates before approval.\n\n⚠️ *Reason for Rejection:*\n${reasonText}${noteText}\n\nPlease log in to your dashboard to make the necessary changes and resubmit:\n👉 ${dashboardUrl}\n\nNeed help? Contact support@addressguru.ae`;
+            }
+          }
+
+          if (phone && text) {
+            await sendTextMessage({ to: phone, text, countryCode });
+            console.log(`✅ WhatsApp ${status} message sent to ${phone}`);
+          }
+        } catch (waErr) {
+          console.warn("❌ WhatsApp send failed in changeStatus:", waErr.message);
+        }
+      }
+
+      try {
         if (listing.createdBy) {
           const title =
             status === "approved"
@@ -1767,10 +1807,11 @@ export const updateListingStatus = async (req, res) => {
             status: status,
           });
         }
-      } catch (mailError) {
-        console.warn("❌ Mail/Notification send failed:", mailError.message);
+      } catch (pushErr) {
+        console.warn("❌ Push notification failed:", pushErr.message);
       }
     }
+
 
     // Populate for response
     await listing.populate("approvedBy rejectedBy", "name email");
