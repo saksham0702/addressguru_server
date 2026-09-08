@@ -9,6 +9,7 @@ import {
 import User from "../model/userSchema.js";
 import BusinessListing from "../model/businessListingSchema.js";
 import { errorData, successData } from "../services/helper.js";
+import { sendTextMessage } from "../modules/whatsapp/services/whatsappMessage.js";
 
 // ─── POST /api/:type/:slug/claim ──────────────────────────────────────────────
 
@@ -296,6 +297,26 @@ export const adminReviewClaim = async (req, res) => {
       }
     }
 
+    // Optional WhatsApp message on claim review
+    if (req.body.sendWhatsapp || req.body.whatsappMessage) {
+      try {
+        const phone = req.body.whatsappPhone || claim.mobileNumber;
+        const countryCode = req.body.whatsappCountryCode || claim.countryCode || "971";
+        const text =
+          req.body.whatsappMessage ||
+          (status === "approved"
+            ? `Hello *${claim.fullName || "User"}*, Your ownership claim for *${claim.listingSlug}* has been approved on AddressGuru UAE. You can now manage your listing from your dashboard: https://addressguru.ae/dashboard`
+            : `Hello *${claim.fullName || "User"}*, Your ownership claim for *${claim.listingSlug}* was rejected.${adminNote ? ` Reason: ${adminNote}` : ""}`);
+
+        if (phone) {
+          await sendTextMessage({ to: phone, text, countryCode });
+          console.log(`✅ WhatsApp claim ${status} message sent to ${phone}`);
+        }
+      } catch (waErr) {
+        console.warn("⚠️ WhatsApp claim message failed:", waErr.message);
+      }
+    }
+
     return res.json({ success: true, data: claim });
   } catch (err) {
     return res.status(500).json({ success: false, message: "Server error" });
@@ -375,7 +396,26 @@ export const transferOwnership = async (req, res) => {
       adminNote: req.body.adminNote || "Ownership transferred by admin",
     });
 
-    const claimAfter = await ClaimBusiness.findById(claimId).lean();
+    // ── Optional WhatsApp Message on Transfer ──
+    const shouldSendWhatsapp = req.body.sendWhatsapp !== false && (req.body.sendWhatsapp === true || req.body.whatsappMessage);
+    if (shouldSendWhatsapp) {
+      try {
+        const phone = req.body.whatsappPhone || claim.mobileNumber;
+        const countryCode = req.body.whatsappCountryCode || claim.countryCode || "971";
+        const businessName = updatedListing.businessName || claim.listingSlug;
+        const text =
+          req.body.whatsappMessage ||
+          `Hello *${claim.fullName || "User"}*, 🎉 Great news! We have verified and transferred the ownership of *${businessName}* to you on AddressGuru UAE.\n\nYou can now log in to your dashboard to manage your listing, edit details, and view customer enquiries:\n👉 https://addressguru.ae/dashboard\n\nThank you for choosing AddressGuru UAE!`;
+
+        if (phone) {
+          await sendTextMessage({ to: phone, text, countryCode });
+          console.log(`✅ WhatsApp ownership transfer message sent to ${phone}`);
+        }
+      } catch (waErr) {
+        console.warn("⚠️ WhatsApp ownership transfer notification failed:", waErr.message);
+      }
+    }
+
     return res.json({
       success: true,
       message: `Ownership transferred successfully.`,
@@ -390,3 +430,4 @@ export const transferOwnership = async (req, res) => {
       .json({ success: false, message: "Server error", error: err.message });
   }
 };
+
