@@ -597,11 +597,13 @@ const sendEnquiryConfirmationMail = (
 
 // ─── 2. CLAIM SUBMITTED — sent to claimant ────────────────────────────────────
 const sendClaimSubmittedMail = (claimantEmail, claim, businessName) => {
-  /*
   console.log(
-    "CLAIM MAIL → EMAIL:", claimantEmail,
-    "| Business:", businessName,
-    "| Claimant:", claim.fullName
+    "CLAIM MAIL → EMAIL:",
+    claimantEmail,
+    "| Business:",
+    businessName,
+    "| Claimant:",
+    claim.fullName,
   );
 
   const templatePath = path.resolve("utils/mailThemes/ClaimSubmitted.hjs");
@@ -611,12 +613,14 @@ const sendClaimSubmittedMail = (claimantEmail, claim, businessName) => {
   const mailBody = compiledTemplate.render({
     fullName: claim.fullName,
     email: claim.email,
-    countryCode: claim.countryCode || "91",
+    countryCode: claim.countryCode || "971",
     mobileNumber: claim.mobileNumber,
     reasonForClaim: claim.reasonForClaim,
-    businessName,
+    businessName: businessName || claim.listingSlug,
     submittedDate: new Date().toLocaleDateString("en-AE", {
-      day: "numeric", month: "long", year: "numeric",
+      day: "numeric",
+      month: "long",
+      year: "numeric",
     }),
     year: new Date().getFullYear(),
   });
@@ -631,15 +635,60 @@ const sendClaimSubmittedMail = (claimantEmail, claim, businessName) => {
   const mailOptions = {
     from: '"AddressGuru UAE" <addressguruuae@gmail.com>',
     to: claimantEmail,
-    subject: `🔐 Your Claim for ${businessName} is Under Review — AddressGuru UAE`,
-    text: `Your claim for ${businessName} has been submitted and is under review.`,
+    subject: `🔐 2-Step Verification: Claim for ${businessName || claim.listingSlug} — AddressGuru UAE`,
+    text: `Your claim for ${businessName || claim.listingSlug} has been submitted and is under review.`,
     html: mailBody,
   };
 
   return transporter.sendMail(mailOptions);
-  */
-  console.log("Mail sending disabled for sendClaimSubmittedMail");
-  return Promise.resolve();
+};
+
+// ─── 2.1 CLAIM APPROVED — sent to claimant ───────────────────────────────────
+const sendClaimApprovedMail = (
+  claimantEmail,
+  fullName,
+  businessName,
+  listingUrl,
+  dashboardUrl = "https://addressguru.ae/dashboard",
+) => {
+  console.log(
+    "CLAIM APPROVED MAIL → EMAIL:",
+    claimantEmail,
+    "| Business:",
+    businessName,
+    "| Claimant:",
+    fullName,
+  );
+
+  const templatePath = path.resolve("utils/mailThemes/ClaimApproved.hjs");
+  const template = fs.readFileSync(templatePath, "utf-8");
+  const compiledTemplate = Hogan.compile(template);
+
+  const mailBody = compiledTemplate.render({
+    fullName: fullName || "Partner",
+    email: claimantEmail,
+    businessName: businessName || "Your Listing",
+    listingUrl: listingUrl || null,
+    dashboardUrl: dashboardUrl || "https://addressguru.ae/dashboard",
+    year: new Date().getFullYear(),
+  });
+
+  const transporter = nodemailer.createTransport({
+    host: emailConfig.SMTP_HOST,
+    port: emailConfig.SMTP_PORT,
+    secure: true,
+    auth: { user: emailConfig.SMTP_EMAIL, pass: emailConfig.SMTP_PASS },
+  });
+
+  const mailOptions = {
+    from: '"AddressGuru UAE" <addressguruuae@gmail.com>',
+    to: claimantEmail,
+    subject: `🎉 Ownership Claim Approved for ${businessName} — AddressGuru UAE`,
+    text: `Congratulations! Your ownership claim for ${businessName} has been approved and transferred.`,
+    html: mailBody,
+  };
+
+  return transporter.sendMail(mailOptions);
 };
 
 // ─── 3. CLAIM RECEIVED (ADMIN ALERT) — sent to admin ───────────────────────────
@@ -1001,6 +1050,7 @@ export {
   sendEnquiryReceivedMail,
   sendEnquiryConfirmationMail,
   sendClaimSubmittedMail,
+  sendClaimApprovedMail,
   sendClaimReceivedAdminMail,
   sendListingReportedMail,
   sendReviewReceivedMail,

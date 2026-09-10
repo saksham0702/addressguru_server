@@ -3,6 +3,7 @@ import ClaimBusiness from "../model/claimBusinessSchema.js";
 import { resolveListing } from "../utils/resolveListing.js";
 import {
   sendClaimSubmittedMail,
+  sendClaimApprovedMail,
   sendClaimReceivedAdminMail,
   sendClaimNoticeToOwnerMail,
 } from "../utils/sendMail.js";
@@ -75,6 +76,9 @@ export const submitClaim = async (req, res) => {
       });
     }
 
+    const businessName =
+      listing.businessName || listing.title || listing.name || listing.slug;
+
     const claim = await ClaimBusiness.create({
       listingId: listing._id,
       listingModel: modelName,
@@ -82,7 +86,7 @@ export const submitClaim = async (req, res) => {
       claimedBy: existingUser._id, // ✅ use resolved user
       fullName: existingUser.name || fullName, // ✅ prevent fake name override
       email,
-      countryCode: countryCode || 91,
+      countryCode: countryCode || 971,
       mobileNumber,
       idProofImage,
       reasonForClaim,
@@ -90,7 +94,29 @@ export const submitClaim = async (req, res) => {
       userAgent: req.headers["user-agent"],
     });
 
-    // Owner mail logic (unchanged)
+    // ✅ 1. Send Automated 2-Step Verification WhatsApp Message to Claimant
+    try {
+      const waText = `Hello *${existingUser.name || fullName}*, 👋 Thank you for submitting your ownership claim for *${businessName}* on AddressGuru UAE.\n\n🔒 *2-Step Ownership Verification:*\nTo verify that you are the legitimate owner/representative of this listing, please send us a quick confirmation from the registered mobile number or official company email address associated with *${businessName}*.\n\nOur verification team will review your ID document and details within 24–48 hours and notify you here once verified.\n\nThank you,\nAddressGuru UAE Team`;
+
+      await sendTextMessage({
+        to: String(mobileNumber),
+        text: waText,
+        countryCode: String(countryCode || "971"),
+      });
+      console.log(`✅ WhatsApp claim 2-step verification message sent to ${mobileNumber}`);
+    } catch (waErr) {
+      console.warn("⚠️ WhatsApp claim submission notification failed:", waErr.message);
+    }
+
+    // ✅ 2. Send Claim Confirmation Email to Claimant
+    try {
+      await sendClaimSubmittedMail(email, claim, businessName);
+      console.log(`✅ Claim submitted email sent to ${email}`);
+    } catch (mailErr) {
+      console.warn("⚠️ Claimant submission email failed:", mailErr.message);
+    }
+
+    // ✅ 3. Owner mail notice (if listing had a previous owner)
     try {
       const owner = listing.createdBy
         ? await User.findById(listing.createdBy).select("email name").lean()
@@ -98,13 +124,13 @@ export const submitClaim = async (req, res) => {
 
       const ownerEmail = listing.email || owner?.email;
       const ownerName =
-        listing.contactPersonName || owner?.name || listing.businessName;
+        listing.contactPersonName || owner?.name || businessName;
 
       if (ownerEmail) {
         await sendClaimNoticeToOwnerMail(
           ownerEmail,
           ownerName,
-          listing.businessName || listing.slug,
+          businessName,
           fullName,
           reasonForClaim,
         );
@@ -115,7 +141,7 @@ export const submitClaim = async (req, res) => {
 
     return res.status(201).json({
       success: true,
-      message: "Your claim has been submitted and is under review.",
+      message: "Your claim has been submitted and is under review. Please check your WhatsApp and email for verification instructions.",
       data: { id: claim._id },
     });
   } catch (err) {
@@ -238,6 +264,7 @@ export const adminListClaims = async (req, res) => {
     const [claims, total] = await Promise.all([
       ClaimBusiness.find(filter)
         .populate("claimedBy", "name email")
+        .populate("listingId", "businessName title name slug")
         .sort({ createdAt: -1 })
         .skip((+page - 1) * +limit)
         .limit(+limit),
@@ -259,6 +286,64 @@ export const adminListClaims = async (req, res) => {
   }
 };
 
+// ─── POST /api/admin/claims/:claimId/send-message (Send verification/custom message) ──
+export const sendClaimCustomMessage = async (req, res) => {
+  try {
+    const { claimId } = req.params;
+    const {
+      sendWhatsapp = true,
+      whatsappMessage,
+      whatsappPhone,
+      whatsappCountryCode,
+      sendEmail = true,
+    } = req.body;
+
+    const claim = await ClaimBusiness.findById(claimId)
+      .populate("listingId", "businessName title name slug")
+      .lean();
+
+    if (!claim) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Claim not found" });
+    }
+
+    const businessName =
+      claim.listingId?.businessName ||
+      claim.listingId?.title ||
+      claim.listingId?.name ||
+      claim.listingSlug;
+
+    let waSent = false;
+    if (sendWhatsapp) {
+      const phone = String(whatsappPhone || claim.mobileNumber);
+      const countryCode = String(whatsappCountryCode || claim.countryCode || "971");
+      const text =
+        whatsappMessage ||
+        `Hello *${claim.fullName || "User"}*, 👋\n\nTo verify your ownership claim for *${businessName}* on AddressGuru UAE, please send us a quick confirmation message from the registered mobile number or official company email address associated with *${businessName}*.\n\nOnce verified, our team will approve and transfer full management access to you.\n\nThank you,\nAddressGuru UAE Team`;
+
+      if (phone) {
+        await sendTextMessage({ to: phone, text, countryCode });
+        waSent = true;
+      }
+    }
+
+    return res.json({
+      success: true,
+      message: waSent
+        ? "Verification message sent successfully to claimant via WhatsApp."
+        : "Message processed successfully.",
+    });
+  } catch (err) {
+    console.error("sendClaimCustomMessage error:", err);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to send message",
+      error: err.message,
+    });
+  }
+};
+
 // ─── PATCH /api/admin/claims/:claimId  (approve / reject) ────────────────────
 export const adminReviewClaim = async (req, res) => {
   try {
@@ -272,12 +357,18 @@ export const adminReviewClaim = async (req, res) => {
       req.params.claimId,
       { status, adminNote, approvedBy: req.user?._id, reviewedAt: new Date() },
       { new: true },
-    );
+    ).populate("listingId", "businessName title name slug");
 
     if (!claim)
       return res
         .status(404)
         .json({ success: false, message: "Claim not found" });
+
+    const businessName =
+      claim.listingId?.businessName ||
+      claim.listingId?.title ||
+      claim.listingId?.name ||
+      claim.listingSlug;
 
     // If approved → mark the listing as claimed
     if (status === "approved") {
@@ -295,18 +386,35 @@ export const adminReviewClaim = async (req, res) => {
           isVerified: true,
         });
       }
+
+      // Send Claim Approved Email
+      if (req.body.sendEmail !== false) {
+        try {
+          const listingUrl = `https://addressguru.ae/${claim.listingSlug}`;
+          await sendClaimApprovedMail(
+            claim.email,
+            claim.fullName,
+            businessName,
+            listingUrl,
+            "https://addressguru.ae/dashboard",
+          );
+        } catch (mailErr) {
+          console.warn("⚠️ Claim approved email failed:", mailErr.message);
+        }
+      }
     }
 
     // Optional WhatsApp message on claim review
     if (req.body.sendWhatsapp || req.body.whatsappMessage) {
       try {
         const phone = req.body.whatsappPhone || claim.mobileNumber;
-        const countryCode = req.body.whatsappCountryCode || claim.countryCode || "971";
+        const countryCode =
+          req.body.whatsappCountryCode || claim.countryCode || "971";
         const text =
           req.body.whatsappMessage ||
           (status === "approved"
-            ? `Hello *${claim.fullName || "User"}*, Your ownership claim for *${claim.listingSlug}* has been approved on AddressGuru UAE. You can now manage your listing from your dashboard: https://addressguru.ae/dashboard`
-            : `Hello *${claim.fullName || "User"}*, Your ownership claim for *${claim.listingSlug}* was rejected.${adminNote ? ` Reason: ${adminNote}` : ""}`);
+            ? `Hello *${claim.fullName || "User"}*, 🎉 Great news! Your ownership claim for *${businessName}* has been approved on AddressGuru UAE. You can now manage your listing from your dashboard: https://addressguru.ae/dashboard`
+            : `Hello *${claim.fullName || "User"}*, We reviewed your ownership claim for *${businessName}* on AddressGuru UAE. Unfortunately, your claim was not approved at this time.${adminNote ? `\n\nReason: ${adminNote}` : ""}`);
 
         if (phone) {
           await sendTextMessage({ to: phone, text, countryCode });
@@ -367,8 +475,6 @@ export const transferOwnership = async (req, res) => {
       targetUserId = user._id;
     }
 
-    const listingBefore = await model.findById(claim.listingId).lean();
-
     const updatedListing = await model.findByIdAndUpdate(
       claim.listingId,
       {
@@ -396,32 +502,64 @@ export const transferOwnership = async (req, res) => {
       adminNote: req.body.adminNote || "Ownership transferred by admin",
     });
 
-    // ── Optional WhatsApp Message on Transfer ──
-    const shouldSendWhatsapp = req.body.sendWhatsapp !== false && (req.body.sendWhatsapp === true || req.body.whatsappMessage);
+    const businessName =
+      updatedListing.businessName ||
+      updatedListing.title ||
+      updatedListing.name ||
+      claim.listingSlug;
+
+    const listingUrl = `https://addressguru.ae/${updatedListing.slug || claim.listingSlug}`;
+    const dashboardUrl = "https://addressguru.ae/dashboard";
+
+    // ── 1. Send Claim Approved Email to Claimant ──
+    if (req.body.sendEmail !== false) {
+      try {
+        await sendClaimApprovedMail(
+          claim.email,
+          claim.fullName,
+          businessName,
+          listingUrl,
+          dashboardUrl,
+        );
+        console.log(`✅ Claim approved email sent to ${claim.email}`);
+      } catch (emailErr) {
+        console.warn("⚠️ Claim approved email failed:", emailErr.message);
+      }
+    }
+
+    // ── 2. Send WhatsApp Message on Transfer ──
+    const shouldSendWhatsapp =
+      req.body.sendWhatsapp !== false &&
+      (req.body.sendWhatsapp === true || req.body.whatsappMessage);
+
     if (shouldSendWhatsapp) {
       try {
         const phone = req.body.whatsappPhone || claim.mobileNumber;
-        const countryCode = req.body.whatsappCountryCode || claim.countryCode || "971";
-        const businessName = updatedListing.businessName || claim.listingSlug;
+        const countryCode =
+          req.body.whatsappCountryCode || claim.countryCode || "971";
         const text =
           req.body.whatsappMessage ||
-          `Hello *${claim.fullName || "User"}*, 🎉 Great news! We have verified and transferred the ownership of *${businessName}* to you on AddressGuru UAE.\n\nYou can now log in to your dashboard to manage your listing, edit details, and view customer enquiries:\n👉 https://addressguru.ae/dashboard\n\nThank you for choosing AddressGuru UAE!`;
+          `Hello *${claim.fullName || "User"}*, 🎉 Great news! We have verified and transferred the ownership of *${businessName}* to you on AddressGuru UAE.\n\nYou now have full owner access to manage details and view customer enquiries:\n👉 ${dashboardUrl}\n\nThank you for choosing AddressGuru UAE!`;
 
         if (phone) {
           await sendTextMessage({ to: phone, text, countryCode });
           console.log(`✅ WhatsApp ownership transfer message sent to ${phone}`);
         }
       } catch (waErr) {
-        console.warn("⚠️ WhatsApp ownership transfer notification failed:", waErr.message);
+        console.warn(
+          "⚠️ WhatsApp ownership transfer notification failed:",
+          waErr.message,
+        );
       }
     }
 
     return res.json({
       success: true,
-      message: `Ownership transferred successfully.`,
+      message: `Ownership of "${businessName}" transferred successfully.`,
       data: {
         listingId: updatedListing._id,
         newOwnerId: targetUserId,
+        businessName,
       },
     });
   } catch (err) {

@@ -1692,10 +1692,9 @@ export const updateListingStatus = async (req, res) => {
     }
 
     // ── Find the listing ────────────────────────────────────────────────────
-    const listing = await BusinessListing.findById(id).populate(
-      "category",
-      "name",
-    );
+    const listing = await BusinessListing.findById(id)
+      .populate("category", "name")
+      .populate("createdBy", "name email mobileNumber phoneNumber countryCode");
     if (!listing) {
       return res.status(404).json({
         success: false,
@@ -1741,8 +1740,8 @@ export const updateListingStatus = async (req, res) => {
       if (shouldSendEmail) {
         try {
           await sendApprovedAndRejectedListingMail(
-            listing.email,
-            listing.contactPersonName || listing.businessName,
+            listing.email || listing.createdBy?.email,
+            listing.contactPersonName || listing.createdBy?.name || listing.businessName,
             status,
             status === "rejected" ? rejectionReason.trim() : null,
             {
@@ -1754,7 +1753,7 @@ export const updateListingStatus = async (req, res) => {
               adminNote: status === "rejected" ? adminNote?.trim() || null : null,
             },
           );
-          console.log(`✅ Mail sent to ${listing.email} for status: ${status}`);
+          console.log(`✅ Mail sent to ${listing.email || listing.createdBy?.email} for status: ${status}`);
         } catch (mailError) {
           console.warn("❌ Mail send failed:", mailError.message);
         }
@@ -1763,9 +1762,22 @@ export const updateListingStatus = async (req, res) => {
       // ── Send WhatsApp Message ──
       if (shouldSendWhatsapp) {
         try {
-          const phone = req.body.whatsappPhone || listing.mobileNumber;
-          const countryCode = req.body.whatsappCountryCode || listing.countryCode || "971";
-          const recipientName = listing.contactPersonName || listing.businessName || "Valued Partner";
+          const phone =
+            req.body.whatsappPhone ||
+            listing.mobileNumber ||
+            listing.alternateMobileNumber ||
+            listing.createdBy?.mobileNumber ||
+            listing.createdBy?.phoneNumber;
+          const countryCode =
+            req.body.whatsappCountryCode ||
+            listing.countryCode ||
+            listing.createdBy?.countryCode ||
+            "971";
+          const recipientName =
+            listing.contactPersonName ||
+            listing.createdBy?.name ||
+            listing.businessName ||
+            "Valued Partner";
           const categoryName = listing.category?.name || "Business";
           const listingUrl = `https://addressguru.ae/${listing.slug}`;
           const dashboardUrl = `https://addressguru.ae/dashboard`;
@@ -1784,9 +1796,11 @@ export const updateListingStatus = async (req, res) => {
           if (phone && text) {
             await sendTextMessage({ to: phone, text, countryCode });
             console.log(`✅ WhatsApp ${status} message sent to ${phone}`);
+          } else {
+            console.warn(`⚠️ WhatsApp message not sent: phone (${phone}) or text is missing`);
           }
         } catch (waErr) {
-          console.warn("❌ WhatsApp send failed in changeStatus:", waErr.message);
+          console.warn("❌ WhatsApp send failed in updateListingStatus:", waErr.message);
         }
       }
 

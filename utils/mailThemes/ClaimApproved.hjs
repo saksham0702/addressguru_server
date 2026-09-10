@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Ownership Claim Approved — AddressGuru UAE</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background-color: #f4f4f6;
+      font-family: 'DM Sans', sans-serif;
+      color: #2d2d2d;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .wrapper {
+      width: 100%;
+      padding: 40px 16px;
+      background-color: #f4f4f6;
+    }
+
+    .container {
+      max-width: 580px;
+      margin: 0 auto;
+      background: #ffffff;
+      border-radius: 14px;
+      overflow: hidden;
+      box-shadow: 0 2px 20px rgba(0,0,0,0.07);
+    }
+
+    /* ── HEADER ── */
+    .header {
+      background: #ffffff;
+      padding: 0 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 72px;
+      border-bottom: 2px solid #f7941d;
+    }
+    .header-logo {
+      display: block;
+      height: 40px;
+      width: auto;
+      object-fit: contain;
+    }
+
+    /* ── BANNER ── */
+    .banner {
+      padding: 24px 32px 0;
+      text-align: center;
+    }
+    .status-badge {
+      display: inline-block;
+      padding: 4px 14px;
+      background: #f0fdf4;
+      color: #15803d;
+      font-size: 11.5px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      border-radius: 99px;
+      border: 1px solid #dcfce7;
+    }
+
+    /* ── CONTENT ── */
+    .content {
+      padding: 24px 32px 32px;
+    }
+
+    .greeting {
+      font-size: 15px;
+      color: #2d2d2d;
+      line-height: 1.7;
+      margin-bottom: 6px;
+    }
+    .greeting strong { color: #f7941d; }
+
+    .intro-text {
+      font-size: 13.5px;
+      color: #4b5563;
+      line-height: 1.75;
+      margin-bottom: 24px;
+    }
+
+    /* ── INFO BOX ── */
+    .info-box {
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      overflow: hidden;
+      margin-bottom: 24px;
+    }
+    .info-header {
+      background: #f9fafb;
+      border-bottom: 1px solid #e5e7eb;
+      padding: 10px 16px;
+    }
+    .info-header-label {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      color: #9ca3af;
+    }
+    .info-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      padding: 11px 16px;
+      border-bottom: 1px solid #f0f0f0;
+    }
+    .info-row:last-child { border-bottom: none; }
+    .info-label {
+      font-size: 11px;
+      font-weight: 600;
+      color: #9ca3af;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      min-width: 100px;
+      padding-top: 1px;
+      flex-shrink: 0;
+    }
+    .info-value {
+      font-size: 13.5px;
+      color: #374151;
+      line-height: 1.5;
+      flex: 1;
+      font-weight: 500;
+    }
+    .info-value a {
+      color: #f7941d;
+      text-decoration: none;
+      word-break: break-all;
+    }
+
+    /* ── NEXT STEPS ── */
+    .steps-box {
+      background: #fff8f0;
+      border: 1px solid #fed7aa;
+      border-radius: 8px;
+      padding: 16px 20px;
+      margin-bottom: 26px;
+    }
+    .steps-label {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      color: #c2410c;
+      margin-bottom: 10px;
+    }
+    .step-item {
+      font-size: 13px;
+      color: #431407;
+      line-height: 1.65;
+      padding: 6px 0 6px 18px;
+      position: relative;
+    }
+    .step-item::before {
+      content: '✔';
+      position: absolute;
+      left: 0;
+      color: #ea580c;
+      font-size: 11px;
+      top: 6px;
+    }
+
+    .cta-container {
+      text-align: center;
+      margin-bottom: 10px;
+    }
+
+    .cta-btn {
+      display: inline-block;
+      background: #f7941d;
+      color: #ffffff !important;
+      text-decoration: none;
+      font-size: 14px;
+      font-weight: 600;
+      padding: 12px 28px;
+      border-radius: 8px;
+      transition: background 0.2s ease;
+    }
+
+    .footer {
+      background: #f9fafb;
+      border-top: 1px solid #ebebeb;
+      padding: 18px 32px;
+      text-align: center;
+    }
+    .footer-links { margin-bottom: 6px; }
+    .footer-links a {
+      color: #f7941d;
+      text-decoration: none;
+      font-size: 12.5px;
+      font-weight: 500;
+      margin: 0 8px;
+    }
+    .footer-copy {
+      font-size: 11.5px;
+      color: #aaa;
+      line-height: 1.7;
+    }
+
+    @media (max-width: 520px) {
+      .wrapper { padding: 0; }
+      .container { border-radius: 0; box-shadow: none; }
+      .header { padding: 0 20px; height: 64px; }
+      .content { padding: 22px 20px 24px; }
+      .footer { padding: 16px 20px; }
+    }
+  </style>
+</head>
+<body>
+<div class="wrapper">
+  <div class="container">
+
+    <div class="header">
+      <img class="header-logo" src="https://www.addressguru.in/images/logopng.png" alt="AddressGuru" />
+    </div>
+
+    <div class="banner">
+      <span class="status-badge">🎉 Claim Approved & Transferred</span>
+    </div>
+
+    <div class="content">
+      <p class="greeting">Hello <strong>{{fullName}}</strong>,</p>
+      <p class="intro-text">
+        Great news! We have verified your ownership claim for <strong>{{businessName}}</strong>. The listing has now been transferred to your registered AddressGuru account and marked as verified.
+      </p>
+
+      <!-- Details Box -->
+      <div class="info-box">
+        <div class="info-header"><span class="info-header-label">Transferred Listing Details</span></div>
+        <div class="info-row">
+          <span class="info-label">Listing</span>
+          <span class="info-value"><strong>{{businessName}}</strong></span>
+        </div>
+        {{#listingUrl}}
+        <div class="info-row">
+          <span class="info-label">Live Link</span>
+          <span class="info-value"><a href="{{listingUrl}}" target="_blank">{{listingUrl}}</a></span>
+        </div>
+        {{/listingUrl}}
+        <div class="info-row">
+          <span class="info-label">Owner</span>
+          <span class="info-value">{{fullName}} ({{email}})</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Status</span>
+          <span class="info-value" style="color: #15803d;">✔ Verified & Claimed</span>
+        </div>
+      </div>
+
+      <!-- What You Can Do Now -->
+      <div class="steps-box">
+        <div class="steps-label">What You Can Do Now</div>
+        <div class="step-item">Log in to your dashboard to edit listing details, hours, and photos.</div>
+        <div class="step-item">View and respond to direct customer enquiries and leads.</div>
+        <div class="step-item">Upgrade your plan for premium placement and verified badges.</div>
+      </div>
+
+      <div class="cta-container">
+        <a class="cta-btn" href="{{dashboardUrl}}">Manage Listing in Dashboard →</a>
+      </div>
+    </div>
+
+    <div class="footer">
+      <div class="footer-links">
+        <a href="https://addressguru.ae">addressguru.ae</a>
+        <a href="mailto:support@addressguru.ae">support@addressguru.ae</a>
+      </div>
+      <div class="footer-copy">&copy; {{year}} AddressGuru UAE. All rights reserved.</div>
+    </div>
+
+  </div>
+</div>
+</body>
+</html>

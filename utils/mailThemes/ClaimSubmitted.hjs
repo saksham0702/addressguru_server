@@ -127,12 +127,12 @@
         <div class="reason-text">{{reasonForClaim}}</div>
       </div>
 
-      <!-- What Happens Next -->
+      <!-- 2-Step Verification & What Happens Next -->
       <div class="tips-section">
-        <div class="tips-label">What Happens Next</div>
-        <div class="tip-item">Our team will verify your ownership of this listing</div>
-        <div class="tip-item">You'll receive an email once your claim is approved or if more info is needed</div>
-        <div class="tip-item">Once approved, you'll get full control of the listing from your dashboard</div>
+        <div class="tips-label">2-Step Ownership Verification</div>
+        <div class="tip-item"><strong>Step 1:</strong> We have received your claim submission and ID document.</div>
+        <div class="tip-item"><strong>Step 2:</strong> To verify your listing ownership, please send a quick confirmation from the mobile number or company email listed on <strong>{{businessName}}</strong>.</div>
+        <div class="tip-item">Once verified by our review team, you will receive full owner access in your dashboard.</div>
       </div>
 
       <a class="cta-btn" href="https://addressguru.ae/dashboard">View Dashboard</a>
