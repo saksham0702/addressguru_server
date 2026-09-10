@@ -1,10 +1,32 @@
 export function normalizeToE164(countryCode, mobileNumber) {
   if (!mobileNumber) return null;
-  const cc = (countryCode || "").toString().replace(/\D/g, "");
-  const num = mobileNumber.toString().replace(/\D/g, "");
+  let cc = (countryCode || "").toString().replace(/\D/g, "");
+  let num = mobileNumber.toString().replace(/\D/g, "");
   if (!num) return null;
-  if (cc && num.startsWith(cc)) return num;
-  return `${cc}${num}`;
+
+  // Handle leading 00 (e.g. 00971501234567)
+  if (num.startsWith("00")) {
+    num = num.replace(/^00+/, "");
+  }
+
+  // If number starts with cc already (e.g. 971501234567)
+  if (cc && num.startsWith(cc)) {
+    return num;
+  }
+
+  // Strip leading zero from local numbers (e.g. 0501234567 -> 501234567)
+  const stripped = num.replace(/^0+/, "");
+
+  if (cc) {
+    if (stripped.startsWith(cc)) return stripped;
+    return `${cc}${stripped}`;
+  }
+
+  // If no cc provided, check if stripped already has UAE/international format
+  if (stripped.startsWith("971")) return stripped;
+  if (stripped.length === 9) return `971${stripped}`;
+
+  return stripped;
 }
 
 export function isLidJid(jid) {

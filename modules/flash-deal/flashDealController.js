@@ -1,6 +1,6 @@
 import { successData, errorData } from "../../services/helper.js";
 import {
-  checkFlashDealForUser,
+  getActiveFlashDealsForUser,
   attachListingToClaim,
   getMyActiveFlashDeals,
 } from "../../modules/flash-deal/FlashDealService.js";
@@ -9,11 +9,11 @@ import { createFlashDealOrderService } from "../../modules/payment/payment.servi
 export const checkFlashDeal = async (req, res) => {
   try {
     const { planType = "business" } = req.query;
-    const deal = await checkFlashDealForUser({
+    const deals = await getActiveFlashDealsForUser({
       userId: req.user.id,
       planType,
     });
-    return successData(res, 200, true, "OK", { deal });
+    return successData(res, 200, true, "OK", { deals }); // plural
   } catch (error) {
     console.warn("checkFlashDeal error:", error);
     return errorData(res, 500, false, "Internal server error");

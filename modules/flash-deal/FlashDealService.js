@@ -227,3 +227,68 @@ export const markClaimPurchased = async (claimId) => {
     purchasedAt: new Date(),
   });
 };
+
+/*
+|--------------------------------------------------------------------------
+| GET ALL ACTIVE, ELIGIBLE DEALS FOR THIS USER / PLAN TYPE
+|--------------------------------------------------------------------------
+| Returns every active deal the user is eligible for, each backed by its
+| own claim (creating one per deal on first call — idempotent via the
+| same unique-index / race-condition handling as checkFlashDealForUser).
+| Timer starts as soon as a claim is created on this first call.
+*/
+export const getActiveFlashDealsForUser = async ({ userId, planType }) => {
+  const deals = await FlashDeal.find({ isActive: true, planType }).populate(
+    "basePlan",
+  );
+
+  if (!deals.length) return [];
+
+  const results = [];
+
+  for (const deal of deals) {
+    // ── Existing claim path ───────────────────────────────────────────────
+    let claim = await FlashDealClaim.findOne({ user: userId, deal: deal._id });
+
+    if (claim) {
+      claim = await settleClaim(claim);
+      if (claim.status === "active") results.push(serializeClaim(claim, deal));
+      continue;
+    }
+
+    // ── Eligibility check before creating a new claim ─────────────────────
+    if (deal.eligibility === "first_listing_only") {
+      const Model = MODEL_BY_PLAN_TYPE[planType];
+      const alreadyHasListing = Model
+        ? await Model.exists({ createdBy: userId })
+        : false;
+      if (alreadyHasListing) continue;
+    }
+
+    // ── Create new claim (idempotent via unique index) ────────────────────
+    const now = new Date();
+    try {
+      claim = await FlashDealClaim.create({
+        user: userId,
+        deal: deal._id,
+        planType,
+        startedAt: now,
+        expiresAt: new Date(now.getTime() + deal.durationMinutes * 60000),
+        status: "active",
+      });
+    } catch (err) {
+      // Race condition on unique index — re-fetch and proceed
+      if (err.code === 11000) {
+        claim = await FlashDealClaim.findOne({ user: userId, deal: deal._id });
+        if (!claim) continue;
+      } else {
+        throw err;
+      }
+    }
+
+    claim = await settleClaim(claim);
+    if (claim.status === "active") results.push(serializeClaim(claim, deal));
+  }
+
+  return results;
+};

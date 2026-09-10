@@ -305,6 +305,11 @@ export const verifyPaymentService = async ({
     );
   }
 
+  // Mark the flash deal claim as purchased so it cannot be reused
+  if (payment.flashDealClaim) {
+    await markClaimPurchased(payment.flashDealClaim);
+  }
+
   return { payment, listing };
 };
 
@@ -342,6 +347,11 @@ export const handleWebhookService = async (webhookBody) => {
         plan,
         payment.notes?.planType || plan?.planType || "business",
       );
+    }
+
+    // Mark flash deal claim as purchased (webhook path)
+    if (payment.flashDealClaim) {
+      await markClaimPurchased(payment.flashDealClaim);
     }
   }
 

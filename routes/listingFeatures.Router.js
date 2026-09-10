@@ -18,6 +18,7 @@ import {
   adminReviewClaim,
   getMyClaims,
   transferOwnership,
+  sendClaimCustomMessage,
 } from "../controller/claimListing.Controller.js";
 
 import {
@@ -96,6 +97,9 @@ router.get("/admin/claims", authenticate, adminListClaims);
 
 // Admin: approve or reject a claim
 router.patch("/admin/claims/:claimId", authenticate, adminReviewClaim);
+
+// Admin: send verification or custom WhatsApp message to claimant
+router.post("/admin/claims/:claimId/send-message", authenticate, sendClaimCustomMessage);
 
 // Admin: transfer listing ownership to the claimant
 router.patch("/admin/claims/:claimId/transfer", authenticate, transferOwnership);
