@@ -43,6 +43,7 @@ import followUpConfigRouter from "./routes/followUpConfig.Router.js";
 import templateRouter from "./routes/template.Router.js";
 import notificationRouter from "./routes/notification.Routes.js";
 import seoContentRouter from "./routes/seoContent.Router.js";
+import adminNotificationRouter from "./modules/admin-notifications/adminNotification.router.js";
 import sitemapRouter from "./routes/sitemap.Router.js";
 import searchRouter from "./modules/search/search.routes.js";
 import { initializeFirebase } from "./services/firebase.js";
@@ -209,15 +210,16 @@ app.use("/logs", logRouter);
 app.use("/broken-links", brokenLinkScannerRoutes);
 app.use("/ai-search", aiSearchRouter);
 app.use("/flash-deals", flashDealRoutes);
+app.use("/admin-notifications", adminNotificationRouter);
 // app.use("/gbp-tracker", gbpTrackerRoutes);
 
-app.get("/test-cookie", (req, res) => {
-  console.log("cookies:", req.cookies);
-  res.json({ message: "SERVER", cookies: req.cookies });
+// Silence disabled socket.io client polling/connection requests
+app.use((req, res, next) => {
+  if (req.query.EIO || req.path.startsWith("/socket.io")) {
+    return res.status(204).end();
+  }
+  next();
 });
-
-// app.use("/", indexRouter);
-// app.use("/users", usersRouter);
 
 // catch 404 and forward to error handler
 app.use(function (req, res, next) {

@@ -100,6 +100,9 @@ async function findOrCreateUser({
 
       user.verified_email = true; // Google/Apple emails are verified
       user.lastActive = new Date();
+      user.isOnline = true;
+      user.lastLoginAt = new Date();
+      user.lastSeen = new Date();
       await user.save();
       return user;
     }
@@ -116,6 +119,9 @@ async function findOrCreateUser({
     password: null,
     verified_email: true,
     status: true,
+    isOnline: true,
+    lastLoginAt: new Date(),
+    lastSeen: new Date(),
     lastActive: new Date(),
   });
 
@@ -164,7 +170,7 @@ router.get("/google/callback", async (req, res) => {
         redirect_uri: `${BACKEND_BASE_URL}/social-login/google/callback`,
         grant_type: "authorization_code",
       }),
-      { headers: { "Content-Type": "application/x-www-form-urlencoded" } }
+      { headers: { "Content-Type": "application/x-www-form-urlencoded" } },
     );
 
     const { id_token, access_token, refresh_token } = tokenResp.data;
@@ -250,7 +256,7 @@ router.post(
           grant_type: "authorization_code",
           redirect_uri: `${BACKEND_BASE_URL}/social-login/apple/callback`,
         }),
-        { headers: { "Content-Type": "application/x-www-form-urlencoded" } }
+        { headers: { "Content-Type": "application/x-www-form-urlencoded" } },
       );
 
       const {
@@ -294,9 +300,8 @@ router.post(
       console.warn(err.response?.data || err);
       res.redirect(`${APP_BASE_URL}/auth/error`);
     }
-  }
+  },
 );
-
 
 router.post("/auth/exchange", async (req, res) => {
   const {
@@ -320,7 +325,8 @@ router.post("/auth/exchange", async (req, res) => {
     /* ===================== GOOGLE ===================== */
     if (provider === "google") {
       if (idToken) {
-        const clientId = platform === "ios" ? GOOGLE_IOS_CLIENT_ID : GOOGLE_CLIENT_ID;
+        const clientId =
+          platform === "ios" ? GOOGLE_IOS_CLIENT_ID : GOOGLE_CLIENT_ID;
         const client = new OAuth2Client(clientId);
         const ticket = await client.verifyIdToken({
           idToken,
@@ -376,7 +382,6 @@ router.post("/auth/exchange", async (req, res) => {
 
     console.log("USER DATTA ::", userData);
 
-
     /* ===================== FINAL LINK / CREATE ===================== */
     const user = await findOrCreateUser(userData);
     const sessionToken = createJwtToken(user);
@@ -402,8 +407,5 @@ router.post("/auth/exchange", async (req, res) => {
     return res.status(500).json({ error: "auth_exchange_failed" });
   }
 });
-
-
-
 
 export default router;

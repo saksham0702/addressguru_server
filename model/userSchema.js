@@ -178,6 +178,14 @@ const userSchema = new mongoose.Schema(
       type: Date,
       default: null,
     },
+    lastLoginAt: {
+      type: Date,
+      default: null,
+    },
+    lastLogoutAt: {
+      type: Date,
+      default: null,
+    },
     // Soft-delete
     deletedAt: { type: Date, default: null },
 

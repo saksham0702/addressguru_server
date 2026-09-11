@@ -708,7 +708,7 @@ const sendClaimReceivedAdminMail = (claim, businessName, listingSlug) => {
   const mailBody = compiledTemplate.render({
     fullName: claim.fullName,
     email: claim.email,
-    countryCode: claim.countryCode || "91",
+    countryCode: claim.countryCode || "971",
     mobileNumber: claim.mobileNumber,
     reasonForClaim: claim.reasonForClaim,
     businessName,

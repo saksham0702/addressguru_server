@@ -1,4 +1,5 @@
 import bcrypt from "bcrypt";
+import jwt from "jsonwebtoken";
 import User from "../model/userSchema.js";
 import { BACKEND_BASE_URL, ROLE_NAMES, ROLES } from "../services/constant.js";
 import createJwtToken from "../utils/generateToken.js";
@@ -87,6 +88,12 @@ export const login = async (req, res) => {
       }
     }
 
+    // 📝 Update user login status & timestamps
+    user.isOnline = true;
+    user.lastLoginAt = new Date();
+    user.lastSeen = new Date();
+    await user.save();
+
     // 📝 Save login log
     try {
       await addUserLog(user, req);
@@ -110,6 +117,49 @@ export const login = async (req, res) => {
 
 export const logout = async (req, res) => {
   try {
+    const rawToken =
+      req.headers?.authorization?.replace("Bearer ", "") ||
+      req.cookies?.authToken;
+
+    let userId = req.body?.userId || req.user?._id || req.user?.id;
+
+    if (rawToken && !userId) {
+      // 1. Try verify with SECRET_KEY
+      try {
+        const decoded = jwt.verify(rawToken, SECRET_KEY || process.env.SECRET_KEY || "anything");
+        userId = decoded?.user?.id || decoded?.user?._id || decoded?.id || decoded?._id;
+      } catch (err1) {
+        // 2. Try verify with JWT_KEY
+        try {
+          const decoded = jwt.verify(rawToken, JWT_KEY || process.env.JWT_KEY || "AddressGuru@AE");
+          userId = decoded?.user?.id || decoded?.user?._id || decoded?.id || decoded?._id;
+        } catch (err2) {
+          // 3. Fallback to decode without verification (safe for logging out)
+          try {
+            const decoded = jwt.decode(rawToken);
+            userId = decoded?.user?.id || decoded?.user?._id || decoded?.id || decoded?._id;
+          } catch (err3) {
+            // ignore
+          }
+        }
+      }
+    }
+
+    if (userId) {
+      await User.findByIdAndUpdate(userId, {
+        isOnline: false,
+        lastLogoutAt: new Date(),
+        lastSeen: new Date(),
+      });
+      console.log(`✅ User ${userId} marked offline on logout`);
+    } else if (req.body?.email) {
+      await User.findOneAndUpdate(
+        { email: req.body.email },
+        { isOnline: false, lastLogoutAt: new Date(), lastSeen: new Date() },
+      );
+      console.log(`✅ User email ${req.body.email} marked offline on logout`);
+    }
+
     // 🔥 Clear JWT cookie
     const isProduction = process.env.NODE_ENV === "production";
     res.clearCookie("authToken", {
@@ -228,8 +278,10 @@ export const register = async (req, res) => {
         $or: [
           { phone },
           { phone: fullPhone },
-          ...(phone.startsWith("+") ? [{ phone: phone.replace(/^\+\d{1,4}/, "") }] : [])
-        ]
+          ...(phone.startsWith("+")
+            ? [{ phone: phone.replace(/^\+\d{1,4}/, "") }]
+            : []),
+        ],
       });
       if (existingPhone) {
         return successData(
