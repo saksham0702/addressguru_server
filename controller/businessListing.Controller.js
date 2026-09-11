@@ -1735,13 +1735,16 @@ export const updateListingStatus = async (req, res) => {
     // ── Send mail & notification ────────────────────────────────────────────
     if (status !== "unapproved") {
       const shouldSendEmail = req.body.sendEmail !== false;
-      const shouldSendWhatsapp = req.body.sendWhatsapp === true || !!req.body.whatsappMessage;
+      const shouldSendWhatsapp =
+        req.body.sendWhatsapp === true || !!req.body.whatsappMessage;
 
       if (shouldSendEmail) {
         try {
           await sendApprovedAndRejectedListingMail(
             listing.email || listing.createdBy?.email,
-            listing.contactPersonName || listing.createdBy?.name || listing.businessName,
+            listing.contactPersonName ||
+              listing.createdBy?.name ||
+              listing.businessName,
             status,
             status === "rejected" ? rejectionReason.trim() : null,
             {
@@ -1750,10 +1753,13 @@ export const updateListingStatus = async (req, res) => {
               listingUrl: `https://addressguru.ae/${listing.slug}`,
               previewLink: `https://addressguru.ae/${listing.slug}`,
               dashboardUrl: `https://addressguru.ae/dashboard`,
-              adminNote: status === "rejected" ? adminNote?.trim() || null : null,
+              adminNote:
+                status === "rejected" ? adminNote?.trim() || null : null,
             },
           );
-          console.log(`✅ Mail sent to ${listing.email || listing.createdBy?.email} for status: ${status}`);
+          console.log(
+            `✅ Mail sent to ${listing.email || listing.createdBy?.email} for status: ${status}`,
+          );
         } catch (mailError) {
           console.warn("❌ Mail send failed:", mailError.message);
         }
@@ -1787,8 +1793,12 @@ export const updateListingStatus = async (req, res) => {
             if (status === "approved") {
               text = `Hello *${recipientName}*, 🎉 Congratulations! Your business listing *${listing.businessName}* has been approved and is now live on AddressGuru UAE.\n\n📍 *Listing Details:*\n• *Title:* ${listing.businessName}\n• *Category:* ${categoryName}\n• *Live URL:* ${listingUrl}\n\nYou can manage your listing anytime from your dashboard:\n👉 ${dashboardUrl}\n\nThank you for choosing AddressGuru UAE!`;
             } else if (status === "rejected") {
-              const reasonText = rejectionReason ? rejectionReason.trim() : "Details need revision";
-              const noteText = adminNote ? `\n\n📝 *Admin Note:*\n${adminNote.trim()}` : "";
+              const reasonText = rejectionReason
+                ? rejectionReason.trim()
+                : "Details need revision";
+              const noteText = adminNote
+                ? `\n\n📝 *Admin Note:*\n${adminNote.trim()}`
+                : "";
               text = `Hello *${recipientName}*, Thank you for submitting *${listing.businessName}* on AddressGuru UAE. Our team reviewed your listing, but it requires updates before approval.\n\n⚠️ *Reason for Rejection:*\n${reasonText}${noteText}\n\nPlease log in to your dashboard to make the necessary changes and resubmit:\n👉 ${dashboardUrl}\n\nNeed help? Contact support@addressguru.ae`;
             }
           }
@@ -1797,10 +1807,15 @@ export const updateListingStatus = async (req, res) => {
             await sendTextMessage({ to: phone, text, countryCode });
             console.log(`✅ WhatsApp ${status} message sent to ${phone}`);
           } else {
-            console.warn(`⚠️ WhatsApp message not sent: phone (${phone}) or text is missing`);
+            console.warn(
+              `⚠️ WhatsApp message not sent: phone (${phone}) or text is missing`,
+            );
           }
         } catch (waErr) {
-          console.warn("❌ WhatsApp send failed in updateListingStatus:", waErr.message);
+          console.warn(
+            "❌ WhatsApp send failed in updateListingStatus:",
+            waErr.message,
+          );
         }
       }
 
@@ -1825,7 +1840,6 @@ export const updateListingStatus = async (req, res) => {
         console.warn("❌ Push notification failed:", pushErr.message);
       }
     }
-
 
     // Populate for response
     await listing.populate("approvedBy rejectedBy", "name email");
@@ -2258,7 +2272,10 @@ export const getAdminCompletedListings = async (req, res) => {
         .populate("subCategory", "name")
         .populate("city", "name")
         .populate("plan", "name")
-        .populate("createdBy", "name email isOnline lastSeen")
+        .populate(
+          "createdBy",
+          "name email isOnline lastLoginAt lastLogoutAt lastSeen phoneNumber mobileNumber countryCode",
+        )
         .sort({ [sortBy]: sortOrder })
         .skip(skip)
         .limit(limit)

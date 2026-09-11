@@ -1,17 +1,7 @@
-import { Server } from "socket.io";
-
-let io;
+let io = null;
 
 export const initializeSocket = (server) => {
-  io = new Server(server, {
-    path: "/api",
-    cors: {
-      origin: "*",
-      credentials: true,
-    },
-  });
-
-  return io;
+  return null;
 };
 
 export const getIO = () => io;

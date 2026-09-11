@@ -54,7 +54,8 @@ export const submitClaim = async (req, res) => {
     if (listing.isClaimed) {
       return res.status(400).json({
         success: false,
-        message: "This listing has already been claimed and verified by an owner.",
+        message:
+          "This listing has already been claimed and verified by an owner.",
       });
     }
 
@@ -64,15 +65,17 @@ export const submitClaim = async (req, res) => {
     });
 
     if (existing) {
-      if (existing.email === email || (req.user?.email === email)) {
+      if (existing.email === email || req.user?.email === email) {
         return res.status(400).json({
           success: false,
-          message: "You have already submitted a claim for this listing. It is currently under review.",
+          message:
+            "You have already submitted a claim for this listing. It is currently under review.",
         });
       }
       return res.status(400).json({
         success: false,
-        message: "A claim for this listing is already under review from another user. No new claims are accepted at this time.",
+        message:
+          "A claim for this listing is already under review from another user. No new claims are accepted at this time.",
       });
     }
 
@@ -86,7 +89,7 @@ export const submitClaim = async (req, res) => {
       claimedBy: existingUser._id, // ✅ use resolved user
       fullName: existingUser.name || fullName, // ✅ prevent fake name override
       email,
-      countryCode: countryCode || 971,
+      countryCode: String(countryCode || "971").replace(/^\+/, ""),
       mobileNumber,
       idProofImage,
       reasonForClaim,
@@ -96,16 +99,21 @@ export const submitClaim = async (req, res) => {
 
     // ✅ 1. Send Automated 2-Step Verification WhatsApp Message to Claimant
     try {
-      const waText = `Hello *${existingUser.name || fullName}*, 👋 Thank you for submitting your ownership claim for *${businessName}* on AddressGuru UAE.\n\n🔒 *2-Step Ownership Verification:*\nTo verify that you are the legitimate owner/representative of this listing, please send us a quick confirmation from the registered mobile number or official company email address associated with *${businessName}*.\n\nOur verification team will review your ID document and details within 24–48 hours and notify you here once verified.\n\nThank you,\nAddressGuru UAE Team`;
+      const waText = `Hello *${existingUser.name || fullName}*, 👋\n\nThank you for claiming your business listing *${businessName}* on AddressGuru UAE.\n\nBefore we transfer the listing ownership to your account, we require a simple 2-step verification for security purposes.\n\nYou can complete the verification using either one of the following options:\n\n*Option 1 – Email Verification*\nSend us an email from the email address currently associated with the business listing.\n\n*Option 2 – WhatsApp Verification*\nSend us a WhatsApp message from the phone number currently registered on the business listing.\n\nOnce we receive and verify either one, we will complete the ownership transfer of your business listing to your account.\n\nThank you for your cooperation and for helping us keep business listings secure.\n\nBest regards,\n*AddressGuru UAE Team*`;
 
       await sendTextMessage({
         to: String(mobileNumber),
         text: waText,
         countryCode: String(countryCode || "971"),
       });
-      console.log(`✅ WhatsApp claim 2-step verification message sent to ${mobileNumber}`);
+      console.log(
+        `✅ WhatsApp claim 2-step verification message sent to ${mobileNumber}`,
+      );
     } catch (waErr) {
-      console.warn("⚠️ WhatsApp claim submission notification failed:", waErr.message);
+      console.warn(
+        "⚠️ WhatsApp claim submission notification failed:",
+        waErr.message,
+      );
     }
 
     // ✅ 2. Send Claim Confirmation Email to Claimant
@@ -141,7 +149,8 @@ export const submitClaim = async (req, res) => {
 
     return res.status(201).json({
       success: true,
-      message: "Your claim has been submitted and is under review. Please check your WhatsApp and email for verification instructions.",
+      message:
+        "Your claim has been submitted and is under review. Please check your WhatsApp and email for verification instructions.",
       data: { id: claim._id },
     });
   } catch (err) {
@@ -317,10 +326,12 @@ export const sendClaimCustomMessage = async (req, res) => {
     let waSent = false;
     if (sendWhatsapp) {
       const phone = String(whatsappPhone || claim.mobileNumber);
-      const countryCode = String(whatsappCountryCode || claim.countryCode || "971");
+      const countryCode = String(
+        whatsappCountryCode || claim.countryCode || "971",
+      );
       const text =
         whatsappMessage ||
-        `Hello *${claim.fullName || "User"}*, 👋\n\nTo verify your ownership claim for *${businessName}* on AddressGuru UAE, please send us a quick confirmation message from the registered mobile number or official company email address associated with *${businessName}*.\n\nOnce verified, our team will approve and transfer full management access to you.\n\nThank you,\nAddressGuru UAE Team`;
+        `Hello *${claim.fullName || "User"}*, 👋\n\nThank you for claiming your business listing *${businessName}* on AddressGuru UAE.\n\nBefore we transfer the listing ownership to your account, we require a simple 2-step verification for security purposes.\n\nYou can complete the verification using either one of the following options:\n\n*Option 1 – Email Verification*\nSend us an email from the email address currently associated with the business listing.\n\n*Option 2 – WhatsApp Verification*\nSend us a WhatsApp message from the phone number currently registered on the business listing.\n\nOnce we receive and verify either one, we will complete the ownership transfer of your business listing to your account.\n\nThank you for your cooperation and for helping us keep business listings secure.\n\nBest regards,\n*AddressGuru UAE Team*`;
 
       if (phone) {
         await sendTextMessage({ to: phone, text, countryCode });
@@ -543,7 +554,9 @@ export const transferOwnership = async (req, res) => {
 
         if (phone) {
           await sendTextMessage({ to: phone, text, countryCode });
-          console.log(`✅ WhatsApp ownership transfer message sent to ${phone}`);
+          console.log(
+            `✅ WhatsApp ownership transfer message sent to ${phone}`,
+          );
         }
       } catch (waErr) {
         console.warn(
@@ -568,4 +581,3 @@ export const transferOwnership = async (req, res) => {
       .json({ success: false, message: "Server error", error: err.message });
   }
 };
-
