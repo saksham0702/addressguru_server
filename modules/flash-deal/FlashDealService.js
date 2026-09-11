@@ -181,7 +181,7 @@ export const getMyActiveFlashDeals = async (userId) => {
       if (Model) {
         const listingDoc = await Model.findById(claim.listing)
           .populate("category", "name category_name categoryName slug")
-          .select("slug businessName category");
+          .select("slug businessName title name category");
         if (listingDoc) {
           const catName =
             listingDoc.category?.name ||
@@ -193,6 +193,12 @@ export const getMyActiveFlashDeals = async (userId) => {
             slug: listingDoc.slug,
             categoryId: listingDoc.category?._id || listingDoc.category,
             categoryName: catName,
+            // The name field differs by listing type; cover common keys
+            listingName:
+              listingDoc.businessName ||
+              listingDoc.title ||
+              listingDoc.name ||
+              null,
           };
         }
       }

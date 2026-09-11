@@ -47,7 +47,11 @@ export const myActiveFlashDeals = async (req, res) => {
 export const purchaseFlashDeal = async (req, res) => {
   try {
     const { claimId, listing_id } = req.body;
-    if (!claimId) return errorData(res, 400, false, "claimId is required");
+    if (!claimId) {
+      return res
+        .status(400)
+        .json({ success: false, message: "claimId is required" });
+    }
 
     const { order, payment, isFreePlan } = await createFlashDealOrderService({
       userId: req.user.id,
@@ -55,23 +59,32 @@ export const purchaseFlashDeal = async (req, res) => {
       listingId: listing_id || null,
     });
 
+    /* FREE FLASH DEAL */
     if (isFreePlan) {
-      return successData(res, 200, true, "Deal applied", {
+      return res.status(200).json({
+        success: true,
         free_plan: true,
-        payment_id: payment._id,
+        data: { payment_id: payment._id },
       });
     }
 
-    return successData(res, 200, true, "Payment initiated", {
+    /* PAID FLASH DEAL — return same shape as createPayment so frontend
+       can read success / free_plan / data.key / data.order_id identically */
+    return res.status(200).json({
+      success: true,
       free_plan: false,
-      payment_id: payment._id,
-      order_id: order.id,
-      amount: order.amount,
-      currency: order.currency,
-      key: process.env.RAZORPAY_KEY_ID,
+      data: {
+        payment_id: payment._id,
+        order_id: order.id,
+        amount: order.amount,
+        currency: order.currency,
+        key: process.env.RAZORPAY_KEY_ID,
+      },
     });
   } catch (error) {
     console.warn("purchaseFlashDeal error:", error);
-    return errorData(res, 400, false, error.message || "Purchase failed");
+    return res
+      .status(400)
+      .json({ success: false, message: error.message || "Purchase failed" });
   }
 };
