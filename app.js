@@ -62,6 +62,8 @@ import whatsappRouter from "./modules/whatsapp/whatsapp.route.js";
 import { restoreSessionOnBoot } from "./modules/whatsapp/services/whatsappClient.js";
 import flashDealRoutes from "./modules/flash-deal/flashDeal.routes.js";
 import "./modules/whatsapp/whatsapEventhandler.js"; // registers business-event listeners
+import whatsappTemplateRouter from "./modules/whatsapp-template/whatsappTemplate.router.js";
+import { seedDefaultTemplates } from "./modules/whatsapp-template/whatsappTemplate.controller.js";
 
 var app = express();
 
@@ -71,6 +73,7 @@ startBrokenLinkCron();
 initializeFirebase();
 loadBusinessEmbeddingCache();
 restoreSessionOnBoot();
+seedDefaultTemplates();
 // await seedFeatures();
 
 // view engine setup
@@ -179,6 +182,8 @@ app.use(`/categories`, categoryRouter);
 app.use(`/sub-categories`, subCategoriesRouter);
 app.use(`/business-listing`, businessListingRouter);
 app.use(`/whatsapp`, whatsappRouter);
+app.use(`/whatsapp-template`, whatsappTemplateRouter);
+app.use(`/whatsapp/templates`, whatsappTemplateRouter);
 
 // app.use(`/${API_PREFIX}/${ROLE_PREFIX.USER}`, usersRouter);
 app.use(`/user`, usersRouter);
