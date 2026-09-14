@@ -18,6 +18,7 @@ import {
   deleteCategory,
   reviewBlog,
   getBlogsByUser,
+  uploadContentImage,
 } from "../controller/blog.Controller.js";
 import { authenticate, optionalAuth } from "../middleware/userAuth.js";
 
@@ -35,6 +36,27 @@ const blogUpload = [
   ]),
 ];
 
+// Multer: content image upload (supports both "image" and "file" field names)
+const contentImageUpload = [
+  authenticate,
+  (req, res, next) => {
+    req._uploadFolder = "blog-content-images";
+    next();
+  },
+  (req, res, next) => {
+    upload.fields([
+      { name: "image", maxCount: 1 },
+      { name: "file", maxCount: 1 },
+    ])(req, res, (err) => {
+      if (err) return next(err);
+      if (req.files) {
+        req.file = req.files.image?.[0] || req.files.file?.[0];
+      }
+      next();
+    });
+  },
+];
+
 // ── Public ────────────────────────────────────────────────────────────────────
 router.get("/get-blogs", getBlogs);
 router.get("/get-recent-blogs", getRecentBlogs);
@@ -46,6 +68,7 @@ router.get("/get-blog-categories", getCategories);
 
 // ── Admin ─────────────────────────────────────────────────────────────────────
 router.get("/admin/get-all-blogs", adminGetAllBlogs);
+router.post("/admin/upload-content-image", ...contentImageUpload, uploadContentImage);
 router.post("/admin/create-blog", authenticate, ...blogUpload, createBlog);
 router.put("/admin/update-blog/:id", authenticate, ...blogUpload, updateBlog);
 router.delete("/admin/delete-blog/:id", deleteBlog);

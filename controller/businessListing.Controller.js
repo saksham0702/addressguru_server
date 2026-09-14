@@ -26,7 +26,7 @@ import mongoose from "mongoose";
 import businessListingSchema from "../model/businessListingSchema.js";
 import { generateEmbeddingForListing } from "../modules/ai-search/businessEmbedding.service.js";
 import { upsertCacheEntry } from "../modules/ai-search/businessSearch.service.js";
-import { sendTextMessage } from "../modules/whatsapp/services/whatsappMessage.js";
+import { sendTextMessage, sendMediaMessage } from "../modules/whatsapp/services/whatsappMessage.js";
 
 const validateAdditionalFields = async (additionalFields = []) => {
   if (!additionalFields.length) return { errors: [], validated: [] };
@@ -1804,7 +1804,17 @@ export const updateListingStatus = async (req, res) => {
           }
 
           if (phone && text) {
-            await sendTextMessage({ to: phone, text, countryCode });
+            if (req.body.mediaUrl) {
+              await sendMediaMessage({
+                to: phone,
+                text,
+                countryCode,
+                mediaUrl: req.body.mediaUrl,
+                messageType: req.body.mediaType,
+              });
+            } else {
+              await sendTextMessage({ to: phone, text, countryCode });
+            }
             console.log(`✅ WhatsApp ${status} message sent to ${phone}`);
           } else {
             console.warn(

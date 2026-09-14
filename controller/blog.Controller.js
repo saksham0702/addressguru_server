@@ -33,6 +33,49 @@ export const safeParse = (value) => {
   return [];
 };
 
+// Helper: extract embedded Base64 images from content, write to disk, and replace with server path
+export const saveBase64ImagesToDisk = (htmlContent) => {
+  if (!htmlContent || typeof htmlContent !== "string") return htmlContent;
+  if (!htmlContent.includes("data:image/")) return htmlContent;
+
+  const base64Regex = /src=["'](data:image\/([a-zA-Z0-9+.-]+);base64,([A-Za-z0-9+/=]+))["']/g;
+
+  return htmlContent.replace(base64Regex, (match, dataUrl, rawExt, base64Data) => {
+    try {
+      const ext = rawExt.toLowerCase() === "jpeg" ? "jpg" : rawExt.toLowerCase();
+      const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
+      const fileName = `content-${uniqueSuffix}.${ext}`;
+
+      const now = new Date();
+      const year = now.getFullYear();
+      const month = now.toLocaleString("default", { month: "long" });
+      const day = String(now.getDate()).padStart(2, "0");
+
+      const folderPath = path.join(
+        process.cwd(),
+        "uploads",
+        "blog-content-images",
+        `${year}`,
+        `${month}`,
+        `${day}`,
+        "pending",
+        "image"
+      );
+      fs.mkdirSync(folderPath, { recursive: true });
+
+      const filePath = path.join(folderPath, fileName);
+      const buffer = Buffer.from(base64Data, "base64");
+      fs.writeFileSync(filePath, buffer);
+
+      const relativePath = `/uploads/blog-content-images/${year}/${month}/${day}/pending/image/${fileName}`;
+      return `src="${relativePath}"`;
+    } catch (e) {
+      console.error("Failed to save base64 image to disk:", e);
+      return match;
+    }
+  });
+};
+
 // Helper: format blog date for frontend
 const formatBlog = (blog) => {
   const obj = blog.toObject ? blog.toObject() : { ...blog };
@@ -293,7 +336,7 @@ export const createBlog = async (req, res) => {
     const blog = await Blog.create({
       title,
       slug,
-      content,
+      content: saveBase64ImagesToDisk(content),
       excerpt,
       coverImage,
       category_id,
@@ -371,7 +414,7 @@ export const updateBlog = async (req, res) => {
 
     if (title) blog.title = title;
 
-    if (content !== undefined) blog.content = content;
+    if (content !== undefined) blog.content = saveBase64ImagesToDisk(content);
     if (excerpt !== undefined) blog.excerpt = excerpt;
     if (category_id !== undefined) blog.category_id = category_id;
     if (tags !== undefined) blog.tags = safeParse(tags);
@@ -634,3 +677,24 @@ export const getBlogsByUser = async (req, res) => {
     return errorData(res, 500, false, "Internal server error");
   }
 };
+
+// POST /blogs/admin/upload-content-image
+export const uploadContentImage = async (req, res) => {
+  try {
+    if (!req.file) {
+      return errorData(res, 400, false, "No image file uploaded");
+    }
+
+    const normalized = normalizePath(req.file.path).replace(/^\/+/, "");
+    const mediaUrl = `/${normalized}`;
+
+    return successData(res, 200, true, "Content image uploaded successfully", {
+      url: mediaUrl,
+      filename: req.file.filename,
+    });
+  } catch (error) {
+    console.error("uploadContentImage error:", error);
+    return errorData(res, 500, false, "Failed to upload image: " + error.message);
+  }
+};
+

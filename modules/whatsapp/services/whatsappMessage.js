@@ -124,10 +124,32 @@ export async function sendTextMessage({ to, text, countryCode }) {
   }
 }
 
+const MIME_MAP = {
+  ".jpg": "image/jpeg",
+  ".jpeg": "image/jpeg",
+  ".png": "image/png",
+  ".webp": "image/webp",
+  ".gif": "image/gif",
+  ".svg": "image/svg+xml",
+  ".pdf": "application/pdf",
+  ".doc": "application/msword",
+  ".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  ".xls": "application/vnd.ms-excel",
+  ".xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  ".ppt": "application/vnd.ms-powerpoint",
+  ".pptx": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+  ".txt": "text/plain",
+  ".csv": "text/csv",
+  ".mp4": "video/mp4",
+  ".mp3": "audio/mpeg",
+  ".ogg": "audio/ogg",
+  ".wav": "audio/wav",
+};
+
 /**
  * Send image, document, video, or audio file via WhatsApp
  */
-export async function sendMediaMessage({ to, text, countryCode, file, messageType }) {
+export async function sendMediaMessage({ to, text, countryCode, file, mediaUrl, messageType }) {
   const account = await WhatsappAccount.findOne({
     status: "connected",
   });
@@ -159,27 +181,55 @@ export async function sendMediaMessage({ to, text, countryCode, file, messageTyp
     user: identity.user?._id,
   });
 
-  const filePath = file.path;
-  const mimetype = file.mimetype || "application/octet-stream";
-  const fileBuffer = fs.readFileSync(filePath);
-  const relativeMediaUrl = "/" + path.relative(process.cwd(), filePath).replace(/\\/g, "/");
+  let filePath = file?.path;
+  let mimetype = file?.mimetype;
+  let originalFileName = file?.originalname;
+  let relativeMediaUrl = "";
 
-  let detectedType = messageType || "document";
+  if (file) {
+    filePath = file.path;
+    mimetype = file.mimetype || "application/octet-stream";
+    originalFileName = file.originalname;
+    relativeMediaUrl = "/" + path.relative(process.cwd(), filePath).replace(/\\/g, "/");
+  } else if (mediaUrl) {
+    relativeMediaUrl = mediaUrl.startsWith("/") ? mediaUrl : "/" + mediaUrl;
+    const cleanPath = mediaUrl.startsWith("/") ? mediaUrl.slice(1) : mediaUrl;
+    filePath = path.join(process.cwd(), cleanPath);
+    if (!fs.existsSync(filePath)) {
+      throw new Error(`Media file not found on server at: ${cleanPath}`);
+    }
+    const ext = path.extname(filePath).toLowerCase();
+    mimetype = MIME_MAP[ext] || "application/octet-stream";
+    originalFileName = path.basename(filePath);
+  } else {
+    throw new Error("Either 'file' or 'mediaUrl' must be provided to sendMediaMessage");
+  }
+
+  const fileBuffer = fs.readFileSync(filePath);
+
+  let detectedType = messageType;
+  if (!detectedType) {
+    if (mimetype.startsWith("image/")) detectedType = "image";
+    else if (mimetype.startsWith("video/")) detectedType = "video";
+    else if (mimetype.startsWith("audio/")) detectedType = "audio";
+    else detectedType = "document";
+  }
+
   let waPayload = {};
 
-  if (mimetype.startsWith("image/")) {
+  if (detectedType === "image" || mimetype.startsWith("image/")) {
     detectedType = "image";
     waPayload = {
       image: fileBuffer,
       caption: text || undefined,
     };
-  } else if (mimetype.startsWith("video/")) {
+  } else if (detectedType === "video" || mimetype.startsWith("video/")) {
     detectedType = "video";
     waPayload = {
       video: fileBuffer,
       caption: text || undefined,
     };
-  } else if (mimetype.startsWith("audio/")) {
+  } else if (detectedType === "audio" || mimetype.startsWith("audio/")) {
     detectedType = "audio";
     waPayload = {
       audio: fileBuffer,
@@ -190,7 +240,7 @@ export async function sendMediaMessage({ to, text, countryCode, file, messageTyp
     waPayload = {
       document: fileBuffer,
       mimetype: mimetype,
-      fileName: file.originalname,
+      fileName: originalFileName,
       caption: text || undefined,
     };
   }
@@ -209,7 +259,7 @@ export async function sendMediaMessage({ to, text, countryCode, file, messageTyp
       senderPhone: account.phoneNumber || "business",
       receiverPhone: normalizedPhone,
       messageType: detectedType,
-      content: text || file.originalname,
+      content: text || originalFileName,
       mediaUrl: relativeMediaUrl,
       status: "sent",
       timestamp: new Date(),
@@ -224,13 +274,13 @@ export async function sendMediaMessage({ to, text, countryCode, file, messageTyp
       lastMessageAt: new Date(),
       lastMessagePreview: text
         ? `[${detectedType}] ${text}`
-        : `[${detectedType}] ${file.originalname}`,
+        : `[${detectedType}] ${originalFileName}`,
     });
 
     whatsappEventBus.emit(WHATSAPP_EVENTS.MESSAGE_SENT, {
       messageId: message._id,
       to: normalizedPhone,
-      text: text || file.originalname,
+      text: text || originalFileName,
     });
 
     return message;

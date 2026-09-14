@@ -1,4 +1,5 @@
 // backend/modules/whatsapp-template/whatsappTemplate.controller.js
+import path from "path";
 import Template from "../../model/templateSchema.js";
 import Plan from "../../model/plansSchema.js";
 import { DEFAULT_TEMPLATES } from "./defaultTemplates.js";
@@ -35,7 +36,7 @@ export const getTemplates = async (req, res) => {
 
     const filter = { isDeleted: false };
     if (type) filter.type = type.toLowerCase();
-    if (category) filter.category = category;
+    if (category && category !== "all") filter.category = category;
     if (search) {
       filter.$or = [
         { title: { $regex: search, $options: "i" } },
@@ -117,6 +118,39 @@ export const createTemplate = async (req, res) => {
       });
     }
 
+    let parsedVariables = [];
+    if (Array.isArray(variables)) {
+      parsedVariables = variables;
+    } else if (typeof variables === "string") {
+      try {
+        parsedVariables = JSON.parse(variables);
+      } catch {
+        parsedVariables = variables.split(",").map((v) => v.trim()).filter(Boolean);
+      }
+    }
+
+    let mediaUrl = null;
+    let mediaType = null;
+    let fileName = null;
+    let fileSize = null;
+
+    if (req.file) {
+      mediaUrl = "/" + path.relative(process.cwd(), req.file.path).replace(/\\/g, "/");
+      mediaType = req.file.mimetype.startsWith("image/")
+        ? "image"
+        : req.file.mimetype.startsWith("video/")
+        ? "video"
+        : req.file.mimetype.startsWith("audio/")
+        ? "audio"
+        : "document";
+      fileName = req.file.originalname;
+      fileSize = req.file.size;
+    } else if (req.body.mediaUrl) {
+      mediaUrl = req.body.mediaUrl;
+      mediaType = req.body.mediaType || "document";
+      fileName = req.body.fileName || path.basename(mediaUrl);
+    }
+
     const slug =
       title
         .toLowerCase()
@@ -130,7 +164,11 @@ export const createTemplate = async (req, res) => {
       type: type.toLowerCase(),
       subject: subject?.trim() || null,
       category: category || "custom",
-      variables: Array.isArray(variables) ? variables : [],
+      variables: parsedVariables,
+      mediaUrl,
+      mediaType,
+      fileName,
+      fileSize,
       status: status || "active",
       isSystem: false,
       createdBy: userId || null,
@@ -158,7 +196,7 @@ export const createTemplate = async (req, res) => {
 export const updateTemplate = async (req, res) => {
   try {
     const { id } = req.params;
-    const { title, message, type, subject, category, variables, status } =
+    const { title, message, type, subject, category, variables, status, removeMedia } =
       req.body;
 
     const updateFields = {};
@@ -167,8 +205,37 @@ export const updateTemplate = async (req, res) => {
     if (type !== undefined) updateFields.type = type.toLowerCase();
     if (subject !== undefined) updateFields.subject = subject.trim();
     if (category !== undefined) updateFields.category = category;
-    if (variables !== undefined) updateFields.variables = variables;
     if (status !== undefined) updateFields.status = status;
+
+    if (variables !== undefined) {
+      if (Array.isArray(variables)) {
+        updateFields.variables = variables;
+      } else if (typeof variables === "string") {
+        try {
+          updateFields.variables = JSON.parse(variables);
+        } catch {
+          updateFields.variables = variables.split(",").map((v) => v.trim()).filter(Boolean);
+        }
+      }
+    }
+
+    if (req.file) {
+      updateFields.mediaUrl = "/" + path.relative(process.cwd(), req.file.path).replace(/\\/g, "/");
+      updateFields.mediaType = req.file.mimetype.startsWith("image/")
+        ? "image"
+        : req.file.mimetype.startsWith("video/")
+        ? "video"
+        : req.file.mimetype.startsWith("audio/")
+        ? "audio"
+        : "document";
+      updateFields.fileName = req.file.originalname;
+      updateFields.fileSize = req.file.size;
+    } else if (removeMedia === "true" || removeMedia === true) {
+      updateFields.mediaUrl = null;
+      updateFields.mediaType = null;
+      updateFields.fileName = null;
+      updateFields.fileSize = null;
+    }
 
     const updated = await Template.findOneAndUpdate(
       { _id: id, isDeleted: false },

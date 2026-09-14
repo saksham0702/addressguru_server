@@ -50,19 +50,41 @@ const storage = multer.diskStorage({
   },
 });
 
+const ALLOWED_DOCUMENT_MIMES = [
+  "application/pdf",
+  "application/msword",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "application/vnd.ms-excel",
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  "application/vnd.ms-powerpoint",
+  "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+  "text/plain",
+  "text/csv",
+];
+
 // ─── Multer instance ──────────────────────────────────────────────────────────
 const upload = multer({
   storage,
-  limits: { fileSize: 10 * 1024 * 1024 }, // 10 MB per file
+  limits: {
+    fileSize: 25 * 1024 * 1024, // 25 MB per file
+    fieldSize: 50 * 1024 * 1024, // 50 MB text fields (e.g. rich text blog content)
+  },
   fileFilter: function (req, file, cb) {
-    const allowed = ["image/jpeg", "image/jpg", "image/png", "image/webp", "image/heic", "image/heif"];
-    if (!allowed.includes(file.mimetype)) {
-      return cb(
-        new Error("Only image files are allowed (jpeg, jpg, png, webp)"),
-        false,
-      );
+    if (
+      file.mimetype.startsWith("image/") ||
+      file.mimetype.startsWith("video/") ||
+      file.mimetype.startsWith("audio/") ||
+      ALLOWED_DOCUMENT_MIMES.includes(file.mimetype)
+    ) {
+      return cb(null, true);
     }
-    cb(null, true);
+
+    return cb(
+      new Error(
+        "File format not supported. Allowed formats: images, pdf, doc, xls, ppt, video, audio."
+      ),
+      false
+    );
   },
 });
 
