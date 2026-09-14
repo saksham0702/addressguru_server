@@ -127,6 +127,7 @@ app.use(express.static(join(__dirname, "public")));
 // Serve uploaded images publicly
 // app.use("/uploads", express.static(path.join(process.cwd(), "public")));
 app.use("/uploads", express.static(join(process.cwd(), "uploads")));
+app.use("/api/uploads", express.static(join(process.cwd(), "uploads")));
 
 app.get("/test-me", (req, res) => res.json({ message: "routing works" }));
 

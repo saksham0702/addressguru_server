@@ -10,7 +10,7 @@ import {
 import User from "../model/userSchema.js";
 import BusinessListing from "../model/businessListingSchema.js";
 import { errorData, successData } from "../services/helper.js";
-import { sendTextMessage } from "../modules/whatsapp/services/whatsappMessage.js";
+import { sendTextMessage, sendMediaMessage } from "../modules/whatsapp/services/whatsappMessage.js";
 
 // ─── POST /api/:type/:slug/claim ──────────────────────────────────────────────
 
@@ -334,7 +334,17 @@ export const sendClaimCustomMessage = async (req, res) => {
         `Hello *${claim.fullName || "User"}*, 👋\n\nThank you for claiming your business listing *${businessName}* on AddressGuru UAE.\n\nBefore we transfer the listing ownership to your account, we require a simple 2-step verification for security purposes.\n\nYou can complete the verification using either one of the following options:\n\n*Option 1 – Email Verification*\nSend us an email from the email address currently associated with the business listing.\n\n*Option 2 – WhatsApp Verification*\nSend us a WhatsApp message from the phone number currently registered on the business listing.\n\nOnce we receive and verify either one, we will complete the ownership transfer of your business listing to your account.\n\nThank you for your cooperation and for helping us keep business listings secure.\n\nBest regards,\n*AddressGuru UAE Team*`;
 
       if (phone) {
-        await sendTextMessage({ to: phone, text, countryCode });
+        if (req.body.mediaUrl) {
+          await sendMediaMessage({
+            to: phone,
+            text,
+            countryCode,
+            mediaUrl: req.body.mediaUrl,
+            messageType: req.body.mediaType,
+          });
+        } else {
+          await sendTextMessage({ to: phone, text, countryCode });
+        }
         waSent = true;
       }
     }
@@ -428,7 +438,17 @@ export const adminReviewClaim = async (req, res) => {
             : `Hello *${claim.fullName || "User"}*, We reviewed your ownership claim for *${businessName}* on AddressGuru UAE. Unfortunately, your claim was not approved at this time.${adminNote ? `\n\nReason: ${adminNote}` : ""}`);
 
         if (phone) {
-          await sendTextMessage({ to: phone, text, countryCode });
+          if (req.body.mediaUrl) {
+            await sendMediaMessage({
+              to: phone,
+              text,
+              countryCode,
+              mediaUrl: req.body.mediaUrl,
+              messageType: req.body.mediaType,
+            });
+          } else {
+            await sendTextMessage({ to: phone, text, countryCode });
+          }
           console.log(`✅ WhatsApp claim ${status} message sent to ${phone}`);
         }
       } catch (waErr) {
@@ -553,7 +573,17 @@ export const transferOwnership = async (req, res) => {
           `Hello *${claim.fullName || "User"}*, 🎉 Great news! We have verified and transferred the ownership of *${businessName}* to you on AddressGuru UAE.\n\nYou now have full owner access to manage details and view customer enquiries:\n👉 ${dashboardUrl}\n\nThank you for choosing AddressGuru UAE!`;
 
         if (phone) {
-          await sendTextMessage({ to: phone, text, countryCode });
+          if (req.body.mediaUrl) {
+            await sendMediaMessage({
+              to: phone,
+              text,
+              countryCode,
+              mediaUrl: req.body.mediaUrl,
+              messageType: req.body.mediaType,
+            });
+          } else {
+            await sendTextMessage({ to: phone, text, countryCode });
+          }
           console.log(
             `✅ WhatsApp ownership transfer message sent to ${phone}`,
           );

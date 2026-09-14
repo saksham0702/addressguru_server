@@ -28,21 +28,28 @@ const templateSchema = new mongoose.Schema(
     },
     category: {
       type: String,
-      enum: [
-        "business_pitch",
-        "listing_approved",
-        "listing_rejected",
-        "lead_notification",
-        "claim_verification",
-        "claim_transferred",
-        "claim_rejected",
-        "custom",
-      ],
       default: "custom",
+      trim: true,
     },
     variables: {
       type: [String],
       default: [],
+    },
+    mediaUrl: {
+      type: String,
+      default: null,
+    },
+    mediaType: {
+      type: String,
+      default: null, // "image", "document", "video", "audio"
+    },
+    fileName: {
+      type: String,
+      default: null,
+    },
+    fileSize: {
+      type: Number,
+      default: null,
     },
     isSystem: {
       type: Boolean,

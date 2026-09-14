@@ -65,18 +65,19 @@ export async function sendMessage(req, res) {
 
 export async function sendMedia(req, res) {
   try {
-    const { to, text, countryCode, messageType } = req.body;
+    const { to, text, countryCode, messageType, mediaUrl } = req.body;
     const file = req.file;
-    if (!to || !file) {
+    if (!to || (!file && !mediaUrl)) {
       return res
         .status(400)
-        .json({ success: false, message: "'to' and a file are required" });
+        .json({ success: false, message: "'to' and either a file or mediaUrl are required" });
     }
     const message = await messageService.sendMediaMessage({
       to,
       text,
       countryCode,
       file,
+      mediaUrl,
       messageType,
     });
     return res.status(200).json({ success: true, data: message });
