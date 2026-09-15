@@ -1,6 +1,7 @@
 import { successData, errorData } from "../../services/helper.js";
 import {
   getActiveFlashDealsForUser,
+  peekActiveFlashDealsForUser,
   attachListingToClaim,
   getMyActiveFlashDeals,
 } from "../../modules/flash-deal/FlashDealService.js";
@@ -16,6 +17,24 @@ export const checkFlashDeal = async (req, res) => {
     return successData(res, 200, true, "OK", { deals }); // plural
   } catch (error) {
     console.warn("checkFlashDeal error:", error);
+    return errorData(res, 500, false, "Internal server error");
+  }
+};
+
+/*
+ * Peek — read-only, does NOT create a claim / start the timer.
+ * Use on page-load; only returns deals that already have an active claim.
+ */
+export const peekFlashDeals = async (req, res) => {
+  try {
+    const { planType = "business" } = req.query;
+    const deals = await peekActiveFlashDealsForUser({
+      userId: req.user.id,
+      planType,
+    });
+    return successData(res, 200, true, "OK", { deals });
+  } catch (error) {
+    console.warn("peekFlashDeals error:", error);
     return errorData(res, 500, false, "Internal server error");
   }
 };
