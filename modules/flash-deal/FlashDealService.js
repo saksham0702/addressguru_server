@@ -298,3 +298,31 @@ export const getActiveFlashDealsForUser = async ({ userId, planType }) => {
 
   return results;
 };
+
+/*
+|--------------------------------------------------------------------------
+| PEEK — READ-ONLY: only return deals that ALREADY have an active claim.
+|--------------------------------------------------------------------------
+| Does NOT create any new claim and therefore does NOT start any timer.
+| Use this on page-load / navigation so the timer only starts when the
+| user explicitly picks a plan and triggers getActiveFlashDealsForUser.
+*/
+export const peekActiveFlashDealsForUser = async ({ userId, planType }) => {
+  const deals = await FlashDeal.find({ isActive: true, planType }).populate(
+    "basePlan",
+  );
+
+  if (!deals.length) return [];
+
+  const results = [];
+
+  for (const deal of deals) {
+    let claim = await FlashDealClaim.findOne({ user: userId, deal: deal._id });
+    if (!claim) continue; // no claim yet — don't create one, skip silently
+
+    claim = await settleClaim(claim);
+    if (claim.status === "active") results.push(serializeClaim(claim, deal));
+  }
+
+  return results;
+};

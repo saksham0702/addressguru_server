@@ -1,6 +1,7 @@
 import express from "express";
 import {
   checkFlashDeal,
+  peekFlashDeals,
   attachListing,
   myActiveFlashDeals,
   purchaseFlashDeal,
@@ -16,7 +17,8 @@ import { authenticate } from "../../middleware/userAuth.js";
 const router = express.Router();
 
 // ── USER ROUTES ──
-router.get("/check", authenticate, checkFlashDeal);
+router.get("/peek", authenticate, peekFlashDeals); // read-only, no timer start
+router.get("/check", authenticate, checkFlashDeal); // creates claim + starts timer
 router.post("/attach-listing", authenticate, attachListing);
 router.get("/my-active", authenticate, myActiveFlashDeals);
 router.post("/purchase", authenticate, purchaseFlashDeal);

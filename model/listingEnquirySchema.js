@@ -12,7 +12,7 @@ const ListingEnquirySchema = new mongoose.Schema(
     },
     listingModel: {
       type: String,
-      required: true,   
+      required: true,
       enum: ["BusinessListing", "Job", "PropertyListing", "MarketplaceListing"],
     },
     listingSlug: {
@@ -56,7 +56,7 @@ const ListingEnquirySchema = new mongoose.Schema(
     status: {
       type: String,
       // enum: ["new", "read", "replied"],
-      default: null ,
+      default: null,
     },
 
     // ─── Meta ─────────────────────────────────────────────────────────────
@@ -65,7 +65,7 @@ const ListingEnquirySchema = new mongoose.Schema(
 
     isDeleted: { type: Boolean, default: false },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 ListingEnquirySchema.index({ listingId: 1, createdAt: -1 });
