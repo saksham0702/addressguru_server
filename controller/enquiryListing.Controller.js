@@ -33,6 +33,11 @@ export const sendEnquiry = async (req, res) => {
     const typeNormalized = normalizeCategory(type);
     const { listing, modelName } = await resolveListing(slug, typeNormalized);
 
+    const cleanCc = (countryCode || "").toString().trim();
+    const formattedCountryCode = cleanCc
+      ? (cleanCc.startsWith("+") ? cleanCc : `+${cleanCc.replace(/\D/g, "")}`)
+      : "+971";
+
     const enquiry = await Enquiry.create({
       listingId: listing._id,
       listingModel: modelName,
@@ -40,7 +45,7 @@ export const sendEnquiry = async (req, res) => {
       listingOwner: listing.createdBy,
       fullName,
       email,
-      countryCode: countryCode || 971,
+      countryCode: formattedCountryCode,
       mobileNumber,
       message,
       ipAddress: req.ip,
@@ -88,7 +93,13 @@ export const sendEnquiry = async (req, res) => {
           ownerName,
           listing.businessName || listing.slug,
           listing.slug,
-          { fullName, email, countryCode, mobileNumber, message },
+          {
+            fullName,
+            email,
+            countryCode: formattedCountryCode,
+            mobileNumber,
+            message,
+          },
           isClaimed,
         );
         console.log(`✅ Enquiry mail sent to owner: ${ownerEmail}`);
@@ -178,18 +189,28 @@ export const getMyLeads = async (req, res) => {
     // console.log("total = ", total);
 
     // Transform to match frontend CardEnquires expectations
-    const result = enquiries.map((enq) => ({
-      id: enq._id,
-      name: enq.fullName,
-      ph_number: enq.mobileNumber,
-      phone: enq.mobileNumber,
-      email: enq.email,
-      message: enq.message || "",
-      created_at: enq.createdAt,
-      title:
-        enq.listingId?.businessName || enq.listingId?.title || enq.listingSlug,
-      listingId: enq.listingId?._id || enq.listingId,
-    }));
+    const result = enquiries.map((enq) => {
+      const cc = enq.countryCode
+        ? (String(enq.countryCode).startsWith("+")
+            ? String(enq.countryCode)
+            : `+${enq.countryCode}`)
+        : "+971";
+      return {
+        id: enq._id,
+        name: enq.fullName,
+        countryCode: cc,
+        ph_number: enq.mobileNumber,
+        phone: `${cc} ${enq.mobileNumber}`,
+        email: enq.email,
+        message: enq.message || "",
+        created_at: enq.createdAt,
+        title:
+          enq.listingId?.businessName ||
+          enq.listingId?.title ||
+          enq.listingSlug,
+        listingId: enq.listingId?._id || enq.listingId,
+      };
+    });
 
     return res.json({
       success: true,

@@ -38,7 +38,7 @@ const claimBusinessSchema = new mongoose.Schema(
       lowercase: true,
       trim: true,
     },
-    countryCode: { type: String, default: "971" },
+    countryCode: { type: String, default: "+971" },
     mobileNumber: {
       type: Number,
       required: [true, "Mobile number is required"],

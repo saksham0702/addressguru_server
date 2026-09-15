@@ -270,9 +270,14 @@ export const register = async (req, res) => {
       );
     }
 
+    const rawCc = (country_code || "+971").toString().trim();
+    const formattedCc = rawCc.startsWith("+")
+      ? rawCc
+      : `+${rawCc.replace(/\D/g, "")}`;
+
     // check duplicate phone if provided
     if (phone) {
-      const code = country_code || "+971";
+      const code = formattedCc;
       const fullPhone = `${code}${phone}`;
       const existingPhone = await User.findOne({
         $or: [
@@ -301,7 +306,7 @@ export const register = async (req, res) => {
       name,
       email,
       phone,
-      country_code: country_code || "+971",
+      country_code: formattedCc,
       whatsapp_same,
       password: hashedPassword,
       avatar,

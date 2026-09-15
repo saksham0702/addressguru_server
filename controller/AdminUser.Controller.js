@@ -107,7 +107,11 @@ export const adminCreateUser = async (req, res) => {
       password: hashedPassword,
       roles: parsedRoles,
       phone: phone || undefined,
-      country_code: country_code || undefined,
+      country_code: country_code
+        ? (String(country_code).trim().startsWith("+")
+            ? String(country_code).trim()
+            : `+${String(country_code).replace(/\D/g, "")}`)
+        : undefined,
       city: city || undefined,
       login_type: "email",
       verified_email: true,
@@ -232,7 +236,12 @@ export const adminUpdateUser = async (req, res) => {
     const updateData = {};
 
     if (name !== undefined) updateData.name = name.trim();
-    if (country_code !== undefined) updateData.country_code = country_code;
+    if (country_code !== undefined) {
+      const s = String(country_code).trim();
+      updateData.country_code = s.startsWith("+")
+        ? s
+        : `+${s.replace(/\D/g, "")}`;
+    }
     if (city !== undefined) updateData.city = city;
 
     if (status !== undefined)

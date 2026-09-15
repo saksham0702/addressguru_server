@@ -299,9 +299,15 @@ export const updatePropertyListingStep = async (req, res) => {
       case 3: {
         listing.contactPersonName = req.body.name || null;
         listing.email = req.body.email || null;
-        listing.countryCode = req.body.country_code || null;
+        const normalizeCc = (code) => {
+          if (!code) return null;
+          const s = String(code).trim();
+          if (!s) return null;
+          return s.startsWith("+") ? s : `+${s.replace(/\D/g, "")}`;
+        };
+        listing.countryCode = normalizeCc(req.body.country_code) || "+971";
         listing.mobileNumber = req.body.mobile_number || null;
-        listing.altCountryCode = req.body.alt_country_code || null;
+        listing.altCountryCode = normalizeCc(req.body.alt_country_code);
         listing.alternateMobileNumber = req.body.second_mobile_number || null;
         listing.city = req.body.city_id || null;
         listing.location = {
