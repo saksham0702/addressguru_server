@@ -505,7 +505,11 @@ const sendEnquiryReceivedMail = async (
       leadName: enquirer.fullName,
       leadEmail: enquirer.email,
       leadPhone: enquirer.mobileNumber,
-      countryCode: enquirer.countryCode || "971",
+      countryCode: enquirer.countryCode
+        ? (String(enquirer.countryCode).startsWith("+")
+            ? String(enquirer.countryCode)
+            : `+${enquirer.countryCode}`)
+        : "+971",
 
       previewMessage: enquirer.message,
       isClaimed,
@@ -613,7 +617,11 @@ const sendClaimSubmittedMail = (claimantEmail, claim, businessName) => {
   const mailBody = compiledTemplate.render({
     fullName: claim.fullName,
     email: claim.email,
-    countryCode: claim.countryCode || "971",
+    countryCode: claim.countryCode
+      ? (String(claim.countryCode).startsWith("+")
+          ? String(claim.countryCode)
+          : `+${claim.countryCode}`)
+      : "+971",
     mobileNumber: claim.mobileNumber,
     reasonForClaim: claim.reasonForClaim,
     businessName: businessName || claim.listingSlug,
@@ -708,7 +716,11 @@ const sendClaimReceivedAdminMail = (claim, businessName, listingSlug) => {
   const mailBody = compiledTemplate.render({
     fullName: claim.fullName,
     email: claim.email,
-    countryCode: claim.countryCode || "971",
+    countryCode: claim.countryCode
+      ? (String(claim.countryCode).startsWith("+")
+          ? String(claim.countryCode)
+          : `+${claim.countryCode}`)
+      : "+971",
     mobileNumber: claim.mobileNumber,
     reasonForClaim: claim.reasonForClaim,
     businessName,

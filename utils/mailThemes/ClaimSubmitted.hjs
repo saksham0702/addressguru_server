@@ -113,7 +113,7 @@
         </div>
         <div class="info-row">
           <span class="info-label">Phone</span>
-          <span class="info-value">+{{countryCode}} {{mobileNumber}}</span>
+          <span class="info-value">{{countryCode}} {{mobileNumber}}</span>
         </div>
         <div class="info-row">
           <span class="info-label">Submitted</span>

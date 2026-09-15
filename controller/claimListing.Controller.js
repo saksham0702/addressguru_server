@@ -82,6 +82,11 @@ export const submitClaim = async (req, res) => {
     const businessName =
       listing.businessName || listing.title || listing.name || listing.slug;
 
+    const cleanCc = (countryCode || "").toString().trim();
+    const formattedCountryCode = cleanCc
+      ? (cleanCc.startsWith("+") ? cleanCc : `+${cleanCc.replace(/\D/g, "")}`)
+      : "+971";
+
     const claim = await ClaimBusiness.create({
       listingId: listing._id,
       listingModel: modelName,
@@ -89,8 +94,8 @@ export const submitClaim = async (req, res) => {
       claimedBy: existingUser._id, // ✅ use resolved user
       fullName: existingUser.name || fullName, // ✅ prevent fake name override
       email,
-      countryCode: String(countryCode || "971").replace(/^\+/, ""),
-      mobileNumber,
+      countryCode: formattedCountryCode,
+      mobileNumber: Number(String(mobileNumber).replace(/\D/g, "")),
       idProofImage,
       reasonForClaim,
       ipAddress: req.ip,
@@ -102,9 +107,9 @@ export const submitClaim = async (req, res) => {
       const waText = `Hello *${existingUser.name || fullName}*, 👋\n\nThank you for claiming your business listing *${businessName}* on AddressGuru UAE.\n\nBefore we transfer the listing ownership to your account, we require a simple 2-step verification for security purposes.\n\nYou can complete the verification using either one of the following options:\n\n*Option 1 – Email Verification*\nSend us an email from the email address currently associated with the business listing.\n\n*Option 2 – WhatsApp Verification*\nSend us a WhatsApp message from the phone number currently registered on the business listing.\n\nOnce we receive and verify either one, we will complete the ownership transfer of your business listing to your account.\n\nThank you for your cooperation and for helping us keep business listings secure.\n\nBest regards,\n*AddressGuru UAE Team*`;
 
       await sendTextMessage({
-        to: String(mobileNumber),
+        to: String(mobileNumber).replace(/\D/g, ""),
         text: waText,
-        countryCode: String(countryCode || "971"),
+        countryCode: formattedCountryCode,
       });
       console.log(
         `✅ WhatsApp claim 2-step verification message sent to ${mobileNumber}`,
@@ -234,17 +239,25 @@ export const getMyClaims = async (req, res) => {
       statistics.total += s.count;
     });
 
-    const result = claims.map((c) => ({
-      ...c,
-      id: c._id,
-      title: c.listingId?.businessName || c.listingSlug,
-      name: c.fullName,
-      email: c.email,
-      phone: `${c.countryCode}${c.mobileNumber}`,
-      message: c.reasonForClaim,
-      status: c.status,
-      created_at: new Date(c.createdAt).toLocaleDateString(),
-    }));
+    const result = claims.map((c) => {
+      const cc = c.countryCode
+        ? (String(c.countryCode).startsWith("+")
+            ? String(c.countryCode)
+            : `+${c.countryCode}`)
+        : "+971";
+      return {
+        ...c,
+        id: c._id,
+        title: c.listingId?.businessName || c.listingSlug,
+        name: c.fullName,
+        email: c.email,
+        countryCode: cc,
+        phone: `${cc} ${c.mobileNumber}`,
+        message: c.reasonForClaim,
+        status: c.status,
+        created_at: new Date(c.createdAt).toLocaleDateString(),
+      };
+    });
 
     return successData(res, 200, true, "My claims fetched", {
       listings: result,
@@ -326,9 +339,12 @@ export const sendClaimCustomMessage = async (req, res) => {
     let waSent = false;
     if (sendWhatsapp) {
       const phone = String(whatsappPhone || claim.mobileNumber);
-      const countryCode = String(
-        whatsappCountryCode || claim.countryCode || "971",
-      );
+      const rawCc = String(
+        whatsappCountryCode || claim.countryCode || "+971",
+      ).trim();
+      const countryCode = rawCc.startsWith("+")
+        ? rawCc
+        : `+${rawCc.replace(/\D/g, "")}`;
       const text =
         whatsappMessage ||
         `Hello *${claim.fullName || "User"}*, 👋\n\nThank you for claiming your business listing *${businessName}* on AddressGuru UAE.\n\nBefore we transfer the listing ownership to your account, we require a simple 2-step verification for security purposes.\n\nYou can complete the verification using either one of the following options:\n\n*Option 1 – Email Verification*\nSend us an email from the email address currently associated with the business listing.\n\n*Option 2 – WhatsApp Verification*\nSend us a WhatsApp message from the phone number currently registered on the business listing.\n\nOnce we receive and verify either one, we will complete the ownership transfer of your business listing to your account.\n\nThank you for your cooperation and for helping us keep business listings secure.\n\nBest regards,\n*AddressGuru UAE Team*`;
@@ -429,8 +445,12 @@ export const adminReviewClaim = async (req, res) => {
     if (req.body.sendWhatsapp || req.body.whatsappMessage) {
       try {
         const phone = req.body.whatsappPhone || claim.mobileNumber;
-        const countryCode =
-          req.body.whatsappCountryCode || claim.countryCode || "971";
+        const rawCc = String(
+          req.body.whatsappCountryCode || claim.countryCode || "+971",
+        ).trim();
+        const countryCode = rawCc.startsWith("+")
+          ? rawCc
+          : `+${rawCc.replace(/\D/g, "")}`;
         const text =
           req.body.whatsappMessage ||
           (status === "approved"
@@ -566,8 +586,12 @@ export const transferOwnership = async (req, res) => {
     if (shouldSendWhatsapp) {
       try {
         const phone = req.body.whatsappPhone || claim.mobileNumber;
-        const countryCode =
-          req.body.whatsappCountryCode || claim.countryCode || "971";
+        const rawCc = String(
+          req.body.whatsappCountryCode || claim.countryCode || "+971",
+        ).trim();
+        const countryCode = rawCc.startsWith("+")
+          ? rawCc
+          : `+${rawCc.replace(/\D/g, "")}`;
         const text =
           req.body.whatsappMessage ||
           `Hello *${claim.fullName || "User"}*, 🎉 Great news! We have verified and transferred the ownership of *${businessName}* to you on AddressGuru UAE.\n\nYou now have full owner access to manage details and view customer enquiries:\n👉 ${dashboardUrl}\n\nThank you for choosing AddressGuru UAE!`;

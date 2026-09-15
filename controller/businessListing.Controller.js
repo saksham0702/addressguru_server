@@ -354,9 +354,15 @@ export const updateListingStep = async (req, res) => {
       case 3: {
         listing.contactPersonName = req.body.name || null;
         listing.email = req.body.email || null;
-        listing.countryCode = req.body.country_code || null;
+        const normalizeCc = (code) => {
+          if (!code) return null;
+          const s = String(code).trim();
+          if (!s) return null;
+          return s.startsWith("+") ? s : `+${s.replace(/\D/g, "")}`;
+        };
+        listing.countryCode = normalizeCc(req.body.country_code) || "+971";
         listing.mobileNumber = req.body.mobile_number || null;
-        listing.altCountryCode = req.body.alt_country_code || null;
+        listing.altCountryCode = normalizeCc(req.body.alt_country_code);
         listing.alternateMobileNumber = req.body.second_mobile_number || null;
         listing.locality = req.body.locality || null;
         listing.city = req.body.city_id || null;
@@ -1774,11 +1780,15 @@ export const updateListingStatus = async (req, res) => {
             listing.alternateMobileNumber ||
             listing.createdBy?.mobileNumber ||
             listing.createdBy?.phoneNumber;
-          const countryCode =
+          const rawCc = String(
             req.body.whatsappCountryCode ||
-            listing.countryCode ||
-            listing.createdBy?.countryCode ||
-            "971";
+              listing.countryCode ||
+              listing.createdBy?.countryCode ||
+              "+971",
+          ).trim();
+          const countryCode = rawCc.startsWith("+")
+            ? rawCc
+            : `+${rawCc.replace(/\D/g, "")}`;
           const recipientName =
             listing.contactPersonName ||
             listing.createdBy?.name ||

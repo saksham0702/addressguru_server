@@ -36,11 +36,28 @@ export const safeParse = (value) => {
 // Helper: extract embedded Base64 images from content, write to disk, and replace with server path
 export const saveBase64ImagesToDisk = (htmlContent) => {
   if (!htmlContent || typeof htmlContent !== "string") return htmlContent;
-  if (!htmlContent.includes("data:image/")) return htmlContent;
+
+  // Clean up any relative ../../ or /admin/ or localhost paths in existing <img> tags
+  let cleaned = htmlContent.replace(/<img\b([^>]*?)>/gi, (match, attrs) => {
+    return `<img${attrs.replace(/\bsrc=["']([^"']+)["']/i, (m, src) => {
+      if (src.startsWith("data:image/")) return m;
+      const uploadsMatch = src.match(/uploads\/(.+)$/i);
+      if (uploadsMatch) {
+        const isLocalhost = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?/i.test(src);
+        const hasRelativeOrAdmin = /\.\.\/|\/admin\//i.test(src);
+        if (isLocalhost || hasRelativeOrAdmin || !src.startsWith("http")) {
+          return `src="/uploads/${uploadsMatch[1]}"`;
+        }
+      }
+      return m;
+    })}>`;
+  });
+
+  if (!cleaned.includes("data:image/")) return cleaned;
 
   const base64Regex = /src=["'](data:image\/([a-zA-Z0-9+.-]+);base64,([A-Za-z0-9+/=]+))["']/g;
 
-  return htmlContent.replace(base64Regex, (match, dataUrl, rawExt, base64Data) => {
+  return cleaned.replace(base64Regex, (match, dataUrl, rawExt, base64Data) => {
     try {
       const ext = rawExt.toLowerCase() === "jpeg" ? "jpg" : rawExt.toLowerCase();
       const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
