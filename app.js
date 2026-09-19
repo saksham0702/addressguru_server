@@ -68,13 +68,39 @@ import { seedDefaultTemplates } from "./modules/whatsapp-template/whatsappTempla
 var app = express();
 
 // ─── Startup Services ──────────────────────────────────────────────────────
-connectDB();
+// IMPORTANT: restoreSessionOnBoot MUST run after DB is connected.
+// connectDB() is async; we hook into mongoose's 'open' event so WhatsApp
+// session restore never races against the DB connection.
+connectDB().then(() => {
+  restoreSessionOnBoot();
+  seedDefaultTemplates();
+
+  // ── Sweep stale "online" users every 5 minutes ──────────────────────────
+  // Marks isOnline=false for users whose lastSeen is older than 60 minutes.
+  // This fixes the admin table showing users as "Online" after they close
+  // their browser without explicitly logging out.
+  const INACTIVITY_MS = 60 * 60 * 1000; // 60 minutes
+  const sweepIdleUsers = async () => {
+    try {
+      const { default: User } = await import("./model/userSchema.js");
+      const cutoff = new Date(Date.now() - INACTIVITY_MS);
+      const result = await User.updateMany(
+        { isOnline: true, lastSeen: { $lt: cutoff } },
+        { $set: { isOnline: false } },
+      );
+      if (result.modifiedCount > 0) {
+        console.log(`[session] Marked ${result.modifiedCount} idle user(s) offline`);
+      }
+    } catch (err) {
+      console.warn("[session] sweepIdleUsers failed:", err.message);
+    }
+  };
+  setInterval(sweepIdleUsers, 5 * 60 * 1000); // every 5 minutes
+});
 startBrokenLinkCron();
 initializeFirebase();
 loadBusinessEmbeddingCache();
-restoreSessionOnBoot();
-seedDefaultTemplates();
-// await seedFeatures();
+
 
 // view engine setup
 app.set("trust proxy", 1);
