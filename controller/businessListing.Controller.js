@@ -59,23 +59,43 @@ const validateAdditionalFields = async (additionalFields = []) => {
     }
 
     // For price fields, store { amount, currency } cleanly
+    // For checkbox fields, keep only valid options from checkbox_items
+    // For dropdown fields, keep only valid option from dropdown_items
     // For everything else, store the value as-is
     let storedValue;
     if (doc.field_type === "price") {
       storedValue = {
-        amount: Number(submitted.value.amount),
-        currency: submitted.value.currency,
+        amount: Number(submitted.value?.amount),
+        currency: submitted.value?.currency || "AED",
       };
+    } else if (doc.field_type === "checkbox") {
+      const allowed = new Set(doc.checkbox_items || []);
+      storedValue = Array.isArray(submitted.value)
+        ? submitted.value.filter((val) => allowed.has(val))
+        : [];
+    } else if (doc.field_type === "dropdown") {
+      storedValue = (doc.dropdown_items || []).includes(submitted.value)
+        ? submitted.value
+        : null;
     } else {
       storedValue = submitted.value ?? null;
     }
 
-    validated.push({
+    const validatedItem = {
       field_id: doc._id,
       field_label: doc.field_label,
       field_type: doc.field_type,
       value: storedValue,
-    });
+    };
+
+    const existingIndex = validated.findIndex(
+      (v) => v.field_id.toString() === doc._id.toString(),
+    );
+    if (existingIndex >= 0) {
+      validated[existingIndex] = validatedItem;
+    } else {
+      validated.push(validatedItem);
+    }
   }
 
   return { errors, validated };
@@ -1380,7 +1400,7 @@ export const getListingBySlug = async (req, res) => {
       .populate("city", "name iconSvg slug")
       .populate(
         "additionalFields.field_id",
-        "field_label field_type is_logo is_quickinfo is_description is_additional",
+        "field_label field_type is_logo is_quickinfo is_description is_additional is_deleted is_active checkbox_items dropdown_items",
       )
       .populate("facilities", "name iconSvg")
       .populate("services", "name iconSvg")
@@ -1390,6 +1410,43 @@ export const getListingBySlug = async (req, res) => {
       .lean();
 
     if (!listing) return errorData(res, 404, false, "Listing not found");
+
+    // Clean, validate and deduplicate additionalFields
+    if (Array.isArray(listing.additionalFields)) {
+      const seenLabels = new Set();
+      const cleanedFields = [];
+
+      for (let i = listing.additionalFields.length - 1; i >= 0; i--) {
+        const item = listing.additionalFields[i];
+        if (!item || !item.field_id) continue;
+        if (item.field_id.is_deleted === true || item.field_id.is_active === false) continue;
+
+        const labelKey = (item.field_id.field_label || item.field_label || "").trim().toLowerCase();
+        if (seenLabels.has(labelKey)) continue;
+
+        let val = item.value;
+        if (item.field_type === "checkbox" && Array.isArray(val)) {
+          if (item.field_id.checkbox_items && item.field_id.checkbox_items.length > 0) {
+            const allowed = new Set(item.field_id.checkbox_items);
+            val = val.filter((v) => allowed.has(v));
+          }
+          if (!val || val.length === 0) continue;
+        } else if (item.field_type === "dropdown") {
+          if (item.field_id.dropdown_items && item.field_id.dropdown_items.length > 0) {
+            if (!item.field_id.dropdown_items.includes(val)) {
+              continue;
+            }
+          }
+        }
+
+        seenLabels.add(labelKey);
+        cleanedFields.unshift({
+          ...item,
+          value: val,
+        });
+      }
+      listing.additionalFields = cleanedFields;
+    }
 
     // ── PLAN-BASED FEATURE GATING ──────────────────────────────────────────
     const planFlags = listing.plan?.flags || {};

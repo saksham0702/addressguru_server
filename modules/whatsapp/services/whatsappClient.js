@@ -21,6 +21,7 @@ const ACCOUNT_LABEL = process.env.WHATSAPP_ACCOUNT_LABEL || "default";
 // reuses this same socket.
 let sock = null;
 let isConnecting = false;
+let reconnectTimer = null; // guard against stacking reconnect timers
 
 async function getOrCreateAccount(customLabel) {
   let account = await WhatsappAccount.findOne();
@@ -38,9 +39,20 @@ async function getOrCreateAccount(customLabel) {
 
 export async function getStatus() {
   const account = await getOrCreateAccount();
+
+  // If DB says "connected" but we have no live socket, correct the status
+  // so the frontend always sees the real state (fixes stale-after-restart bug).
+  let liveStatus = account.status;
+  if (account.status === "connected" && (!sock || !sock.user)) {
+    liveStatus = "disconnected";
+    await WhatsappAccount.findByIdAndUpdate(account._id, {
+      status: "disconnected",
+    });
+  }
+
   return {
     label: account.label,
-    status: account.status,
+    status: liveStatus,
     phoneNumber: account.phoneNumber,
     lastConnectedAt: account.lastConnectedAt,
     lastDisconnectedAt: account.lastDisconnectedAt,
@@ -105,6 +117,7 @@ export async function startConnection(label) {
 
     if (connection === "close") {
       isConnecting = false;
+      sock = null; // always clear sock on close so getStatus() reflects reality
       const statusCode = new Boom(lastDisconnect?.error)?.output?.statusCode;
       const loggedOut = statusCode === DisconnectReason.loggedOut;
 
@@ -127,14 +140,17 @@ export async function startConnection(label) {
           authKeys: null,
           qr: null,
         });
-        sock = null;
       } else {
         // Any other disconnect (network blip, restart, etc.) — reconnect automatically.
-        setTimeout(() => {
-          startConnection().catch((err) =>
-            console.error("[whatsapp] reconnect failed:", err.message),
-          );
-        }, 3000);
+        // Guard: don't stack timers if one is already pending.
+        if (!reconnectTimer) {
+          reconnectTimer = setTimeout(() => {
+            reconnectTimer = null;
+            startConnection().catch((err) =>
+              console.error("[whatsapp] reconnect failed:", err.message),
+            );
+          }, 5000);
+        }
       }
     }
   });
@@ -183,10 +199,31 @@ export function getSocketOrNull() {
 }
 
 
-/** Call once on server boot. Only reconnects if a previously-linked session exists. */
+/**
+ * Call once on server boot, AFTER the DB is connected.
+ * - Resets any stale "connected" status (server restarted, socket is gone).
+ * - Restores the Baileys session only if auth creds exist in the DB.
+ */
 export async function restoreSessionOnBoot() {
-  const account = await getOrCreateAccount();
-  if (account.authCreds) {
-    await startConnection();
+  try {
+    const account = await WhatsappAccount.findOne().select("+authCreds");
+    if (!account) return; // no account doc yet — nothing to restore
+
+    // Always reset status on boot: socket is always null at this point.
+    if (account.status === "connected" || account.status === "connecting" || account.status === "qr_pending") {
+      await WhatsappAccount.findByIdAndUpdate(account._id, {
+        status: "disconnected",
+        qr: null,
+      });
+    }
+
+    if (account.authCreds) {
+      console.log("[whatsapp] Restoring session from DB...");
+      await startConnection();
+    } else {
+      console.log("[whatsapp] No saved session found, waiting for manual connect.");
+    }
+  } catch (err) {
+    console.error("[whatsapp] restoreSessionOnBoot failed:", err.message);
   }
 }

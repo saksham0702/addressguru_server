@@ -1,4 +1,5 @@
 // controllers/featureController.js
+import mongoose from "mongoose";
 import Feature from "../model/featureSchema.js";
 import CategoryFeature from "../model/categoryFeatures.js";
 import slugify from "slugify";
@@ -153,43 +154,56 @@ export const assignFeaturesToCategory = async (req, res) => {
       payment_modes = [],
     } = req.body;
 
-    // Validate all incoming IDs actually exist and are not deleted
+    // Filter valid Mongo ObjectIds
     const allIds = [...facilities, ...services, ...courses, ...payment_modes];
+    const validObjectIds = allIds.filter((id) =>
+      mongoose.Types.ObjectId.isValid(id),
+    );
 
-    if (allIds.length === 0) {
-      return res
-        .status(400)
-        .json({ message: "No features provided to assign" });
+    let validIds = new Set();
+    if (validObjectIds.length > 0) {
+      const validFeatures = await Feature.find({
+        _id: { $in: validObjectIds },
+        isDeleted: false,
+      }).select("_id");
+      validIds = new Set(validFeatures.map((f) => f._id.toString()));
     }
 
-    const validFeatures = await Feature.find({
-      _id: { $in: allIds },
-      isDeleted: false,
-    }).select("_id");
-    const validIds = new Set(validFeatures.map((f) => f._id.toString()));
-
-    const invalidIds = allIds.filter((id) => !validIds.has(id.toString()));
-    if (invalidIds.length > 0) {
-      return res
-        .status(400)
-        .json({ message: "Some feature IDs are invalid", invalidIds });
-    }
+    // Keep only valid IDs for each array
+    const validFacilities = facilities.filter((id) =>
+      validIds.has(id?.toString()),
+    );
+    const validServices = services.filter((id) =>
+      validIds.has(id?.toString()),
+    );
+    const validCourses = courses.filter((id) =>
+      validIds.has(id?.toString()),
+    );
+    const validPaymentModes = payment_modes.filter((id) =>
+      validIds.has(id?.toString()),
+    );
 
     // Upsert: create pivot doc if not exists, else add to arrays (no duplicates)
+    const updateOps = {};
+    if (validFacilities.length) updateOps.facilities = { $each: validFacilities };
+    if (validServices.length) updateOps.services = { $each: validServices };
+    if (validCourses.length) updateOps.courses = { $each: validCourses };
+    if (validPaymentModes.length) updateOps.payment_modes = { $each: validPaymentModes };
+
+    const updateQuery = Object.keys(updateOps).length ? { $addToSet: updateOps } : {};
+
     const categoryFeature = await CategoryFeature.findOneAndUpdate(
       { category: categoryId },
-      {
-        $addToSet: {
-          ...(facilities.length && { facilities: { $each: facilities } }),
-          ...(services.length && { services: { $each: services } }),
-          ...(courses.length && { courses: { $each: courses } }),
-          ...(payment_modes.length && {
-            payment_modes: { $each: payment_modes },
-          }),
-        },
-      },
+      updateQuery,
       { upsert: true, new: true },
     ).populate("facilities services courses payment_modes");
+
+    if (categoryFeature) {
+      categoryFeature.facilities = (categoryFeature.facilities || []).filter(Boolean);
+      categoryFeature.services = (categoryFeature.services || []).filter(Boolean);
+      categoryFeature.courses = (categoryFeature.courses || []).filter(Boolean);
+      categoryFeature.payment_modes = (categoryFeature.payment_modes || []).filter(Boolean);
+    }
 
     res.status(200).json({
       message: "Features assigned to category",
@@ -224,6 +238,11 @@ export const removeFeatureFromCategory = async (req, res) => {
         .status(404)
         .json({ message: "No feature mapping found for this category" });
     }
+
+    categoryFeature.facilities = (categoryFeature.facilities || []).filter(Boolean);
+    categoryFeature.services = (categoryFeature.services || []).filter(Boolean);
+    categoryFeature.courses = (categoryFeature.courses || []).filter(Boolean);
+    categoryFeature.payment_modes = (categoryFeature.payment_modes || []).filter(Boolean);
 
     res.status(200).json({
       message: "Feature removed from category",
@@ -264,6 +283,12 @@ export const getCategoryFeatures = async (req, res) => {
         },
       });
     }
+
+    categoryFeature.facilities = (categoryFeature.facilities || []).filter(Boolean);
+    categoryFeature.services = (categoryFeature.services || []).filter(Boolean);
+    categoryFeature.courses = (categoryFeature.courses || []).filter(Boolean);
+    categoryFeature.payment_modes = (categoryFeature.payment_modes || []).filter(Boolean);
+
     res
       .status(200)
       .json({ message: "Category features fetched", data: categoryFeature });
@@ -283,42 +308,54 @@ export const assignFeaturesToSubCategory = async (req, res) => {
     } = req.body;
 
     const allIds = [...facilities, ...services, ...courses, ...payment_modes];
-    if (allIds.length === 0) {
-      return res
-        .status(400)
-        .json({ message: "No features provided to assign" });
+    const validObjectIds = allIds.filter((id) =>
+      mongoose.Types.ObjectId.isValid(id),
+    );
+
+    let validIds = new Set();
+    if (validObjectIds.length > 0) {
+      const validFeatures = await Feature.find({
+        _id: { $in: validObjectIds },
+        isDeleted: false,
+      }).select("_id");
+      validIds = new Set(validFeatures.map((f) => f._id.toString()));
     }
 
-    const validFeatures = await Feature.find({
-      _id: { $in: allIds },
-      isDeleted: false,
-    }).select("_id");
+    const validFacilities = facilities.filter((id) =>
+      validIds.has(id?.toString()),
+    );
+    const validServices = services.filter((id) =>
+      validIds.has(id?.toString()),
+    );
+    const validCourses = courses.filter((id) =>
+      validIds.has(id?.toString()),
+    );
+    const validPaymentModes = payment_modes.filter((id) =>
+      validIds.has(id?.toString()),
+    );
 
-    const validIds = new Set(validFeatures.map((f) => f._id.toString()));
-    const invalidIds = allIds.filter((id) => !validIds.has(id.toString()));
+    const updateOps = {};
+    if (validFacilities.length) updateOps.facilities = { $each: validFacilities };
+    if (validServices.length) updateOps.services = { $each: validServices };
+    if (validCourses.length) updateOps.courses = { $each: validCourses };
+    if (validPaymentModes.length) updateOps.payment_modes = { $each: validPaymentModes };
 
-    if (invalidIds.length > 0) {
-      return res
-        .status(400)
-        .json({ message: "Some feature IDs are invalid", invalidIds });
-    }
+    const updateQuery = Object.keys(updateOps).length ? { $addToSet: updateOps } : {};
 
     const categoryFeature = await CategoryFeature.findOneAndUpdate(
       { category: categoryId, subcategory: subcategoryId },
-      {
-        $addToSet: {
-          ...(facilities.length && { facilities: { $each: facilities } }),
-          ...(services.length && { services: { $each: services } }),
-          ...(courses.length && { courses: { $each: courses } }),
-          ...(payment_modes.length && {
-            payment_modes: { $each: payment_modes },
-          }),
-        },
-      },
+      updateQuery,
       { upsert: true, new: true },
     ).populate(
       "category subcategory facilities services courses payment_modes",
     );
+
+    if (categoryFeature) {
+      categoryFeature.facilities = (categoryFeature.facilities || []).filter(Boolean);
+      categoryFeature.services = (categoryFeature.services || []).filter(Boolean);
+      categoryFeature.courses = (categoryFeature.courses || []).filter(Boolean);
+      categoryFeature.payment_modes = (categoryFeature.payment_modes || []).filter(Boolean);
+    }
 
     res.status(200).json({
       message: "Features assigned to subcategory",
@@ -356,6 +393,11 @@ export const removeFeatureFromSubCategory = async (req, res) => {
         .json({ message: "No feature mapping found for this subcategory" });
     }
 
+    categoryFeature.facilities = (categoryFeature.facilities || []).filter(Boolean);
+    categoryFeature.services = (categoryFeature.services || []).filter(Boolean);
+    categoryFeature.courses = (categoryFeature.courses || []).filter(Boolean);
+    categoryFeature.payment_modes = (categoryFeature.payment_modes || []).filter(Boolean);
+
     res.status(200).json({
       message: "Feature removed from subcategory",
       data: categoryFeature,
@@ -381,6 +423,11 @@ export const getSubCategoryFeatures = async (req, res) => {
         .status(404)
         .json({ message: "No features assigned to this subcategory yet" });
     }
+
+    categoryFeature.facilities = (categoryFeature.facilities || []).filter(Boolean);
+    categoryFeature.services = (categoryFeature.services || []).filter(Boolean);
+    categoryFeature.courses = (categoryFeature.courses || []).filter(Boolean);
+    categoryFeature.payment_modes = (categoryFeature.payment_modes || []).filter(Boolean);
 
     res
       .status(200)

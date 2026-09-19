@@ -27,7 +27,38 @@ export const authenticate = async (req, res, next) => {
 
     const decoded = jwt.verify(token, SECRET_KEY);
     req.user = decoded?.user;
-    console.log("req.user auth middleware", req.user);
+
+    // ── Inactivity check: enforce 60-minute idle timeout ─────────────────────
+    // Import lazily to avoid circular dep issues at module load time.
+    const { default: User } = await import("../model/userSchema.js");
+    const userId = req.user?.id || req.user?._id;
+
+    if (userId) {
+      const dbUser = await User.findById(userId).select("lastSeen isOnline").lean();
+
+      if (dbUser) {
+        const INACTIVITY_MS = 60 * 60 * 1000; // 60 minutes
+        const now = new Date();
+        const lastSeen = dbUser.lastSeen ? new Date(dbUser.lastSeen) : null;
+        const isInactive = lastSeen && (now - lastSeen) > INACTIVITY_MS;
+
+        if (isInactive) {
+          // Mark offline in background, then reject
+          User.findByIdAndUpdate(userId, {
+            isOnline: false,
+            lastSeen: lastSeen, // keep the actual last-seen time, don't overwrite
+          }).catch(() => {});
+          return errorData(res, 401, false, "Session expired due to inactivity. Please login again.");
+        }
+
+        // Active request — update lastSeen + isOnline in background (fire-and-forget)
+        User.findByIdAndUpdate(userId, {
+          lastSeen: now,
+          isOnline: true,
+        }).catch(() => {});
+      }
+    }
+
     next();
   } catch (error) {
     if (error.name === "TokenExpiredError") {
@@ -45,7 +76,6 @@ export const optionalAuth = (req, res, next) => {
     if (token) {
       const decoded = jwt.verify(token, SECRET_KEY);
       req.user = decoded?.user;
-      console.log("req.user optional auth middleware", req.user);
     } else {
       req.user = null;
     }
