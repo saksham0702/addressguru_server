@@ -71,7 +71,7 @@ router.get("/admin/get-all-blogs", adminGetAllBlogs);
 router.post("/admin/upload-content-image", ...contentImageUpload, uploadContentImage);
 router.post("/admin/create-blog", authenticate, ...blogUpload, createBlog);
 router.put("/admin/update-blog/:id", authenticate, ...blogUpload, updateBlog);
-router.delete("/admin/delete-blog/:id", deleteBlog);
+router.delete("/admin/delete-blog/:id", authenticate, deleteBlog);
 
 router.post("/admin/create-category", createCategory);
 router.put("/admin/update-category/:id", updateCategory);

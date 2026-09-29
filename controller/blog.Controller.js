@@ -94,18 +94,32 @@ export const saveBase64ImagesToDisk = (htmlContent) => {
 };
 
 // Helper: format blog date for frontend
+export const calculateReadingTime = (content) => {
+  if (!content || typeof content !== "string") return 1;
+  const words = content
+    .replace(/<[^>]+>/g, " ")
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean).length;
+  return Math.max(1, Math.ceil(words / 200));
+};
+
 const formatBlog = (blog) => {
   const obj = blog.toObject ? blog.toObject() : { ...blog };
-  const dateSource = obj.publishedAt || obj.createdAt;
+  const dateSource = obj.publishedAt || obj.updatedAt || obj.createdAt;
+  const readingTime = obj.readingTime || calculateReadingTime(obj.content);
+  const formattedDate = dateSource
+    ? new Date(dateSource).toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      })
+    : null;
   return {
     ...obj,
-    date: dateSource
-      ? new Date(dateSource).toLocaleDateString("en-SG", {
-          year: "numeric",
-          month: "long",
-          day: "numeric",
-        })
-      : null,
+    readingTime,
+    date: formattedDate,
+    displayDate: formattedDate,
   };
 };
 
@@ -137,23 +151,26 @@ export const getBlogs = async (req, res) => {
 
     const total = await Blog.countDocuments(query);
     const blogs = await Blog.find(query)
-      .select("title slug coverImage content createdAt publishedAt category_id") // ✅ only needed fields
+      .select("title slug coverImage content createdAt updatedAt publishedAt category_id readingTime") // ✅ only needed fields
       .populate("category_id", "name") // ✅ only name, drop slug
-      .sort({ publishedAt: -1 })
+      .sort({ publishedAt: -1, updatedAt: -1, createdAt: -1 })
       .skip((Number(page) - 1) * Number(limit))
       .limit(Number(limit))
       .lean();
 
-    // ✅ Strip HTML and trim content to 300 chars
-    const trimmedBlogs = blogs.map((blog) => ({
-      ...blog,
-      content:
-        blog.content
-          ?.replace(/<[^>]+>/g, " ") // remove all HTML tags
-          .replace(/\s+/g, " ") // collapse whitespace
-          .trim()
-          .slice(0, 300) || "", // only first 300 chars
-    }));
+    // ✅ Strip HTML and trim content to 300 chars, format date & reading time
+    const trimmedBlogs = blogs.map((blog) => {
+      const formatted = formatBlog(blog);
+      return {
+        ...formatted,
+        content:
+          blog.content
+            ?.replace(/<[^>]+>/g, " ") // remove all HTML tags
+            .replace(/\s+/g, " ") // collapse whitespace
+            .trim()
+            .slice(0, 300) || "", // only first 300 chars
+      };
+    });
 
     return successData(res, 200, true, "Blogs fetched successfully", {
       blogs: trimmedBlogs,
@@ -360,6 +377,8 @@ export const createBlog = async (req, res) => {
       tags: safeParse(tags),
       relatedPosts: safeParse(relatedPosts),
       status: status || "draft",
+      publishedAt: status === "published" ? new Date() : null,
+      readingTime: calculateReadingTime(content),
       featured: featured === "true",
       author: req.user.id,
       seo: {
@@ -431,11 +450,19 @@ export const updateBlog = async (req, res) => {
 
     if (title) blog.title = title;
 
-    if (content !== undefined) blog.content = saveBase64ImagesToDisk(content);
+    if (content !== undefined) {
+      blog.content = saveBase64ImagesToDisk(content);
+      blog.readingTime = calculateReadingTime(content);
+    }
     if (excerpt !== undefined) blog.excerpt = excerpt;
     if (category_id !== undefined) blog.category_id = category_id;
     if (tags !== undefined) blog.tags = safeParse(tags);
-    if (status !== undefined) blog.status = status;
+    if (status !== undefined) {
+      blog.status = status;
+      if (status === "published" && !blog.publishedAt) {
+        blog.publishedAt = new Date();
+      }
+    }
     if (featured !== undefined) blog.featured = featured === "true";
     if (relatedPosts !== undefined) blog.relatedPosts = safeParse(relatedPosts);
 
@@ -502,7 +529,7 @@ export const adminGetAllBlogs = async (req, res) => {
     const total = await Blog.countDocuments(query);
     const blogs = await Blog.find(query)
       .select(
-        "title slug coverImage status createdAt category_id author rejectionReason",
+        "title slug coverImage status createdAt updatedAt publishedAt category_id author rejectionReason readingTime",
       )
       .populate("category_id", "name")
       .populate("author", "name")
@@ -511,8 +538,22 @@ export const adminGetAllBlogs = async (req, res) => {
       .limit(Number(limit))
       .lean();
 
+    const formattedBlogs = blogs.map((blog) => {
+      const dateSource = blog.publishedAt || blog.updatedAt || blog.createdAt;
+      return {
+        ...blog,
+        displayDate: dateSource
+          ? new Date(dateSource).toLocaleDateString("en-GB", {
+              day: "2-digit",
+              month: "long",
+              year: "numeric",
+            })
+          : null,
+      };
+    });
+
     return successData(res, 200, true, "All blogs fetched successfully", {
-      blogs,
+      blogs: formattedBlogs,
       pagination: {
         total,
         page: Number(page),
@@ -672,7 +713,7 @@ export const getBlogsByUser = async (req, res) => {
 
     const blogs = await Blog.find(query)
       .select(
-        "title slug coverImage status createdAt category_id rejectionReason",
+        "title slug coverImage status createdAt updatedAt publishedAt category_id rejectionReason readingTime",
       )
       .populate("category_id", "name")
       .sort({ createdAt: -1 })
@@ -680,8 +721,22 @@ export const getBlogsByUser = async (req, res) => {
       .limit(Number(limit))
       .lean();
 
+    const formattedBlogs = blogs.map((blog) => {
+      const dateSource = blog.publishedAt || blog.updatedAt || blog.createdAt;
+      return {
+        ...blog,
+        displayDate: dateSource
+          ? new Date(dateSource).toLocaleDateString("en-GB", {
+              day: "2-digit",
+              month: "long",
+              year: "numeric",
+            })
+          : null,
+      };
+    });
+
     return successData(res, 200, true, "User blogs fetched successfully", {
-      blogs,
+      blogs: formattedBlogs,
       pagination: {
         total,
         page: Number(page),
