@@ -76,7 +76,7 @@ blogSchema.pre("save", function (next) {
 // Auto publishedAt
 blogSchema.pre("save", function (next) {
   if (
-    this.isModified("status") &&
+    (this.isNew || this.isModified("status")) &&
     this.status === "published" &&
     !this.publishedAt
   ) {

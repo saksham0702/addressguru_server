@@ -1233,7 +1233,13 @@ export const getListingsByCategoryAndCity = async (req, res) => {
                   field_id: mongoose.Types.ObjectId.isValid(fieldIdStr)
                     ? new mongoose.Types.ObjectId(fieldIdStr)
                     : fieldIdStr,
-                  value: { $in: values },
+                  value: {
+                    $in: values.map((val) =>
+                      typeof val === "string"
+                        ? new RegExp(`^${val.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`, "i")
+                        : val,
+                    ),
+                  },
                 },
               },
             });
