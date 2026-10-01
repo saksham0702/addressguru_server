@@ -28,6 +28,11 @@ export const authenticate = async (req, res, next) => {
     const decoded = jwt.verify(token, SECRET_KEY);
     req.user = decoded?.user;
 
+    // Impersonated session: bypass inactivity check
+    if (req.user?.impersonated) {
+      return next();
+    }
+
     // ── Inactivity check: enforce 60-minute idle timeout ─────────────────────
     // Import lazily to avoid circular dep issues at module load time.
     const { default: User } = await import("../model/userSchema.js");

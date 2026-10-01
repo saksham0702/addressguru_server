@@ -48,20 +48,36 @@ export const impersonateUser = async (req, res) => {
     // Backup current admin token from request
     const adminBackupToken = extractToken(req);
 
-    // ✅ Create isolated 10-minute impersonation token
+    // ✅ Create isolated 10-minute impersonation token for the target user
     const impersonationToken = createJwtToken(
       {
+        ...targetUser.toObject(),
         _id: targetUser._id,
+        id: targetUser._id,
         roles: Array.isArray(targetUser.roles) && targetUser.roles.length > 0 ? targetUser.roles : [5],
         role: targetUser.roles?.[0] || 5,
         refId: targetUser.refId,
         email: targetUser.email,
         name: targetUser.name,
+        phone: targetUser.phone,
+        country_code: targetUser.country_code,
+        avatar: targetUser.avatar,
         impersonated: true,
         masterAdminId: adminUser._id,
       },
       "10m"
     );
+
+    // Update target user active state
+    targetUser.lastSeen = new Date();
+    targetUser.isOnline = true;
+    await targetUser.save();
+
+    // Set user authToken cookie for 10 minutes
+    res.cookie("authToken", impersonationToken, COOKIE_OPTIONS(10 * 60 * 1000));
+    if (adminBackupToken) {
+      res.cookie("adminBackupToken", adminBackupToken, COOKIE_OPTIONS(24 * 60 * 60 * 1000));
+    }
 
     return successData(res, 200, true, "Impersonation session created successfully", {
       authToken: impersonationToken,
@@ -73,7 +89,11 @@ export const impersonateUser = async (req, res) => {
         id: targetUser._id,
         name: targetUser.name,
         email: targetUser.email,
+        phone: targetUser.phone,
+        country_code: targetUser.country_code,
+        avatar: targetUser.avatar,
         roles: targetUser.roles,
+        role: targetUser.roles?.[0] || 5,
       },
     });
   } catch (error) {
@@ -85,36 +105,33 @@ export const impersonateUser = async (req, res) => {
 // ─── POST /api/impersonate/exit ───────────────────────────────────────────────
 export const exitImpersonation = async (req, res) => {
   try {
-    // ✅ Get backup token — cookie (web) or header (Bearer/mobile)
     const backupToken =
       req.cookies?.adminBackupToken ||
-      req.headers["x-admin-backup-token"];
+      req.headers["x-admin-backup-token"] ||
+      req.body?.adminBackupToken;
 
-    if (!backupToken) {
-      return errorData(res, 400, false, "No active impersonation session.");
-    }
-
-    // ✅ Verify it's a valid admin token
-    const decoded = JWT.verify(backupToken, SECRET_KEY);
-    const admin = decoded?.user;
-
-    if (!admin?.roles?.includes(ROLES.MASTER_ADMIN)) {
-      return errorData(res, 403, false, "Invalid admin backup token.");
-    }
-
-    // ✅ Restore admin token in cookie
-    res.cookie("authToken", backupToken, COOKIE_OPTIONS(24 * 60 * 60 * 1000));
-
-    // ✅ Clear backup cookie
+    // Clear user impersonation cookie
+    res.clearCookie("authToken");
     res.clearCookie("adminBackupToken");
 
-    return successData(res, 200, true, "Impersonation ended. Redirecting to admin panel.", {
-      authToken: backupToken, // Bearer clients restore this
-    });
-  } catch (error) {
-    if (error.name === "TokenExpiredError") {
-      return errorData(res, 401, false, "Admin session expired. Please login again.");
+    if (backupToken) {
+      try {
+        const decoded = JWT.verify(backupToken, SECRET_KEY);
+        const admin = decoded?.user;
+        const isAdmin = admin?.roles?.includes(ROLES.ADMIN) || admin?.role === ROLES.ADMIN;
+        if (isAdmin) {
+          res.cookie("authToken", backupToken, COOKIE_OPTIONS(24 * 60 * 60 * 1000));
+          return successData(res, 200, true, "Impersonation ended. Admin session restored.", {
+            authToken: backupToken,
+          });
+        }
+      } catch (e) {
+        console.warn("Backup token verify error on exit:", e?.message);
+      }
     }
+
+    return successData(res, 200, true, "Impersonation session ended.");
+  } catch (error) {
     console.warn("Exit impersonation error:", error);
     return errorData(res, 500, false, error.message);
   }
