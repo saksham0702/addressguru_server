@@ -17,7 +17,7 @@ import {
   exitImpersonation,
 } from "../controller/impersonateUser.Controller.js";
 import { createTemplateHistory } from "../controller/templateHistory.Controller.js";
-import { authenticate } from "../middleware/userAuth.js";
+import { authenticate, optionalAuth } from "../middleware/userAuth.js";
 import upload from "../middleware/multerConfig.js";
 
 const router = express.Router();
@@ -45,7 +45,7 @@ router.post("/change-password", authenticate, changePassword);
 router.get("/me", authenticate, getUserDetails);
 
 router.post("/user-login/:userId", authenticate, impersonateUser); // already have this
-router.post("/impersonate/exit", authenticate, exitImpersonation); // add this
+router.post("/impersonate/exit", optionalAuth, exitImpersonation); // add this
 router.put(
   "/update-profile",
   authenticate,
