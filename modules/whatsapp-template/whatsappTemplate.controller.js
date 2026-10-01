@@ -32,11 +32,22 @@ export const seedDefaultTemplates = async () => {
  */
 export const getTemplates = async (req, res) => {
   try {
-    const { type, category, search } = req.query;
+    const { type, category, search, module } = req.query;
 
     const filter = { isDeleted: false };
     if (type) filter.type = type.toLowerCase();
     if (category && category !== "all") filter.category = category;
+    if (module && module !== "all") {
+      filter.$and = filter.$and || [];
+      filter.$and.push({
+        $or: [
+          { module: module.toLowerCase() },
+          { module: "all" },
+          { module: "general" },
+          { module: { $exists: false } },
+        ],
+      });
+    }
     if (search) {
       filter.$or = [
         { title: { $regex: search, $options: "i" } },
@@ -108,7 +119,7 @@ export const getTemplateById = async (req, res) => {
 export const createTemplate = async (req, res) => {
   try {
     const userId = req.user?.id;
-    const { title, message, type, subject, category, variables, status } =
+    const { title, message, type, subject, category, module, variables, status } =
       req.body;
 
     if (!title?.trim() || !message?.trim() || !type) {
@@ -162,6 +173,7 @@ export const createTemplate = async (req, res) => {
       slug,
       message: message.trim(),
       type: type.toLowerCase(),
+      module: module ? module.toLowerCase() : "business",
       subject: subject?.trim() || null,
       category: category || "custom",
       variables: parsedVariables,
@@ -196,7 +208,7 @@ export const createTemplate = async (req, res) => {
 export const updateTemplate = async (req, res) => {
   try {
     const { id } = req.params;
-    const { title, message, type, subject, category, variables, status, removeMedia } =
+    const { title, message, type, subject, category, module, variables, status, removeMedia } =
       req.body;
 
     const updateFields = {};
@@ -205,6 +217,7 @@ export const updateTemplate = async (req, res) => {
     if (type !== undefined) updateFields.type = type.toLowerCase();
     if (subject !== undefined) updateFields.subject = subject.trim();
     if (category !== undefined) updateFields.category = category;
+    if (module !== undefined) updateFields.module = module.toLowerCase();
     if (status !== undefined) updateFields.status = status;
 
     if (variables !== undefined) {

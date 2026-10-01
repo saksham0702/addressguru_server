@@ -10,6 +10,7 @@ import googleIndexingService from "../services/googleIndexing.service.js";
 import { APP_BASE_URL } from "../services/constant.js";
 import { sendApprovedAndRejectedListingMail } from "../utils/sendMail.js";
 import { sendPushNotification } from "../services/notification.service.js";
+import { sendTextMessage } from "../modules/whatsapp/services/whatsappMessage.js";
 import CitiesSchema from "../model/CitiesSchema.js";
 import Feature from "../model/featureSchema.js";
 import mongoose from "mongoose";
@@ -914,6 +915,56 @@ export const updatePropertyListingStatus = async (req, res) => {
         }
       } catch (mailError) {
         console.error("❌ Mail/Notification send failed:", mailError.message);
+      }
+
+      // ── Send WhatsApp Message ──
+      const shouldSendWhatsapp =
+        req.body.sendWhatsapp === true || !!req.body.whatsappMessage;
+
+      if (shouldSendWhatsapp) {
+        try {
+          let userDoc = null;
+          if (listing.createdBy) {
+            userDoc = await User.findById(listing.createdBy);
+          }
+
+          const phone =
+            req.body.whatsappPhone ||
+            listing.phone ||
+            listing.mobileNumber ||
+            listing.contactPhone ||
+            listing.contactPersonPhone ||
+            userDoc?.mobileNumber ||
+            userDoc?.phoneNumber;
+
+          const countryCode =
+            req.body.whatsappCountryCode ||
+            listing.countryCode ||
+            userDoc?.countryCode ||
+            "+971";
+
+          let text = req.body.whatsappMessage;
+          if (!text) {
+            if (status === "approved") {
+              text = `Hello! 🏠 Your property "${listing.title}" has been approved and is now live on AddressGuru UAE!\n\nView live: ${APP_BASE_URL}/properties/${listing.slug}\nDashboard: ${APP_BASE_URL}/dashboard`;
+            } else if (status === "rejected") {
+              text = `Hello! Your property listing "${listing.title}" on AddressGuru UAE requires updates.\n\nReason: ${rejectionReason || "Please review guidelines"}\nDashboard: ${APP_BASE_URL}/dashboard`;
+            }
+          }
+
+          if (phone && text) {
+            await sendTextMessage({
+              to: phone,
+              message: text,
+              countryCode,
+              mediaUrl: req.body.mediaUrl || null,
+              mediaType: req.body.mediaType || "document",
+            });
+            console.log(`✅ WhatsApp ${status} message sent for property to ${phone}`);
+          }
+        } catch (waErr) {
+          console.warn("❌ WhatsApp send failed in updatePropertyListingStatus:", waErr.message);
+        }
       }
     }
 
