@@ -22,55 +22,59 @@ const COOKIE_OPTIONS = (maxAge) => ({
 export const impersonateUser = async (req, res) => {
   try {
     const admin = req.user; // set by authenticate middleware
-      
-    const adminRole = await User.findOne({ _id: admin.id, deletedAt: null });
-    // ✅ Only master admin allowed
-    if (!adminRole?.roles?.includes(1)) {
+    if (!admin) {
+      return errorData(res, 401, false, "Unauthorized. Please login as admin.");
+    }
+
+    const adminId = admin.id || admin._id;
+    const adminUser = await User.findOne({ _id: adminId, deletedAt: null });
+
+    // ✅ Only master admin (role 1) allowed
+    if (!adminUser?.roles?.includes(ROLES.ADMIN) && !admin?.roles?.includes(ROLES.ADMIN)) {
       return errorData(res, 403, false, "Access denied. Admins only.");
     }
 
-    // ✅ Find target user
-    const user = await User.findOne({ _id: req.params.userId, deletedAt: null });
-    if (!user) {
+    // ✅ Find target user (works for Google users and email/password users)
+    const targetUser = await User.findOne({ _id: req.params.userId, deletedAt: null });
+    if (!targetUser) {
       return errorData(res, 404, false, "User not found.");
     }
 
     // ✅ Prevent impersonating another master admin
-    if (user.roles?.includes(ROLES.MASTER_ADMIN)) {
+    if (targetUser.roles?.includes(ROLES.ADMIN)) {
       return errorData(res, 403, false, "Cannot impersonate another admin.");
     }
 
-    // ✅ Backup current admin token before overwriting
+    // Backup current admin token from request
     const adminBackupToken = extractToken(req);
 
-    // ✅ Create short-lived impersonation token (5 min)
+    // ✅ Create isolated 10-minute impersonation token
     const impersonationToken = createJwtToken(
       {
-        _id: user._id,
-        roles: user.roles,
-        refId: user.refId,
+        _id: targetUser._id,
+        roles: Array.isArray(targetUser.roles) && targetUser.roles.length > 0 ? targetUser.roles : [5],
+        role: targetUser.roles?.[0] || 5,
+        refId: targetUser.refId,
+        email: targetUser.email,
+        name: targetUser.name,
         impersonated: true,
-        masterAdminId: admin.id,
+        masterAdminId: adminUser._id,
       },
-      "24h"
+      "10m"
     );
 
-    // ✅ Set impersonation token in cookie
-    res.cookie("authToken", impersonationToken, COOKIE_OPTIONS(5 * 60 * 1000));
-
-    // ✅ Backup admin token in separate cookie (for cookie-based clients)
-    res.cookie("adminBackupToken", adminBackupToken, COOKIE_OPTIONS(24 * 60 * 60 * 1000));
-
-    return successData(res, 200, true, "Impersonation started", {
-      authToken: impersonationToken,  // for Bearer clients to switch token
-      adminBackupToken,               // for Bearer clients to store and use on exit
-      // user: {
-      //   id: user._id,
-      //   name: user.name,
-      //   email: user.email,
-      //   roles: user.roles,
-      // },
-      user: user,
+    return successData(res, 200, true, "Impersonation session created successfully", {
+      authToken: impersonationToken,
+      adminBackupToken,
+      expiresInSeconds: 600, // 10 minutes
+      expiresAt: Date.now() + 10 * 60 * 1000,
+      user: {
+        _id: targetUser._id,
+        id: targetUser._id,
+        name: targetUser.name,
+        email: targetUser.email,
+        roles: targetUser.roles,
+      },
     });
   } catch (error) {
     console.warn("Impersonation error:", error);

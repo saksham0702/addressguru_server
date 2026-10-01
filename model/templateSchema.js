@@ -31,6 +31,13 @@ const templateSchema = new mongoose.Schema(
       default: "custom",
       trim: true,
     },
+    module: {
+      type: String,
+      enum: ["business", "jobs", "marketplace", "property", "general", "all"],
+      default: "business",
+      trim: true,
+      lowercase: true,
+    },
     variables: {
       type: [String],
       default: [],

@@ -1,11 +1,14 @@
 // backend/modules/whatsapp-template/defaultTemplates.js
 
 export const DEFAULT_TEMPLATES = [
-  // ─── 1. PITCH PLANS (WHATSAPP) ──────────────────────────────────────────
+  // ═════════════════════════════════════════════════════════════════════════
+  // 🏢 1. BUSINESS LISTINGS
+  // ═════════════════════════════════════════════════════════════════════════
   {
     title: "Pitch Business Growth Plans",
     slug: "pitch_plans",
     type: "whatsapp",
+    module: "business",
     category: "business_pitch",
     message: `Hello *{{name}}*, 🚀 Take *{{businessName}}* to the next level on AddressGuru UAE!
 
@@ -33,12 +36,11 @@ Need help choosing the right plan? Reply directly to this message!`,
     isSystem: true,
     status: "active",
   },
-
-  // ─── 2. LISTING APPROVED (WHATSAPP) ─────────────────────────────────────
   {
     title: "Listing Approved & Live",
     slug: "listing_approved",
     type: "whatsapp",
+    module: "business",
     category: "listing_approved",
     message: `Hello *{{name}}*, 🎉 Congratulations! Your business listing *{{businessName}}* has been approved and is now live on AddressGuru UAE.
 
@@ -55,12 +57,11 @@ Thank you for partnering with AddressGuru UAE!`,
     isSystem: true,
     status: "active",
   },
-
-  // ─── 3. LISTING REJECTED (WHATSAPP) ─────────────────────────────────────
   {
     title: "Listing Needs Updates / Rejected",
     slug: "listing_rejected",
     type: "whatsapp",
+    module: "business",
     category: "listing_rejected",
     message: `Hello *{{name}}*, Thank you for submitting *{{businessName}}* on AddressGuru UAE.
 
@@ -84,12 +85,11 @@ Need help? Reply to this message or contact support@addressguru.ae.`,
     isSystem: true,
     status: "active",
   },
-
-  // ─── 4. CLAIM 2-STEP VERIFICATION (WHATSAPP) ───────────────────────────
   {
     title: "Claim 2-Step Ownership Verification",
     slug: "claim_verification_request",
     type: "whatsapp",
+    module: "business",
     category: "claim_verification",
     message: `Hello *{{name}}*, 👋
 
@@ -115,12 +115,11 @@ Best regards,
     isSystem: true,
     status: "active",
   },
-
-  // ─── 5. CLAIM TRANSFERRED (WHATSAPP) ────────────────────────────────────
   {
     title: "Claim Ownership Transferred",
     slug: "claim_transferred",
     type: "whatsapp",
+    module: "business",
     category: "claim_transferred",
     message: `Hello *{{name}}*, 🎉 Great news! We have verified your ownership claim and transferred the business listing *{{businessName}}* to your account on AddressGuru UAE.
 
@@ -134,12 +133,11 @@ Thank you for choosing AddressGuru UAE!`,
     isSystem: true,
     status: "active",
   },
-
-  // ─── 6. CLAIM REJECTED (WHATSAPP) ───────────────────────────────────────
   {
     title: "Claim Request Rejected",
     slug: "claim_rejected",
     type: "whatsapp",
+    module: "business",
     category: "claim_rejected",
     message: `Hello *{{name}}*, We have reviewed your ownership claim for the listing *{{businessName}}* on AddressGuru UAE.
 
@@ -154,12 +152,11 @@ If you believe this is an error or have additional supporting documents, please 
     isSystem: true,
     status: "active",
   },
-
-  // ─── 7. LEAD NOTIFICATION TO BUSINESS OWNER (WHATSAPP) ─────────────────
   {
     title: "New Customer Lead Alert",
     slug: "lead_notification",
     type: "whatsapp",
+    module: "business",
     category: "lead_notification",
     message: `Hello *{{name}}*, 🔔 Great news! You have received a new customer lead for *{{businessName}}* on AddressGuru UAE.
 
@@ -188,28 +185,228 @@ View all your enquiries in your dashboard:
     status: "active",
   },
 
-  // ─── 8. LEAD REPLY TO CUSTOMER (WHATSAPP) ───────────────────────────────
+  // ═════════════════════════════════════════════════════════════════════════
+  // 💼 2. JOBS LISTINGS
+  // ═════════════════════════════════════════════════════════════════════════
   {
-    title: "Customer Enquiry Follow-up",
-    slug: "lead_reply",
+    title: "Job Post Approved & Live",
+    slug: "job_approved",
     type: "whatsapp",
+    module: "jobs",
+    category: "listing_approved",
+    message: `Hello *{{name}}*, 🎉 Great news! Your job post *{{businessName}}* is now approved and live on AddressGuru UAE.
+
+📋 *Job Details:*
+• *Position:* {{businessName}}
+• *Category:* {{category}}
+• *Live Link:* {{listingUrl}}
+
+Job seekers across the UAE can now view and apply directly. Track applicants from your dashboard:
+👉 {{dashboardUrl}}
+
+Thank you for hiring with AddressGuru UAE!`,
+    variables: ["name", "businessName", "category", "listingUrl", "dashboardUrl"],
+    isSystem: true,
+    status: "active",
+  },
+  {
+    title: "Job Post Needs Updates / Rejected",
+    slug: "job_rejected",
+    type: "whatsapp",
+    module: "jobs",
+    category: "listing_rejected",
+    message: `Hello *{{name}}*, Thank you for submitting your job opening *{{businessName}}* on AddressGuru UAE.
+
+Our moderation team reviewed your job post, but it requires updates before it can be published.
+
+⚠️ *Reason for Rejection:*
+{{rejectionReason}}
+{{adminNote}}
+
+Please log in to your dashboard to make the updates and resubmit:
+👉 {{dashboardUrl}}
+
+Need assistance? Reply directly to this message.`,
+    variables: ["name", "businessName", "rejectionReason", "adminNote", "dashboardUrl"],
+    isSystem: true,
+    status: "active",
+  },
+  {
+    title: "New Job Applicant Alert",
+    slug: "job_applicant_alert",
+    type: "whatsapp",
+    module: "jobs",
     category: "lead_notification",
-    message: `Hello *{{leadName}}*, 👋 Thank you for reaching out regarding *{{businessName}}* on AddressGuru UAE.
+    message: `Hello *{{name}}*, 🔔 You have received a new application for *{{businessName}}* on AddressGuru UAE!
 
-We received your enquiry:
-"{{leadMessage}}"
+👤 *Candidate Info:*
+• *Name:* {{leadName}}
+• *Phone:* {{leadPhone}}
+• *Email:* {{leadEmail}}
+• *Note:* {{leadMessage}}
 
-Our team is here to assist you. Please let us know if you have any questions or how we can help!`,
-    variables: ["leadName", "businessName", "leadMessage"],
+Review all candidate resumes and manage applications here:
+👉 {{dashboardUrl}}`,
+    variables: ["name", "businessName", "leadName", "leadPhone", "leadEmail", "leadMessage", "dashboardUrl"],
+    isSystem: true,
+    status: "active",
+  },
+  {
+    title: "Upgrade to Featured Job Post",
+    slug: "job_pitch",
+    type: "whatsapp",
+    module: "jobs",
+    category: "business_pitch",
+    message: `Hello *{{name}}*, 🚀 Want to hire faster for *{{businessName}}* on AddressGuru UAE?
+
+Promote your job posting to get:
+✨ Featured badge on job search
+✨ Up to 5x more candidate applications
+✨ Direct notification to registered job seekers
+
+👉 Feature your job listing now:
+{{upgradeLink}}`,
+    variables: ["name", "businessName", "upgradeLink", "dashboardUrl"],
     isSystem: true,
     status: "active",
   },
 
-  // ─── 9. EMAIL PITCH PLANS ───────────────────────────────────────────────
+  // ═════════════════════════════════════════════════════════════════════════
+  // 🛒 3. MARKETPLACE LISTINGS
+  // ═════════════════════════════════════════════════════════════════════════
+  {
+    title: "Product / Item Approved & Live",
+    slug: "marketplace_approved",
+    type: "whatsapp",
+    module: "marketplace",
+    category: "listing_approved",
+    message: `Hello *{{name}}*, 🎉 Congratulations! Your marketplace listing *{{businessName}}* has been approved and is now live on AddressGuru UAE!
+
+🛒 *Item Details:*
+• *Item:* {{businessName}}
+• *Category:* {{category}}
+• *View Live:* {{listingUrl}}
+
+Buyers across the UAE can now browse and contact you directly. Manage your listings anytime:
+👉 {{dashboardUrl}}`,
+    variables: ["name", "businessName", "category", "listingUrl", "dashboardUrl"],
+    isSystem: true,
+    status: "active",
+  },
+  {
+    title: "Product Needs Updates / Rejected",
+    slug: "marketplace_rejected",
+    type: "whatsapp",
+    module: "marketplace",
+    category: "listing_rejected",
+    message: `Hello *{{name}}*, Thank you for listing *{{businessName}}* on AddressGuru Marketplace.
+
+Our team reviewed your product listing, but it requires modifications to meet our marketplace guidelines.
+
+⚠️ *Reason for Rejection:*
+{{rejectionReason}}
+{{adminNote}}
+
+Please update your listing photos or description in your dashboard:
+👉 {{dashboardUrl}}
+
+Need help? Reply to this message.`,
+    variables: ["name", "businessName", "rejectionReason", "adminNote", "dashboardUrl"],
+    isSystem: true,
+    status: "active",
+  },
+  {
+    title: "New Buyer Inquiry Alert",
+    slug: "marketplace_buyer_inquiry",
+    type: "whatsapp",
+    module: "marketplace",
+    category: "lead_notification",
+    message: `Hello *{{name}}*, 💬 A buyer is interested in your item *{{businessName}}* on AddressGuru UAE!
+
+👤 *Buyer Contact:*
+• *Name:* {{leadName}}
+• *Phone:* {{leadPhone}}
+• *Email:* {{leadEmail}}
+• *Inquiry:* "{{leadMessage}}"
+
+Connect with the buyer quickly to close the sale!
+👉 {{dashboardUrl}}`,
+    variables: ["name", "businessName", "leadName", "leadPhone", "leadEmail", "leadMessage", "dashboardUrl"],
+    isSystem: true,
+    status: "active",
+  },
+
+  // ═════════════════════════════════════════════════════════════════════════
+  // 🏠 4. PROPERTY LISTINGS
+  // ═════════════════════════════════════════════════════════════════════════
+  {
+    title: "Property Approved & Live",
+    slug: "property_approved",
+    type: "whatsapp",
+    module: "property",
+    category: "listing_approved",
+    message: `Hello *{{name}}*, 🏠 Fantastic news! Your property listing *{{businessName}}* is approved and published on AddressGuru Real Estate UAE.
+
+📍 *Property Details:*
+• *Title:* {{businessName}}
+• *Type / Category:* {{category}}
+• *Live Link:* {{listingUrl}}
+
+Tenants and investors can now view and enquire directly. Manage viewings and leads from your dashboard:
+👉 {{dashboardUrl}}`,
+    variables: ["name", "businessName", "category", "listingUrl", "dashboardUrl"],
+    isSystem: true,
+    status: "active",
+  },
+  {
+    title: "Property Needs Updates / Rejected",
+    slug: "property_rejected",
+    type: "whatsapp",
+    module: "property",
+    category: "listing_rejected",
+    message: `Hello *{{name}}*, Thank you for submitting *{{businessName}}* on AddressGuru UAE Properties.
+
+Our compliance team reviewed your submission, but it requires changes before it can be activated.
+
+⚠️ *Reason for Rejection:*
+{{rejectionReason}}
+{{adminNote}}
+
+Please log in to your dashboard to provide the updated details or verification documents:
+👉 {{dashboardUrl}}`,
+    variables: ["name", "businessName", "rejectionReason", "adminNote", "dashboardUrl"],
+    isSystem: true,
+    status: "active",
+  },
+  {
+    title: "New Property Viewing / Lead Request",
+    slug: "property_lead_alert",
+    type: "whatsapp",
+    module: "property",
+    category: "lead_notification",
+    message: `Hello *{{name}}*, 🔔 High-intent client enquiry for your property *{{businessName}}* on AddressGuru UAE!
+
+👤 *Client Information:*
+• *Name:* {{leadName}}
+• *Phone:* {{leadPhone}}
+• *Email:* {{leadEmail}}
+• *Message / Viewing Request:* "{{leadMessage}}"
+
+Contact this client promptly to arrange a viewing:
+👉 {{dashboardUrl}}`,
+    variables: ["name", "businessName", "leadName", "leadPhone", "leadEmail", "leadMessage", "dashboardUrl"],
+    isSystem: true,
+    status: "active",
+  },
+
+  // ═════════════════════════════════════════════════════════════════════════
+  // 📧 5. EMAIL TEMPLATES
+  // ═════════════════════════════════════════════════════════════════════════
   {
     title: "Business Plan Upgrade Offer Email",
     slug: "email_pitch_plans",
     type: "email",
+    module: "business",
     category: "business_pitch",
     subject: "Unlock Premium Growth for {{businessName}} — AddressGuru UAE",
     message: `<div style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
@@ -232,18 +429,17 @@ Our team is here to assist you. Please let us know if you have any questions or 
     isSystem: true,
     status: "active",
   },
-
-  // ─── 10. EMAIL LISTING APPROVED ─────────────────────────────────────────
   {
     title: "Listing Approved Notification Email",
     slug: "email_listing_approved",
     type: "email",
+    module: "business",
     category: "listing_approved",
-    subject: "Your Business Listing {{businessName}} is Live! — AddressGuru UAE",
+    subject: "Your Listing {{businessName}} is Live! — AddressGuru UAE",
     message: `<div style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
   <h2 style="color: #16a34a;">Congratulations! Your Listing is Live 🎉</h2>
   <p>Hello <strong>{{name}}</strong>,</p>
-  <p>Your business listing <strong>{{businessName}}</strong> has passed our verification and is now officially published on AddressGuru UAE.</p>
+  <p>Your listing <strong>{{businessName}}</strong> has passed our verification and is now officially published on AddressGuru UAE.</p>
 
   <p style="text-align: center; margin: 25px 0;">
     <a href="{{listingUrl}}" style="background: #16a34a; color: #ffffff; text-decoration: none; padding: 10px 24px; border-radius: 6px; font-weight: bold; display: inline-block; margin-right: 10px;">View Live Listing</a>
@@ -254,12 +450,11 @@ Our team is here to assist you. Please let us know if you have any questions or 
     isSystem: true,
     status: "active",
   },
-
-  // ─── 11. EMAIL LISTING REJECTED ─────────────────────────────────────────
   {
     title: "Listing Action Required Email",
     slug: "email_listing_rejected",
     type: "email",
+    module: "business",
     category: "listing_rejected",
     subject: "Listing Update Required: {{businessName}} — AddressGuru UAE",
     message: `<div style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
@@ -280,3 +475,4 @@ Our team is here to assist you. Please let us know if you have any questions or 
     status: "active",
   },
 ];
+

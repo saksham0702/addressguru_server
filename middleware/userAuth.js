@@ -2,16 +2,16 @@ import jwt from "jsonwebtoken";
 import { SECRET_KEY } from "../services/constant.js";
 import { errorData } from "../services/helper.js";
 
-// ─── Helper: extract token from cookie or Authorization header ────────────────
+// ─── Helper: extract token from Authorization header or cookie ────────────────
 const extractToken = (req) => {
-  // 1. Cookie (web clients)
-  if (req?.cookies?.authToken) return req?.cookies?.authToken;
-
-  // 2. Bearer token (mobile / Postman / API clients)
+  // 1. Bearer token (explicit client header / API / per-tab session)
   const authHeader = req?.headers?.authorization;
   if (authHeader && authHeader?.startsWith("Bearer ")) {
     return authHeader?.split(" ")[1];
   }
+
+  // 2. Cookie (web fallback)
+  if (req?.cookies?.authToken) return req?.cookies?.authToken;
 
   return null;
 };
