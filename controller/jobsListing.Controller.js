@@ -300,7 +300,13 @@ export const saveJobStep = async (req, res) => {
         });
       }
 
-      if (parsedContact) job.contact = parsedContact;
+      if (parsedContact) {
+        job.contact = parsedContact;
+        job.contactPersonName = parsedContact.name || job.contactPersonName || null;
+        job.countryCode = parsedContact.countryCode || job.countryCode || "+971";
+        job.mobileNumber = parsedContact.phone || parsedContact.whatsapp || job.mobileNumber || null;
+        job.phone = parsedContact.phone || job.phone || null;
+      }
 
       if (parsedCompany) {
         const companyLocality = parsedCompany.locality;
@@ -530,10 +536,27 @@ export const getAllJobsWithPaginationAndFilters = async (req, res) => {
     if (req.query.isUrgent !== undefined)
       filter.isUrgent = req.query.isUrgent === "true";
 
-    if (req.query.availableStatus !== undefined)
-      filter.availableStatus = req.query.availableStatus;
-
     if (req.query.userId !== undefined) filter.createdBy = req.query.userId;
+
+    if (req.query.role && req.query.role !== "all") {
+      const roleNum = Number(req.query.role);
+      if (!isNaN(roleNum)) {
+        const roleUserIds = await User.distinct("_id", {
+          $or: [{ roles: roleNum }, { role: roleNum }],
+        });
+        if (filter.createdBy) {
+          const target = Array.isArray(filter.createdBy)
+            ? filter.createdBy.map((id) => id.toString())
+            : [filter.createdBy.toString()];
+          const matched = roleUserIds.filter((id) =>
+            target.includes(id.toString()),
+          );
+          filter.createdBy = { $in: matched };
+        } else {
+          filter.createdBy = { $in: roleUserIds };
+        }
+      }
+    }
 
     if (req.query.sector) filter.sector = req.query.sector;
     if (req.query.jobType) filter.jobType = req.query.jobType;
@@ -625,9 +648,9 @@ export const getAllJobsWithPaginationAndFilters = async (req, res) => {
         Job.find(filter)
           .populate("category", "name")
           .populate("subCategory", "name")
-          .populate("createdBy", "name email phone isOnline")
-          .populate("approvedBy", "name email phone")
-          .populate("rejectedBy", "name email phone")
+          .populate("createdBy", "name email phone country_code isOnline roles")
+          .populate("approvedBy", "name email phone country_code")
+          .populate("rejectedBy", "name email phone country_code")
           .populate("plan")
           .sort({ createdAt: -1 })
           .skip(skip)

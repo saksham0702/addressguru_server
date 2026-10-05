@@ -458,7 +458,7 @@ export const upsertAdditionalFields = async (req, res) => {
 export const getAllPropertiesWithPaginationAndFilters = async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 20;
+    const limit = parseInt(req.query.limit) || 10;
     const skip = (page - 1) * limit;
 
     // ✅ DEBUG: Log what's actually coming in
@@ -466,6 +466,17 @@ export const getAllPropertiesWithPaginationAndFilters = async (req, res) => {
 
     // Base filter — only non-deleted
     const filter = { isDeleted: false };
+
+    // Role filter
+    if (req.query.role && req.query.role !== "all") {
+      const roleNum = Number(req.query.role);
+      if (!isNaN(roleNum)) {
+        const roleUserIds = await User.distinct("_id", {
+          $or: [{ roles: roleNum }, { role: roleNum }],
+        });
+        filter.createdBy = { $in: roleUserIds };
+      }
+    }
 
     // Optional filters from query params
     if (req.query.category_id) filter.category = req.query.category_id;
@@ -584,7 +595,9 @@ export const getAllPropertiesWithPaginationAndFilters = async (req, res) => {
         .populate("subCategory", "name")
         .populate("city", "name")
         .populate("plan", "name")
-        .populate("createdBy", "name")
+        .populate("createdBy", "name email phone country_code roles")
+        .populate("approvedBy", "name email phone country_code")
+        .populate("rejectedBy", "name email phone country_code")
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit)
@@ -993,7 +1006,7 @@ export const updatePropertyListingStatus = async (req, res) => {
 export const getAdminCompletedListings = async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 20;
+    const limit = parseInt(req.query.limit) || 10;
     const skip = (page - 1) * limit;
 
     const filter = {
@@ -1003,11 +1016,21 @@ export const getAdminCompletedListings = async (req, res) => {
 
     if (req.query.status) filter.status = req.query.status;
 
+    if (req.query.role && req.query.role !== "all") {
+      const roleNum = Number(req.query.role);
+      if (!isNaN(roleNum)) {
+        const roleUserIds = await User.distinct("_id", {
+          $or: [{ roles: roleNum }, { role: roleNum }],
+        });
+        filter.createdBy = { $in: roleUserIds };
+      }
+    }
+
     const [listings, total] = await Promise.all([
       PropertyListing.find(filter)
         .populate("category", "name")
         .populate("city", "name")
-        .populate("createdBy", "name email")
+        .populate("createdBy", "name email phone country_code roles")
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit)

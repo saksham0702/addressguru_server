@@ -2196,7 +2196,7 @@ export const unpublishListing = async (req, res) => {
 export const getAdminCompletedListings = async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 20;
+    const limit = parseInt(req.query.limit) || 10;
     const skip = (page - 1) * limit;
     const {
       search,
@@ -2210,6 +2210,7 @@ export const getAdminCompletedListings = async (req, res) => {
       leadStatus, // "hot" | "warm" | "cold" | "new"
       followUpFilter, // "overdue" | "today" | "tomorrow" | "this_week" | "no_followup"
       onlineUsers,
+      role, // creator role: 1 (Admin), 2 (Editor), 3 (Agent), 4 (BDE), 5 (User)
     } = req.query;
 
     const filter = {};
@@ -2236,10 +2237,20 @@ export const getAdminCompletedListings = async (req, res) => {
       filter.leadStatus = leadStatus;
     }
 
-    // online users filter
+    // ── role and online users filter ──────────────────────────────────────────
+    const userQuery = {};
     if (onlineUsers === "true") {
-      const onlineUserIds = await User.distinct("_id", { isOnline: true });
-      filter.createdBy = { $in: onlineUserIds };
+      userQuery.isOnline = true;
+    }
+    if (role && role !== "all") {
+      const roleNum = Number(role);
+      if (!isNaN(roleNum)) {
+        userQuery.$or = [{ roles: roleNum }, { role: roleNum }];
+      }
+    }
+    if (Object.keys(userQuery).length > 0) {
+      const matchedUserIds = await User.distinct("_id", userQuery);
+      filter.createdBy = { $in: matchedUserIds };
     }
 
     // ── search ────────────────────────────────────────────────────────────────
@@ -2357,7 +2368,7 @@ export const getAdminCompletedListings = async (req, res) => {
         .populate("plan", "name")
         .populate(
           "createdBy",
-          "name email isOnline lastLoginAt lastLogoutAt lastSeen phoneNumber mobileNumber countryCode",
+          "name email isOnline lastLoginAt lastLogoutAt lastSeen phoneNumber mobileNumber countryCode roles",
         )
         .sort({ [sortBy]: sortOrder })
         .skip(skip)
