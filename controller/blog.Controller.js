@@ -523,20 +523,29 @@ export const adminGetAllBlogs = async (req, res) => {
     const { page = 1, limit = 10, status, search } = req.query;
 
     const query = {};
-    if (status) query.status = status;
+    if (status && status !== "all") query.status = status;
     if (search) query.title = { $regex: search, $options: "i" };
 
-    const total = await Blog.countDocuments(query);
-    const blogs = await Blog.find(query)
-      .select(
-        "title slug coverImage status createdAt updatedAt publishedAt category_id author rejectionReason readingTime",
-      )
-      .populate("category_id", "name")
-      .populate("author", "name")
-      .sort({ createdAt: -1 })
-      .skip((Number(page) - 1) * Number(limit))
-      .limit(Number(limit))
-      .lean();
+    const searchFilter = search ? { title: { $regex: search, $options: "i" } } : {};
+
+    const [total, blogs, allCount, publishedCount, draftCount, rejectedCount] =
+      await Promise.all([
+        Blog.countDocuments(query),
+        Blog.find(query)
+          .select(
+            "title slug coverImage status createdAt updatedAt publishedAt category_id author rejectionReason readingTime",
+          )
+          .populate("category_id", "name")
+          .populate("author", "name")
+          .sort({ createdAt: -1 })
+          .skip((Number(page) - 1) * Number(limit))
+          .limit(Number(limit))
+          .lean(),
+        Blog.countDocuments(searchFilter),
+        Blog.countDocuments({ ...searchFilter, status: "published" }),
+        Blog.countDocuments({ ...searchFilter, status: "draft" }),
+        Blog.countDocuments({ ...searchFilter, status: "rejected" }),
+      ]);
 
     const formattedBlogs = blogs.map((blog) => {
       const dateSource = blog.publishedAt || blog.updatedAt || blog.createdAt;
@@ -559,6 +568,12 @@ export const adminGetAllBlogs = async (req, res) => {
         page: Number(page),
         limit: Number(limit),
         totalPages: Math.ceil(total / Number(limit)),
+      },
+      statusCounts: {
+        all: allCount,
+        published: publishedCount,
+        draft: draftCount,
+        rejected: rejectedCount,
       },
     });
   } catch (error) {

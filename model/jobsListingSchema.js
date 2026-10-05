@@ -155,6 +155,14 @@ const jobSchema = new mongoose.Schema(
       applyEmail: { type: String }, // dedicated apply email (can differ from contact)
     },
 
+    // ─── Direct Contact Fields (mirroring business, marketplace & property listings) ───
+    contactPersonName: { type: String },
+    countryCode: { type: String },
+    mobileNumber: { type: String },
+    phone: { type: String },
+    altCountryCode: { type: String },
+    alternateMobileNumber: { type: String },
+
     // ─── Company Info ─────────────────────────────────────────
     company: {
       name: { type: String },

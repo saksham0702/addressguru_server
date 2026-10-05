@@ -361,6 +361,17 @@ export const getAllMarketplaceListings = async (req, res) => {
     // Base filter — only non-deleted listings
     const filter = { isDeleted: false };
 
+    // Role filter
+    if (req.query.role && req.query.role !== "all") {
+      const roleNum = Number(req.query.role);
+      if (!isNaN(roleNum)) {
+        const roleUserIds = await User.distinct("_id", {
+          $or: [{ roles: roleNum }, { role: roleNum }],
+        });
+        filter.createdBy = { $in: roleUserIds };
+      }
+    }
+
     // Default to 'approved' if no status is specified
     if (!req.query.status) {
       filter.status = "approved";
@@ -444,9 +455,9 @@ export const getAllMarketplaceListings = async (req, res) => {
         .populate("subCategory", "name")
         .populate("city", "name")
         .populate("plan", "name")
-        .populate("createdBy", "name email phone")
-        .populate("approvedBy", "name email phone")
-        .populate("rejectedBy", "name email phone")
+        .populate("createdBy", "name email phone country_code roles")
+        .populate("approvedBy", "name email phone country_code")
+        .populate("rejectedBy", "name email phone country_code")
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit)
