@@ -6,6 +6,7 @@ import PropertiesListing from "../../model/propertiesListingSchema.js";
 import MarketplaceListing from "../../model/marketplaceListingSchema.js";
 import JobsListing from "../../model/jobsListingSchema.js";
 import User from "../../model/userSchema.js";
+import "../../model/CitiesSchema.js"; // ensures 'City' model is registered for populate
 import WhatsappAccount from "../whatsapp/whatsappAccount.model.js";
 import {
   sendTextMessage,
@@ -146,6 +147,9 @@ export function parseExcelContacts(buffer) {
     const city =
       row["City"] || row["city"] || row["Emirate"] || row["Location"] || "";
 
+    const email =
+      row["Email"] || row["email"] || row["E-mail"] || row["Email Address"] || "";
+
     if (!rawPhone) continue;
 
     // Clean phone number
@@ -158,9 +162,11 @@ export function parseExcelContacts(buffer) {
     if (!seenPhones.has(key)) {
       seenPhones.add(key);
       contacts.push({
+        id: `excel_${i}_${cleanedDigits}`,
         name: contactPersonName || businessName || "Valued Partner",
         businessName: String(businessName).trim(),
         contactPersonName: String(contactPersonName).trim(),
+        email: String(email).trim(),
         countryCode: countryCode || "+971",
         phone: cleanedDigits,
         city: String(city).trim(),
@@ -172,6 +178,19 @@ export function parseExcelContacts(buffer) {
 
   return contacts;
 }
+
+const ROLE_MAP = {
+  admin: 1,
+  editor: 2,
+  agent: 3,
+  bde: 4,
+  user: 5,
+  "1": 1,
+  "2": 2,
+  "3": 3,
+  "4": 4,
+  "5": 5,
+};
 
 /**
  * Extracts audience contacts from the database matching the criteria
@@ -195,6 +214,7 @@ export async function fetchDatabaseAudience({
     name,
     businessName,
     contactPersonName,
+    email,
     countryCode,
     phone,
     cityName,
@@ -246,9 +266,11 @@ export async function fetchDatabaseAudience({
     }
 
     contacts.push({
+      id: `${sourceModule}_${sourceId || "item"}_${rawDigits}`,
       name: (contactPersonName || businessName || name || "Valued Partner").trim(),
       businessName: (businessName || "").trim(),
       contactPersonName: (contactPersonName || name || "").trim(),
+      email: (email || "").trim(),
       countryCode: cCode,
       phone: rawDigits,
       city: (cityName || "").trim(),
@@ -264,31 +286,39 @@ export async function fetchDatabaseAudience({
   // Helper to filter users by role
   const roleFilterMatch = (userDoc) => {
     if (!role || role === "all") return true;
+    const targetRole = ROLE_MAP[String(role).toLowerCase()] || Number(role);
+    if (!targetRole) return true;
     if (!userDoc || !userDoc.roles) return false;
-    const targetRole = Number(role);
     const userRoles = Array.isArray(userDoc.roles)
       ? userDoc.roles
       : [userDoc.roles];
     return userRoles.includes(targetRole);
   };
 
-  // 1. BUSINESS LISTINGS
-  if (selectedModules.includes("business")) {
+  // Status query helper
+  const buildListingQuery = () => {
     const query = { isDeleted: { $ne: true } };
     if (listingStatus === "approved") {
-      query.isVerified = true;
-      query.isPublished = true;
+      query.$or = [{ status: "approved" }, { isPublished: true }];
     } else if (listingStatus === "pending") {
-      query.$or = [{ isVerified: false }, { isPublished: false }];
+      query.status = "pending";
+    } else if (listingStatus === "rejected") {
+      query.status = "rejected";
     }
+    return query;
+  };
+
+  // 1. BUSINESS LISTINGS
+  if (selectedModules.includes("business")) {
+    const query = buildListingQuery();
 
     const businessDocs = await BusinessListing.find(query)
-      .populate("user", "name roles phone")
+      .populate("createdBy", "name email roles phone")
       .populate("city", "name")
       .lean();
 
     for (const doc of businessDocs) {
-      if (!roleFilterMatch(doc.user)) continue;
+      if (!roleFilterMatch(doc.createdBy)) continue;
 
       const cityName = doc.city?.name || doc.cityNameLower || "";
       if (
@@ -300,13 +330,15 @@ export async function fetchDatabaseAudience({
       }
 
       const phone =
-        doc.mobileNumber || doc.alternateMobileNumber || doc.user?.phone;
+        doc.mobileNumber || doc.alternateMobileNumber || doc.createdBy?.phone;
       const cCode = doc.countryCode || doc.altCountryCode || "+971";
+      const contactEmail = doc.email || doc.createdBy?.email || "";
 
       addContact({
         name: doc.contactPersonName || doc.businessName,
         businessName: doc.businessName,
-        contactPersonName: doc.contactPersonName || doc.user?.name,
+        contactPersonName: doc.contactPersonName || doc.createdBy?.name,
+        email: contactEmail,
         countryCode: cCode,
         phone,
         cityName,
@@ -319,20 +351,15 @@ export async function fetchDatabaseAudience({
 
   // 2. PROPERTY LISTINGS
   if (selectedModules.includes("property")) {
-    const query = {};
-    if (listingStatus === "approved") {
-      query.status = "approved";
-    } else if (listingStatus === "pending") {
-      query.status = "pending";
-    }
+    const query = buildListingQuery();
 
     const propertyDocs = await PropertiesListing.find(query)
-      .populate("user", "name roles phone")
+      .populate("createdBy", "name email roles phone")
       .populate("city", "name")
       .lean();
 
     for (const doc of propertyDocs) {
-      if (!roleFilterMatch(doc.user)) continue;
+      if (!roleFilterMatch(doc.createdBy)) continue;
 
       const cityName = doc.city?.name || doc.location?.address || "";
       if (
@@ -344,13 +371,15 @@ export async function fetchDatabaseAudience({
       }
 
       const phone =
-        doc.mobileNumber || doc.alternateMobileNumber || doc.user?.phone;
+        doc.mobileNumber || doc.alternateMobileNumber || doc.createdBy?.phone;
       const cCode = doc.countryCode || doc.altCountryCode || "+971";
+      const contactEmail = doc.email || doc.createdBy?.email || "";
 
       addContact({
         name: doc.contactPersonName || doc.title,
         businessName: doc.title,
-        contactPersonName: doc.contactPersonName || doc.user?.name,
+        contactPersonName: doc.contactPersonName || doc.createdBy?.name,
+        email: contactEmail,
         countryCode: cCode,
         phone,
         cityName,
@@ -363,22 +392,17 @@ export async function fetchDatabaseAudience({
 
   // 3. MARKETPLACE LISTINGS
   if (selectedModules.includes("marketplace")) {
-    const query = {};
-    if (listingStatus === "approved") {
-      query.status = "approved";
-    } else if (listingStatus === "pending") {
-      query.status = "pending";
-    }
+    const query = buildListingQuery();
 
     const marketplaceDocs = await MarketplaceListing.find(query)
-      .populate("user", "name roles phone")
+      .populate("createdBy", "name email roles phone")
       .populate("city", "name")
       .lean();
 
     for (const doc of marketplaceDocs) {
-      if (!roleFilterMatch(doc.user)) continue;
+      if (!roleFilterMatch(doc.createdBy)) continue;
 
-      const cityName = doc.city?.name || doc.location?.address || "";
+      const cityName = doc.city?.name || doc.locality || doc.address || "";
       if (
         city &&
         city !== "all" &&
@@ -388,13 +412,15 @@ export async function fetchDatabaseAudience({
       }
 
       const phone =
-        doc.mobileNumber || doc.alternateMobileNumber || doc.user?.phone;
+        doc.mobileNumber || doc.alternateMobileNumber || doc.createdBy?.phone;
       const cCode = doc.countryCode || doc.altCountryCode || "+971";
+      const contactEmail = doc.email || doc.createdBy?.email || "";
 
       addContact({
         name: doc.contactPersonName || doc.title,
         businessName: doc.title,
-        contactPersonName: doc.contactPersonName || doc.user?.name,
+        contactPersonName: doc.contactPersonName || doc.createdBy?.name,
+        email: contactEmail,
         countryCode: cCode,
         phone,
         cityName,
@@ -407,22 +433,20 @@ export async function fetchDatabaseAudience({
 
   // 4. JOBS LISTINGS
   if (selectedModules.includes("jobs")) {
-    const query = {};
-    if (listingStatus === "approved") {
-      query.status = "approved";
-    } else if (listingStatus === "pending") {
-      query.status = "pending";
-    }
+    const query = buildListingQuery();
 
     const jobDocs = await JobsListing.find(query)
-      .populate("user", "name roles phone")
-      .populate("city", "name")
+      .populate("createdBy", "name email roles phone")
       .lean();
 
     for (const doc of jobDocs) {
-      if (!roleFilterMatch(doc.user)) continue;
+      if (!roleFilterMatch(doc.createdBy)) continue;
 
-      const cityName = doc.city?.name || (doc.localities && doc.localities[0]) || "";
+      const cityName =
+        doc.location?.city?.name ||
+        doc.company?.city?.name ||
+        (doc.localities && doc.localities[0]) ||
+        "";
       if (
         city &&
         city !== "all" &&
@@ -433,19 +457,31 @@ export async function fetchDatabaseAudience({
 
       const phone =
         doc.mobileNumber ||
+        doc.phone ||
         doc.contactPersonNumber ||
         doc.contact?.phone ||
         doc.contact?.whatsapp ||
-        doc.user?.phone;
+        doc.createdBy?.phone;
       const cCode =
-        doc.countryCode || doc.contactPersonCountryCode || doc.contact?.countryCode || "+971";
+        doc.countryCode ||
+        doc.contactPersonCountryCode ||
+        doc.contact?.countryCode ||
+        "+971";
 
-      const bName = doc.companyName || doc.title || "Job Recruiter";
+      const bName = doc.company?.name || doc.title || "Job Recruiter";
+      const contactEmail =
+        doc.email ||
+        doc.company?.email ||
+        doc.contact?.email ||
+        doc.createdBy?.email ||
+        "";
 
       addContact({
         name: doc.contactPersonName || doc.contact?.name || bName,
         businessName: bName,
-        contactPersonName: doc.contactPersonName || doc.contact?.name || doc.user?.name,
+        contactPersonName:
+          doc.contactPersonName || doc.contact?.name || doc.createdBy?.name,
+        email: contactEmail,
         countryCode: cCode,
         phone,
         cityName,
@@ -460,7 +496,10 @@ export async function fetchDatabaseAudience({
   if (selectedModules.includes("users")) {
     const userQuery = { phone: { $exists: true, $ne: "" } };
     if (role && role !== "all") {
-      userQuery.roles = Number(role);
+      const targetRole = ROLE_MAP[String(role).toLowerCase()] || Number(role);
+      if (targetRole) {
+        userQuery.roles = targetRole;
+      }
     }
 
     const userDocs = await User.find(userQuery).lean();
@@ -479,6 +518,7 @@ export async function fetchDatabaseAudience({
         name: u.name || "AddressGuru Member",
         businessName: "",
         contactPersonName: u.name || "",
+        email: u.email || "",
         countryCode: "+971",
         phone: u.phone,
         cityName,
@@ -547,6 +587,21 @@ export function renderTemplateVariables(text, recipient) {
 }
 
 /**
+ * Helper: Interruptible sleep that checks abort condition every 100ms
+ */
+async function interruptibleSleep(ms, isAbortedCheck) {
+  const checkInterval = 100;
+  const startTime = Date.now();
+  while (Date.now() - startTime < ms) {
+    if (isAbortedCheck()) return false;
+    const remaining = ms - (Date.now() - startTime);
+    await sleep(Math.min(checkInterval, remaining));
+    if (isAbortedCheck()) return false;
+  }
+  return !isAbortedCheck();
+}
+
+/**
  * Background runner that executes a WhatsApp campaign with Anti-Ban algorithms
  */
 export async function executeCampaign(campaignId) {
@@ -591,29 +646,32 @@ export async function executeCampaign(campaignId) {
 
       let processedCountInCurrentRun = 0;
 
+      const isAborted = () => {
+        const state = activeCampaignControllers.get(campaignId.toString());
+        return state === "pausing" || state === "paused" || state === "cancelled" || state === "cancelling";
+      };
+
       for (let i = 0; i < campaign.recipients.length; i++) {
-        // Check control state
-        const controlState = activeCampaignControllers.get(campaignId.toString());
-        if (controlState === "pausing" || controlState === "paused") {
-          console.log(`[WhatsAppBulk] Campaign ${campaignId} paused by admin`);
+        // Immediate check before processing
+        if (isAborted()) {
+          const state = activeCampaignControllers.get(campaignId.toString());
+          console.log(`[WhatsAppBulk] ⏸️ Campaign ${campaignId} ${state} by admin. Stopping immediately.`);
           await WhatsappCampaign.findByIdAndUpdate(campaignId, {
-            status: "paused",
+            status: state === "cancelled" || state === "cancelling" ? "cancelled" : "paused",
             pausedAt: new Date(),
             lastProcessedIndex: i,
           });
-          activeCampaignControllers.delete(campaignId.toString());
           return;
         }
 
-        if (controlState === "cancelling" || controlState === "cancelled") {
-          console.log(`[WhatsAppBulk] Campaign ${campaignId} cancelled by admin`);
-          await WhatsappCampaign.findByIdAndUpdate(campaignId, {
-            status: "cancelled",
-            completedAt: new Date(),
-            lastProcessedIndex: i,
-          });
-          activeCampaignControllers.delete(campaignId.toString());
-          return;
+        // Also check DB status every 3 messages in case of external signal
+        if (i % 3 === 0) {
+          const freshDoc = await WhatsappCampaign.findById(campaignId, { status: 1 }).lean();
+          if (freshDoc && (freshDoc.status === "paused" || freshDoc.status === "cancelled")) {
+            console.log(`[WhatsAppBulk] ⏸️ Campaign ${campaignId} found as ${freshDoc.status} in DB. Halting immediately.`);
+            activeCampaignControllers.set(campaignId.toString(), freshDoc.status);
+            return;
+          }
         }
 
         const recipient = campaign.recipients[i];
@@ -669,6 +727,18 @@ export async function executeCampaign(campaignId) {
         campaign.lastProcessedIndex = i;
         await campaign.save();
 
+        // Check if pause was triggered while message was being sent
+        if (isAborted()) {
+          const state = activeCampaignControllers.get(campaignId.toString());
+          console.log(`[WhatsAppBulk] ⏸️ Campaign ${campaignId} ${state} immediately after sending contact index ${i}.`);
+          await WhatsappCampaign.findByIdAndUpdate(campaignId, {
+            status: state === "cancelled" || state === "cancelling" ? "cancelled" : "paused",
+            pausedAt: new Date(),
+            lastProcessedIndex: i + 1,
+          });
+          return;
+        }
+
         // Check if more recipients are pending
         const hasMorePending = campaign.recipients
           .slice(i + 1)
@@ -678,16 +748,25 @@ export async function executeCampaign(campaignId) {
           break;
         }
 
-        // Anti-Ban 1: Batch Cooldown Pause after every 50 numbers
+        // Anti-Ban 1: Batch Cooldown Pause after every batchSize numbers
         if (processedCountInCurrentRun % batchSize === 0) {
           console.log(
             `[WhatsAppBulk] Anti-Ban batch milestone reached (${processedCountInCurrentRun} messages). Cooling down for ${
               batchCooldownMs / 1000
             }s...`
           );
-          await sleep(batchCooldownMs);
+          const survivedCooldown = await interruptibleSleep(batchCooldownMs, isAborted);
+          if (!survivedCooldown) {
+            console.log(`[WhatsAppBulk] ⏸️ Campaign ${campaignId} interrupted during batch cooldown.`);
+            await WhatsappCampaign.findByIdAndUpdate(campaignId, {
+              status: "paused",
+              pausedAt: new Date(),
+              lastProcessedIndex: i + 1,
+            });
+            return;
+          }
         } else {
-          // Anti-Ban 2: Random Jitter Delay (3s to 20s)
+          // Anti-Ban 2: Random Jitter Delay (3s to 20s) with 100ms interrupt check
           const jitterDelay =
             Math.floor(Math.random() * (maxDelayMs - minDelayMs + 1)) +
             minDelayMs;
@@ -696,7 +775,16 @@ export async function executeCampaign(campaignId) {
               jitterDelay / 1000
             ).toFixed(1)}s before next contact...`
           );
-          await sleep(jitterDelay);
+          const survivedJitter = await interruptibleSleep(jitterDelay, isAborted);
+          if (!survivedJitter) {
+            console.log(`[WhatsAppBulk] ⏸️ Campaign ${campaignId} interrupted during jitter delay.`);
+            await WhatsappCampaign.findByIdAndUpdate(campaignId, {
+              status: "paused",
+              pausedAt: new Date(),
+              lastProcessedIndex: i + 1,
+            });
+            return;
+          }
         }
       }
 
@@ -734,7 +822,7 @@ export async function pauseCampaign(campaignId) {
     throw new Error(`Cannot pause campaign with status "${campaign.status}"`);
   }
 
-  activeCampaignControllers.set(campaignId.toString(), "pausing");
+  activeCampaignControllers.set(campaignId.toString(), "paused");
   campaign.status = "paused";
   campaign.pausedAt = new Date();
   await campaign.save();
@@ -751,6 +839,11 @@ export async function resumeCampaign(campaignId) {
   if (campaign.status !== "paused" && campaign.status !== "draft") {
     throw new Error(`Cannot resume campaign with status "${campaign.status}"`);
   }
+
+  activeCampaignControllers.set(campaignId.toString(), "running");
+  campaign.status = "running";
+  campaign.pausedAt = null;
+  await campaign.save();
 
   return executeCampaign(campaignId);
 }

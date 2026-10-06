@@ -81,6 +81,7 @@ export async function previewAudience(req, res) {
     return res.status(200).json({
       success: true,
       totalCount: contacts.length,
+      contacts: contacts,
       sample: contacts.slice(0, 15),
       summaryByModule: contacts.reduce((acc, curr) => {
         acc[curr.sourceModule] = (acc[curr.sourceModule] || 0) + 1;
@@ -125,47 +126,64 @@ export async function createCampaign(req, res) {
     let excelOriginalName = null;
     let sourceFilters = {};
 
-    if (sourceType === "excel") {
-      const excelFile = req.files?.excelFile?.[0] || req.file;
-      if (!excelFile || !excelFile.buffer) {
-        return res.status(400).json({
-          success: false,
-          message: "Excel file is required when sourceType is 'excel'",
-        });
-      }
-      recipients = parseExcelContacts(excelFile.buffer);
-      excelOriginalName = excelFile.originalname;
-    } else {
-      let modules = body.modules || [
-        "business",
-        "property",
-        "marketplace",
-        "jobs",
-        "users",
-      ];
-      if (typeof modules === "string") {
+    // Check if frontend provided a custom selection of recipients
+    if (body.selectedRecipients) {
+      let customList = body.selectedRecipients;
+      if (typeof customList === "string") {
         try {
-          modules = JSON.parse(modules);
+          customList = JSON.parse(customList);
         } catch (e) {
-          modules = modules.split(",").map((m) => m.trim());
+          customList = [];
         }
       }
+      if (Array.isArray(customList) && customList.length > 0) {
+        recipients = customList;
+      }
+    }
 
-      const role = body.role || "all";
-      const listingStatus = body.listingStatus || "all";
-      const city = body.city || "all";
-      const deduplicate =
-        body.deduplicate === "true" || body.deduplicate === true;
+    if (!recipients || recipients.length === 0) {
+      if (sourceType === "excel") {
+        const excelFile = req.files?.excelFile?.[0] || req.file;
+        if (!excelFile || !excelFile.buffer) {
+          return res.status(400).json({
+            success: false,
+            message: "Excel file is required when sourceType is 'excel'",
+          });
+        }
+        recipients = parseExcelContacts(excelFile.buffer);
+        excelOriginalName = excelFile.originalname;
+      } else {
+        let modules = body.modules || [
+          "business",
+          "property",
+          "marketplace",
+          "jobs",
+          "users",
+        ];
+        if (typeof modules === "string") {
+          try {
+            modules = JSON.parse(modules);
+          } catch (e) {
+            modules = modules.split(",").map((m) => m.trim());
+          }
+        }
 
-      sourceFilters = {
-        modules,
-        role,
-        listingStatus,
-        city,
-        deduplicate,
-      };
+        const role = body.role || "all";
+        const listingStatus = body.listingStatus || "all";
+        const city = body.city || "all";
+        const deduplicate =
+          body.deduplicate === "true" || body.deduplicate === true;
 
-      recipients = await fetchDatabaseAudience(sourceFilters);
+        sourceFilters = {
+          modules,
+          role,
+          listingStatus,
+          city,
+          deduplicate,
+        };
+
+        recipients = await fetchDatabaseAudience(sourceFilters);
+      }
     }
 
     if (!recipients || recipients.length === 0) {

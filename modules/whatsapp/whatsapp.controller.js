@@ -27,8 +27,11 @@ export async function getQr(req, res) {
 
 export async function connect(req, res) {
   try {
-    const { label } = req.body || {};
-    const status = await clientService.startConnection(label);
+    const { label, forceNew, force } = req.body || {};
+    const status = await clientService.startConnection({
+      label,
+      forceNew: Boolean(forceNew || force),
+    });
     return res.status(200).json({ success: true, data: status });
   } catch (err) {
     return res.status(500).json({ success: false, message: err.message });

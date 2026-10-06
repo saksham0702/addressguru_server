@@ -22,6 +22,7 @@ const ACCOUNT_LABEL = process.env.WHATSAPP_ACCOUNT_LABEL || "default";
 let sock = null;
 let isConnecting = false;
 let reconnectTimer = null; // guard against stacking reconnect timers
+let connectionTimeoutTimer = null;
 
 async function getOrCreateAccount(customLabel) {
   let account = await WhatsappAccount.findOne();
@@ -60,124 +61,227 @@ export async function getStatus() {
 }
 
 export async function getQr() {
-  const account = await WhatsappAccount.findOne().select("+qr");
-  return account?.qr || null;
+  const account = await WhatsappAccount.findOne().select("+qr +authCreds");
+  if (!account) return null;
+
+  if (account.qr) {
+    return account.qr;
+  }
+
+  // If disconnected or qr_pending without a live socket or QR, and not actively connecting, kickstart connection
+  if (account.status !== "connected" && (!sock || !sock.user) && !isConnecting) {
+    startConnection({ label: account.label, forceNew: !account.authCreds }).catch((err) =>
+      console.error("[whatsapp] auto-start in getQr failed:", err.message),
+    );
+  }
+
+  return null;
 }
 
-export async function startConnection(label) {
-  if (isConnecting || (sock && sock.user)) {
-    if (label) {
-      await getOrCreateAccount(label);
+function closeCurrentSocket() {
+  if (sock) {
+    try {
+      sock.ev.removeAllListeners();
+      if (sock.ws) sock.ws.close();
+      sock.end(undefined);
+    } catch (e) {
+      // ignore
     }
-    return getStatus();
+    sock = null;
   }
-  isConnecting = true;
+}
+
+export async function startConnection(param) {
+  let label = null;
+  let forceNew = false;
+
+  if (typeof param === "string") {
+    label = param;
+  } else if (param && typeof param === "object") {
+    label = param.label;
+    forceNew = Boolean(param.forceNew || param.force);
+  }
+
+  if (reconnectTimer) {
+    clearTimeout(reconnectTimer);
+    reconnectTimer = null;
+  }
 
   const account = await getOrCreateAccount(label);
-  const { state, saveCreds } = await useMongoAuthState(account._id);
-  const { version } = await fetchLatestBaileysVersion();
 
-  sock = makeWASocket({
-    version,
-    auth: {
-      creds: state.creds,
-      keys: makeCacheableSignalKeyStore(state.keys, logger),
-    },
-    logger,
-    printQRInTerminal: false,
-    browser: ["Business Backend", "Chrome", "1.0"],
-  });
+  // If already connected with an active socket and no forceNew requested, return status
+  if (!forceNew && sock && sock.user) {
+    return getStatus();
+  }
 
-  sock.ev.on("creds.update", saveCreds);
+  // If forceNew was explicitly requested or previous session was unlinked/disconnected,
+  // clean up old credentials so Baileys generates a fresh QR code
+  if (forceNew) {
+    closeCurrentSocket();
+    isConnecting = false;
+    await WhatsappAccount.findByIdAndUpdate(account._id, {
+      authCreds: null,
+      authKeys: null,
+      qr: null,
+      phoneNumber: null,
+      status: "disconnected",
+    });
+  }
 
-  sock.ev.on("connection.update", async (update) => {
-    const { connection, lastDisconnect, qr } = update;
+  if (isConnecting && !forceNew) {
+    return getStatus();
+  }
 
-    if (qr) {
-      const qrDataUrl = await QRCode.toDataURL(qr);
-      await WhatsappAccount.findByIdAndUpdate(account._id, {
-        status: "qr_pending",
-        qr: qrDataUrl,
-      });
-      whatsappEventBus.emit(WHATSAPP_EVENTS.QR_UPDATED, { qr: qrDataUrl });
-    }
+  isConnecting = true;
 
-    if (connection === "open") {
+  if (connectionTimeoutTimer) {
+    clearTimeout(connectionTimeoutTimer);
+  }
+  // Safety watchdog: reset lock after 35 seconds if connection hangs
+  connectionTimeoutTimer = setTimeout(() => {
+    if (isConnecting && (!sock || !sock.user)) {
+      console.warn("[whatsapp] Connection handshake timeout, releasing lock.");
       isConnecting = false;
-      const phoneNumber = sock.user?.id?.split(":")[0] || null;
-      await WhatsappAccount.findByIdAndUpdate(account._id, {
-        status: "connected",
-        phoneNumber,
-        qr: null,
-        lastConnectedAt: new Date(),
-        disconnectReason: null,
-      });
-      whatsappEventBus.emit(WHATSAPP_EVENTS.CONNECTED, { phoneNumber });
     }
+  }, 35000);
 
-    if (connection === "close") {
-      isConnecting = false;
-      sock = null; // always clear sock on close so getStatus() reflects reality
-      const statusCode = new Boom(lastDisconnect?.error)?.output?.statusCode;
-      const loggedOut = statusCode === DisconnectReason.loggedOut;
+  try {
+    const { state, saveCreds } = await useMongoAuthState(account._id);
+    const { version } = await fetchLatestBaileysVersion();
 
-      await WhatsappAccount.findByIdAndUpdate(account._id, {
-        status: loggedOut ? "logged_out" : "disconnected",
-        lastDisconnectedAt: new Date(),
-        disconnectReason: statusCode ? String(statusCode) : "unknown",
-      });
+    closeCurrentSocket();
 
-      whatsappEventBus.emit(WHATSAPP_EVENTS.DISCONNECTED, {
-        loggedOut,
-        statusCode,
-      });
+    sock = makeWASocket({
+      version,
+      auth: {
+        creds: state.creds,
+        keys: makeCacheableSignalKeyStore(state.keys, logger),
+      },
+      logger,
+      printQRInTerminal: false,
+      browser: ["AddressGuru Admin", "Chrome", "1.0.0"],
+      connectTimeoutMs: 30000,
+      defaultQueryTimeoutMs: 30000,
+      keepAliveIntervalMs: 25000,
+      retryRequestDelayMs: 2000,
+    });
 
-      if (loggedOut) {
-        // Invalid/logged-out session — clear stored creds so the next /connect
-        // call produces a brand-new QR instead of retrying a dead session.
-        await WhatsappAccount.findByIdAndUpdate(account._id, {
-          authCreds: null,
-          authKeys: null,
-          qr: null,
-        });
-      } else {
-        // Any other disconnect (network blip, restart, etc.) — reconnect automatically.
-        // Guard: don't stack timers if one is already pending.
-        if (!reconnectTimer) {
-          reconnectTimer = setTimeout(() => {
-            reconnectTimer = null;
-            startConnection().catch((err) =>
-              console.error("[whatsapp] reconnect failed:", err.message),
-            );
-          }, 5000);
+    sock.ev.on("creds.update", saveCreds);
+
+    sock.ev.on("connection.update", async (update) => {
+      const { connection, lastDisconnect, qr } = update;
+
+      if (qr) {
+        try {
+          const qrDataUrl = await QRCode.toDataURL(qr, {
+            margin: 2,
+            scale: 6,
+            color: {
+              dark: "#1e293b",
+              light: "#ffffff",
+            },
+          });
+          await WhatsappAccount.findByIdAndUpdate(account._id, {
+            status: "qr_pending",
+            qr: qrDataUrl,
+          });
+          whatsappEventBus.emit(WHATSAPP_EVENTS.QR_UPDATED, { qr: qrDataUrl });
+        } catch (err) {
+          console.error("[whatsapp] QRCode generation error:", err.message);
         }
       }
-    }
-  });
 
-  sock.ev.on("messages.upsert", async (payload) => {
-    try {
-      await handleIncomingMessage(payload, account._id);
-    } catch (err) {
-      console.error(
-        "[whatsapp] failed to handle incoming message:",
-        err.message,
-      );
-    }
-  });
+      if (connection === "open") {
+        isConnecting = false;
+        if (connectionTimeoutTimer) clearTimeout(connectionTimeoutTimer);
+
+        const phoneNumber = sock.user?.id?.split(":")[0] || null;
+        await WhatsappAccount.findByIdAndUpdate(account._id, {
+          status: "connected",
+          phoneNumber,
+          qr: null,
+          lastConnectedAt: new Date(),
+          disconnectReason: null,
+        });
+        whatsappEventBus.emit(WHATSAPP_EVENTS.CONNECTED, { phoneNumber });
+      }
+
+      if (connection === "close") {
+        isConnecting = false;
+        if (connectionTimeoutTimer) clearTimeout(connectionTimeoutTimer);
+        sock = null;
+
+        const statusCode = new Boom(lastDisconnect?.error)?.output?.statusCode;
+        const loggedOut = statusCode === DisconnectReason.loggedOut;
+        const badSession = statusCode === DisconnectReason.badSession;
+        const isAuthFailure = loggedOut || badSession || statusCode === 401 || statusCode === 403 || statusCode === 405;
+
+        await WhatsappAccount.findByIdAndUpdate(account._id, {
+          status: loggedOut ? "logged_out" : "disconnected",
+          lastDisconnectedAt: new Date(),
+          disconnectReason: statusCode ? String(statusCode) : "unknown",
+          ...(isAuthFailure ? { authCreds: null, authKeys: null, qr: null, phoneNumber: null } : {}),
+        });
+
+        whatsappEventBus.emit(WHATSAPP_EVENTS.DISCONNECTED, {
+          loggedOut,
+          statusCode,
+        });
+
+        if (!isAuthFailure) {
+          // Automatic reconnect on transient drop if creds are intact
+          if (!reconnectTimer) {
+            reconnectTimer = setTimeout(() => {
+              reconnectTimer = null;
+              startConnection({ label: account.label }).catch((err) =>
+                console.error("[whatsapp] reconnect failed:", err.message),
+              );
+            }, 5000);
+          }
+        }
+      }
+    });
+
+    sock.ev.on("messages.upsert", async (payload) => {
+      try {
+        await handleIncomingMessage(payload, account._id);
+      } catch (err) {
+        console.error(
+          "[whatsapp] failed to handle incoming message:",
+          err.message,
+        );
+      }
+    });
+  } catch (err) {
+    isConnecting = false;
+    if (connectionTimeoutTimer) clearTimeout(connectionTimeoutTimer);
+    console.error("[whatsapp] startConnection initialization error:", err.message);
+  }
 
   return getStatus();
 }
 
 export async function logout() {
   const account = await getOrCreateAccount();
+  if (reconnectTimer) {
+    clearTimeout(reconnectTimer);
+    reconnectTimer = null;
+  }
+  if (connectionTimeoutTimer) {
+    clearTimeout(connectionTimeoutTimer);
+    connectionTimeoutTimer = null;
+  }
+  isConnecting = false;
+
   if (sock) {
     try {
       await sock.logout();
     } catch (e) {
-      // ignore — state is cleared below regardless of whether the remote logout call succeeded
+      // ignore
     }
+    closeCurrentSocket();
   }
+
   await WhatsappAccount.findByIdAndUpdate(account._id, {
     status: "logged_out",
     authCreds: null,
@@ -185,7 +289,7 @@ export async function logout() {
     qr: null,
     phoneNumber: null,
   });
-  sock = null;
+
   return getStatus();
 }
 
@@ -198,7 +302,6 @@ export function getSocketOrNull() {
   return sock || null;
 }
 
-
 /**
  * Call once on server boot, AFTER the DB is connected.
  * - Resets any stale "connected" status (server restarted, socket is gone).
@@ -207,10 +310,13 @@ export function getSocketOrNull() {
 export async function restoreSessionOnBoot() {
   try {
     const account = await WhatsappAccount.findOne().select("+authCreds");
-    if (!account) return; // no account doc yet — nothing to restore
+    if (!account) return;
 
-    // Always reset status on boot: socket is always null at this point.
-    if (account.status === "connected" || account.status === "connecting" || account.status === "qr_pending") {
+    if (
+      account.status === "connected" ||
+      account.status === "connecting" ||
+      account.status === "qr_pending"
+    ) {
       await WhatsappAccount.findByIdAndUpdate(account._id, {
         status: "disconnected",
         qr: null,
@@ -219,7 +325,7 @@ export async function restoreSessionOnBoot() {
 
     if (account.authCreds) {
       console.log("[whatsapp] Restoring session from DB...");
-      await startConnection();
+      await startConnection({ label: account.label });
     } else {
       console.log("[whatsapp] No saved session found, waiting for manual connect.");
     }
@@ -227,3 +333,4 @@ export async function restoreSessionOnBoot() {
     console.error("[whatsapp] restoreSessionOnBoot failed:", err.message);
   }
 }
+
