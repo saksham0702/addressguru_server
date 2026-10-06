@@ -70,6 +70,7 @@ export const getTemplates = async (req, res) => {
 
     return res.status(200).json({
       success: true,
+      templates,
       result: templates,
       data: templates,
       count: templates.length,
