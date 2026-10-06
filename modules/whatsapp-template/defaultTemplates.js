@@ -2,6 +2,58 @@
 
 export const DEFAULT_TEMPLATES = [
   // ═════════════════════════════════════════════════════════════════════════
+  // 📢 0. BULK MARKETING & PROMOTIONS (2 Primary Templates)
+  // ═════════════════════════════════════════════════════════════════════════
+  {
+    title: "Bulk: Upgrade to Premium & Track Performance",
+    slug: "bulk_upgrade_premium_performance",
+    type: "whatsapp",
+    module: "all",
+    category: "bulk_marketing",
+    message: `Hello *{{name}}*, 🚀 Take *{{businessName}}* to the next level on AddressGuru UAE!
+
+Check how your listing is performing and unlock premium growth features:
+⭐ 3x more direct customer calls & WhatsApp inquiries
+⭐ Top ranking in {{city}} search results
+⭐ Verified Trust Badge & customer lead booster
+
+📊 View your listing:
+{{listingUrl}}
+
+👉 Login to your dashboard & upgrade your plan:
+{{dashboardUrl}}
+
+Need assistance? Reply directly to this WhatsApp message!`,
+    variables: ["name", "businessName", "city", "listingUrl", "dashboardUrl"],
+    isSystem: true,
+    status: "active",
+  },
+  {
+    title: "Bulk: Claim Your Listing & Manage Dashboard",
+    slug: "bulk_claim_listing_ownership",
+    type: "whatsapp",
+    module: "all",
+    category: "bulk_marketing",
+    message: `Hello *{{name}}*, 👋 your listing *{{businessName}}* is registered on AddressGuru UAE!
+
+If you haven't taken ownership yet, claim your listing now to update your contact details, receive direct customer inquiries, and start managing your profile:
+
+📍 *Your Listing URL:*
+{{listingUrl}}
+
+👉 *Claim Ownership Instantly:*
+{{claimUrl}}
+
+Once claimed, you can log in to your owner dashboard anytime:
+{{dashboardUrl}}
+
+Best regards,
+*AddressGuru UAE Team*`,
+    variables: ["name", "businessName", "city", "listingUrl", "claimUrl", "dashboardUrl"],
+    isSystem: true,
+    status: "active",
+  },
+  // ═════════════════════════════════════════════════════════════════════════
   // 🏢 1. BUSINESS LISTINGS
   // ═════════════════════════════════════════════════════════════════════════
   {
