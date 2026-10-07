@@ -59,6 +59,11 @@ const whatsappCampaignSchema = new mongoose.Schema(
       required: true,
       default: "database",
     },
+    provider: {
+      type: String,
+      enum: ["baileys", "cloud_api"],
+      default: "baileys",
+    },
     sourceFilters: {
       modules: [{ type: String }], // ['business', 'property', 'marketplace', 'jobs', 'users']
       role: { type: mongoose.Schema.Types.Mixed, default: "all" }, // 1, 2, 3, 5 or 'all'
