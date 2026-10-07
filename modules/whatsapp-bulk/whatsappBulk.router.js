@@ -14,6 +14,9 @@ import {
   cancelCampaign,
   retryFailedRecipients,
   deleteCampaign,
+  getWhatsAppConfig,
+  saveCloudApiConfig,
+  testCloudApi,
 } from "./whatsappBulk.controller.js";
 
 const router = Router();
@@ -27,6 +30,11 @@ const upload = multer({
 
 // Sample template download
 router.get("/sample-template", downloadSampleTemplate);
+
+// Provider & Cloud API Config
+router.get("/config", getWhatsAppConfig);
+router.post("/config/cloud-api", saveCloudApiConfig);
+router.post("/config/test-cloud-api", testCloudApi);
 
 // Audience preview
 router.post(

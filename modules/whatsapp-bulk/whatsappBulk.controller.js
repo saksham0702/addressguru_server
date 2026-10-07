@@ -1,4 +1,10 @@
 import WhatsappCampaign from "./whatsappCampaign.model.js";
+import WhatsappAccount from "../whatsapp/whatsappAccount.model.js";
+import {
+  getCloudApiConfig,
+  updateCloudApiConfig,
+  testOfficialCloudApi,
+} from "../whatsapp/services/whatsappCloudApi.service.js";
 import {
   generateSampleExcelBuffer,
   parseExcelContacts,
@@ -213,10 +219,13 @@ export async function createCampaign(req, res) {
       else messageType = "document";
     }
 
+    const provider = body.provider || "baileys";
+
     const campaign = new WhatsappCampaign({
       name,
       status: "draft",
       sourceType,
+      provider,
       sourceFilters,
       excelOriginalName,
       messageType,
@@ -524,3 +533,149 @@ export async function deleteCampaign(req, res) {
     });
   }
 }
+
+/**
+ * Get WhatsApp Configuration (Baileys + Official Cloud API status)
+ */
+export async function getWhatsAppConfig(req, res) {
+  try {
+    const config = await getCloudApiConfig();
+    const baileysAccount = await WhatsappAccount.findOne({
+      status: "connected",
+    });
+
+    return res.status(200).json({
+      success: true,
+      config: {
+        provider: config.provider || "baileys",
+        cloudApi: {
+          phoneNumberId: config.cloudApi?.phoneNumberId || "",
+          wabaId: config.cloudApi?.wabaId || "",
+          displayPhoneNumber: config.cloudApi?.displayPhoneNumber || "",
+          apiVersion: config.cloudApi?.apiVersion || "v20.0",
+          isConfigured: Boolean(config.cloudApi?.isConfigured),
+          hasToken: Boolean(config.cloudApi?.accessToken),
+        },
+      },
+      baileys: {
+        status: baileysAccount ? "connected" : "disconnected",
+        phoneNumber: baileysAccount?.phoneNumber || null,
+        label: baileysAccount?.label || "default",
+      },
+    });
+  } catch (err) {
+    console.error("[WhatsAppBulk] Error fetching config:", err);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to load WhatsApp configuration",
+      error: err.message,
+    });
+  }
+}
+
+/**
+ * Save / Update Official WhatsApp Cloud API Credentials
+ */
+export async function saveCloudApiConfig(req, res) {
+  try {
+    const {
+      phoneNumberId,
+      wabaId,
+      accessToken,
+      displayPhoneNumber,
+      apiVersion,
+      defaultProvider,
+    } = req.body || {};
+
+    const updated = await updateCloudApiConfig({
+      phoneNumberId,
+      wabaId,
+      accessToken,
+      displayPhoneNumber,
+      apiVersion,
+      defaultProvider,
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: "Official WhatsApp Cloud API configuration saved successfully!",
+      config: {
+        provider: updated.provider,
+        cloudApi: {
+          phoneNumberId: updated.cloudApi?.phoneNumberId || "",
+          wabaId: updated.cloudApi?.wabaId || "",
+          displayPhoneNumber: updated.cloudApi?.displayPhoneNumber || "",
+          apiVersion: updated.cloudApi?.apiVersion || "v20.0",
+          isConfigured: updated.cloudApi?.isConfigured,
+          hasToken: Boolean(updated.cloudApi?.accessToken),
+        },
+      },
+    });
+  } catch (err) {
+    console.error("[WhatsAppBulk] Error saving cloud API config:", err);
+    return res.status(500).json({
+      success: false,
+      message: err.message || "Failed to save Official Cloud API configuration",
+    });
+  }
+}
+
+/**
+ * Test Official WhatsApp Cloud API Connection with a test message
+ */
+export async function testCloudApi(req, res) {
+  try {
+    const {
+      phoneNumberId,
+      accessToken,
+      testPhoneNumber,
+      countryCode = "+971",
+      apiVersion = "v20.0",
+    } = req.body || {};
+
+    let pId = phoneNumberId;
+    let token = accessToken;
+
+    if (!pId || !token) {
+      const stored = await getCloudApiConfig();
+      pId = pId || stored.cloudApi?.phoneNumberId;
+      token = token || stored.cloudApi?.accessToken;
+    }
+
+    if (!pId || !token) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Phone Number ID and Access Token are required to test the connection.",
+      });
+    }
+
+    if (!testPhoneNumber) {
+      return res.status(400).json({
+        success: false,
+        message: "Please enter a test recipient phone number.",
+      });
+    }
+
+    const testRes = await testOfficialCloudApi({
+      phoneNumberId: pId,
+      accessToken: token,
+      testPhoneNumber,
+      countryCode,
+      apiVersion,
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: "Test message sent successfully via Official Meta Cloud API!",
+      data: testRes,
+    });
+  } catch (err) {
+    console.error("[WhatsAppBulk] Error testing cloud API:", err);
+    return res.status(500).json({
+      success: false,
+      message: err.message || "Official Cloud API test failed",
+    });
+  }
+}
+

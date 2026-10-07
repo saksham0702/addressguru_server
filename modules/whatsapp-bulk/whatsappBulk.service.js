@@ -12,6 +12,12 @@ import {
   sendTextMessage,
   sendMediaMessage,
 } from "../whatsapp/services/whatsappMessage.js";
+import {
+  sendOfficialCloudMessage,
+  getCloudApiConfig,
+  updateCloudApiConfig,
+  testOfficialCloudApi,
+} from "../whatsapp/services/whatsappCloudApi.service.js";
 import { normalizeToE164 } from "../whatsapp/phoneUtils.js";
 
 // In-memory campaign control states: 'running' | 'pausing' | 'cancelling'
@@ -610,16 +616,32 @@ export async function executeCampaign(campaignId) {
     throw new Error("Campaign not found");
   }
 
-  // Verify Baileys is connected
-  const connectedAccount = await WhatsappAccount.findOne({
-    status: "connected",
-  });
-  if (!connectedAccount) {
-    campaign.status = "failed";
-    campaign.errorMessage =
-      "WhatsApp is not connected on the server. Please scan QR in the header.";
-    await campaign.save();
-    throw new Error(campaign.errorMessage);
+  // Provider verification
+  if (campaign.provider === "cloud_api") {
+    const cloudConfig = await getCloudApiConfig();
+    if (
+      !cloudConfig?.cloudApi?.isConfigured ||
+      !cloudConfig.cloudApi.phoneNumberId ||
+      !cloudConfig.cloudApi.accessToken
+    ) {
+      campaign.status = "failed";
+      campaign.errorMessage =
+        "Official WhatsApp Cloud API is not configured. Please enter Phone Number ID & Permanent Access Token.";
+      await campaign.save();
+      throw new Error(campaign.errorMessage);
+    }
+  } else {
+    // Verify Baileys is connected
+    const connectedAccount = await WhatsappAccount.findOne({
+      status: "connected",
+    });
+    if (!connectedAccount) {
+      campaign.status = "failed";
+      campaign.errorMessage =
+        "WhatsApp Web (Baileys) is not connected on the server. Please scan QR in the header.";
+      await campaign.save();
+      throw new Error(campaign.errorMessage);
+    }
   }
 
   // Mark campaign as running
@@ -688,8 +710,17 @@ export async function executeCampaign(campaignId) {
 
         try {
           let sentRes;
-          if (campaign.messageType !== "text" && campaign.mediaUrl) {
-            // Media message with optional caption
+          if (campaign.provider === "cloud_api") {
+            // Send via Meta Official Cloud API
+            sentRes = await sendOfficialCloudMessage({
+              to: recipient.phone,
+              countryCode: recipient.countryCode,
+              text: renderedText,
+              mediaUrl: campaign.mediaUrl,
+              messageType: campaign.messageType,
+            });
+          } else if (campaign.messageType !== "text" && campaign.mediaUrl) {
+            // Media message with optional caption via Baileys
             sentRes = await sendMediaMessage({
               to: recipient.phone,
               countryCode: recipient.countryCode,
@@ -698,7 +729,7 @@ export async function executeCampaign(campaignId) {
               messageType: campaign.messageType,
             });
           } else {
-            // Plain text message
+            // Plain text message via Baileys
             sentRes = await sendTextMessage({
               to: recipient.phone,
               countryCode: recipient.countryCode,
