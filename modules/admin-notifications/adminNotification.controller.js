@@ -13,6 +13,8 @@ import User from "../../model/userSchema.js";
  */
 export const getAdminBadgeCounts = async (req, res) => {
   try {
+    const since24Hours = new Date(Date.now() - 24 * 60 * 60 * 1000);
+
     const [
       pendingClaims,
       pendingBusiness,
@@ -23,13 +25,34 @@ export const getAdminBadgeCounts = async (req, res) => {
       totalEnquiries,
       onlineUsers,
     ] = await Promise.all([
-      ClaimBusiness.countDocuments({ status: "pending", isDeleted: false }).catch(() => 0),
-      BusinessListing.countDocuments({ status: "pending", isDeleted: false, stepCompleted: 6 }).catch(() => 0),
-      JobsListing.countDocuments({ status: "pending", isDeleted: false }).catch(() => 0),
-      MarketplaceListing.countDocuments({ status: "pending", isDeleted: false }).catch(() => 0),
-      PropertiesListing.countDocuments({ status: "pending", isDeleted: false }).catch(() => 0),
-      ReviewListing.countDocuments({ status: "pending", isDeleted: false }).catch(() => 0),
-      ListingEnquiry.countDocuments({ status: "new" }).catch(() => 0),
+      ClaimBusiness.countDocuments({
+        createdAt: { $gte: since24Hours },
+        isDeleted: false,
+      }).catch(() => 0),
+      BusinessListing.countDocuments({
+        createdAt: { $gte: since24Hours },
+        isDeleted: false,
+      }).catch(() => 0),
+      JobsListing.countDocuments({
+        createdAt: { $gte: since24Hours },
+        isDeleted: false,
+      }).catch(() => 0),
+      MarketplaceListing.countDocuments({
+        createdAt: { $gte: since24Hours },
+        isDeleted: false,
+      }).catch(() => 0),
+      PropertiesListing.countDocuments({
+        createdAt: { $gte: since24Hours },
+        isDeleted: false,
+      }).catch(() => 0),
+      ReviewListing.countDocuments({
+        createdAt: { $gte: since24Hours },
+        isDeleted: false,
+      }).catch(() => 0),
+      ListingEnquiry.countDocuments({
+        createdAt: { $gte: since24Hours },
+        isDeleted: false,
+      }).catch(() => 0),
       User.countDocuments({ isOnline: true }).catch(() => 0),
     ]);
 
