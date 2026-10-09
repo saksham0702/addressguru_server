@@ -2,6 +2,11 @@ import Enquiry from "../model/listingEnquirySchema.js";
 import User from "../model/userSchema.js";
 import ListingStats from "../model/listingStatsSchema.js";
 import Category from "../model/categoriesSchema.js";
+import BusinessListing from "../model/businessListingSchema.js";
+import Job from "../model/jobsListingSchema.js";
+import PropertyListing from "../model/propertiesListingSchema.js";
+import MarketplaceListing from "../model/marketplaceListingSchema.js";
+import Plan from "../model/plansSchema.js";
 import { resolveListing, MODEL_MAP } from "../utils/resolveListing.js";
 import {
   sendEnquiryReceivedMail,
@@ -356,40 +361,96 @@ export const updateEnquiryStatus = async (req, res) => {
 // controllers/adminEnquiry.controller.js
 export const getAllBusinessEnquiries = async (req, res) => {
   try {
-    const { page = 1, limit = 20, status, search } = req.query;
+    const { page = 1, limit = 20, status, search, type, listingModel } = req.query;
+
+    const modelMap = {
+      business: "BusinessListing",
+      businesslisting: "BusinessListing",
+      property: "PropertyListing",
+      properties: "PropertyListing",
+      propertylisting: "PropertyListing",
+      job: "Job",
+      jobs: "Job",
+      marketplace: "MarketplaceListing",
+      market: "MarketplaceListing",
+      marketplacelisting: "MarketplaceListing",
+    };
+
+    let targetModel = "BusinessListing";
+    if (listingModel && Object.values(modelMap).includes(listingModel)) {
+      targetModel = listingModel;
+    } else if (type && modelMap[type.toLowerCase()]) {
+      targetModel = modelMap[type.toLowerCase()];
+    } else if (type === "all") {
+      targetModel = "all";
+    }
+
     const filter = {
-      listingModel: "BusinessListing",
       isDeleted: false,
     };
+
+    if (targetModel !== "all") {
+      filter.listingModel = targetModel;
+    }
 
     // Optional status filter
     if (status) {
       filter.status = status;
     }
 
-    // Optional search (name, email, phone)
+    // Optional search (name, email, phone, slug)
     if (search) {
       filter.$or = [
         { fullName: { $regex: search, $options: "i" } },
         { email: { $regex: search, $options: "i" } },
+        { listingSlug: { $regex: search, $options: "i" } },
         ...(Number(search) ? [{ mobileNumber: Number(search) }] : []),
       ];
     }
 
-    const [enquiries, total] = await Promise.all([
+    const [enquiries, total, modelCounts] = await Promise.all([
       Enquiry.find(filter)
         .sort({ createdAt: -1 })
         .skip((+page - 1) * +limit)
         .limit(+limit)
-        .populate("listingId", "name slug") // optional
-        .populate("listingOwner", "name email"),
+        .populate({
+          path: "listingId",
+          select:
+            "businessName title slug contactPersonName email countryCode mobileNumber altCountryCode alternateMobileNumber contact phone plan createdBy",
+          populate: {
+            path: "plan",
+            select: "name slug price planCode planType",
+          },
+        })
+        .populate("listingOwner", "name email mobileNumber phone countryCode"),
 
       Enquiry.countDocuments(filter),
+
+      Enquiry.aggregate([
+        { $match: { isDeleted: false } },
+        { $group: { _id: "$listingModel", count: { $sum: 1 } } },
+      ]),
     ]);
+
+    const counts = {
+      business: 0,
+      properties: 0,
+      jobs: 0,
+      marketplace: 0,
+      all: 0,
+    };
+    (modelCounts || []).forEach((c) => {
+      if (c._id === "BusinessListing") counts.business = c.count;
+      else if (c._id === "PropertyListing") counts.properties = c.count;
+      else if (c._id === "Job") counts.jobs = c.count;
+      else if (c._id === "MarketplaceListing") counts.marketplace = c.count;
+      counts.all += c.count;
+    });
 
     return res.json({
       success: true,
       data: enquiries,
+      counts,
       pagination: {
         total,
         page: +page,
