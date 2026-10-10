@@ -348,7 +348,8 @@ export const createBlog = async (req, res) => {
       slug: customSlug,
     } = req.body;
 
-    if (!req.user?.id) {
+    const userId = req.user?.id || req.user?._id;
+    if (!userId) {
       return errorData(res, 401, false, "Unauthorized: user missing");
     }
     if (!title) return errorData(res, 400, false, "Title is required");
@@ -380,7 +381,7 @@ export const createBlog = async (req, res) => {
       publishedAt: status === "published" ? new Date() : null,
       readingTime: calculateReadingTime(content),
       featured: featured === "true",
-      author: req.user.id,
+      author: userId,
       seo: {
         title: seoTitle,
         description: seoDescription,

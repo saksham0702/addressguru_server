@@ -7,7 +7,10 @@ const extractToken = (req) => {
   // 1. Bearer token (explicit client header / API / per-tab session)
   const authHeader = req?.headers?.authorization;
   if (authHeader && authHeader?.startsWith("Bearer ")) {
-    return authHeader?.split(" ")[1];
+    const rawToken = authHeader?.split(" ")[1]?.trim();
+    if (rawToken && rawToken !== "null" && rawToken !== "undefined") {
+      return rawToken;
+    }
   }
 
   // 2. Cookie (web fallback)
