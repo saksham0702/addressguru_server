@@ -259,3 +259,19 @@ export const deleteCategory = async (req, res) => {
     return errorData(res, 500, false, "Internal server error");
   }
 };
+
+// ✅ Get Category by Slug
+export const getCategoryBySlug = async (req, res) => {
+  try {
+    const { slug } = req.params;
+    if (!slug) return errorData(res, 400, false, "Slug is required");
+
+    const category = await Category.findOne({ slug, isDeleted: false }).lean();
+    if (!category) return errorData(res, 404, false, "Category not found");
+
+    return successData(res, 200, true, "Category fetched successfully", category);
+  } catch (error) {
+    console.warn(error);
+    return errorData(res, 500, false, "Internal server error");
+  }
+};
