@@ -33,19 +33,51 @@ export const getRootSitemap = async (req, res) => {
     const result = [];
 
     for (const section of sections) {
-      const Model = getModelBySection(section);
-      const filter = getBaseFilter();
-      const count = await Model.countDocuments(filter);
-      if (count > 0) {
-        const latest = await Model.findOne(filter)
-          .sort({ updatedAt: -1 })
-          .select("updatedAt");
-        result.push({
-          section,
-          url_count: count,
-          last_updated:
-            latest?.updatedAt?.toISOString() || new Date().toISOString(),
-        });
+      if (section === "listing") {
+        const filter = getBaseFilter();
+        const pipeline = [
+          { $match: filter },
+          { $group: { _id: { category: "$category", city: "$city" } } },
+          {
+            $lookup: {
+              from: "cities",
+              localField: "_id.city",
+              foreignField: "_id",
+              as: "cityDoc",
+            },
+          },
+          { $unwind: "$cityDoc" },
+          { $match: { "cityDoc.slug": { $ne: "all-cities" } } },
+          { $count: "total" },
+        ];
+        const rows = await BusinessListing.aggregate(pipeline);
+        const count = rows[0]?.total || 0;
+        if (count > 0) {
+          const latest = await BusinessListing.findOne(filter)
+            .sort({ updatedAt: -1 })
+            .select("updatedAt");
+          result.push({
+            section,
+            url_count: count,
+            last_updated:
+              latest?.updatedAt?.toISOString() || new Date().toISOString(),
+          });
+        }
+      } else {
+        const Model = getModelBySection(section);
+        const filter = getBaseFilter();
+        const count = await Model.countDocuments(filter);
+        if (count > 0) {
+          const latest = await Model.findOne(filter)
+            .sort({ updatedAt: -1 })
+            .select("updatedAt");
+          result.push({
+            section,
+            url_count: count,
+            last_updated:
+              latest?.updatedAt?.toISOString() || new Date().toISOString(),
+          });
+        }
       }
     }
 

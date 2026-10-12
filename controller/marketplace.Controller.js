@@ -323,10 +323,6 @@ export const updateMarketplaceListingStep = async (req, res) => {
         listing.plan = req.body.plan_id || null;
         listing.isPublished = true;
         listing.status = "pending";
-        googleIndexingService.notify(
-          `${APP_BASE_URL}/marketplace/${listing.slug}`,
-          "URL_UPDATED",
-        );
         break;
       }
 
@@ -765,17 +761,29 @@ export const updateMarketplaceListingStatus = async (req, res) => {
       listing.approvedBy = adminId;
       listing.rejectedBy = null;
       listing.rejectionReason = null;
+      googleIndexingService.notify(
+        `${APP_BASE_URL}/marketplace/${listing.slug}`,
+        "URL_UPDATED",
+      );
     } else if (status === "rejected") {
       listing.status = "rejected";
       listing.rejectedBy = adminId;
       listing.rejectionReason = rejectionReason.trim();
       listing.approvedBy = null;
+      googleIndexingService.notify(
+        `${APP_BASE_URL}/marketplace/${listing.slug}`,
+        "URL_DELETED",
+      );
     } else if (status === "unapproved") {
       // Reset back to pending — clears any prior approval/rejection
       listing.status = "pending";
       listing.approvedBy = null;
       listing.rejectedBy = null;
       listing.rejectionReason = null;
+      googleIndexingService.notify(
+        `${APP_BASE_URL}/marketplace/${listing.slug}`,
+        "URL_DELETED",
+      );
     }
 
     await listing.save();

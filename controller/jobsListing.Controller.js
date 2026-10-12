@@ -369,11 +369,6 @@ export const saveJobStep = async (req, res) => {
       // job.isPublished = true;
       job.stepCompleted = Math.max(job.stepCompleted || 1, 2);
 
-      googleIndexingService.notify(
-        `${APP_BASE_URL}/job/${job.slug}`,
-        "URL_UPDATED",
-      );
-
       // ── Send submitted mail ──
       try {
         const categoryDoc = await Category.findById(job.category);
@@ -413,11 +408,6 @@ export const saveJobStep = async (req, res) => {
       job.isPublished = true;
       job.status = "pending"; // Admin still needs to approve
       job.stepCompleted = Math.max(job.stepCompleted || 1, 3);
-
-      googleIndexingService.notify(
-        `${APP_BASE_URL}/job/${job.slug}`,
-        "URL_UPDATED",
-      );
     }
 
     await job.save();
@@ -942,16 +932,28 @@ export const updateJobStatus = async (req, res) => {
         job.rejectedBy = null;
         job.rejectionReason = null;
         job.isPublished = true;
+        googleIndexingService.notify(
+          `${APP_BASE_URL}/jobs/${job.slug}`,
+          "URL_UPDATED",
+        );
       } else if (status === "rejected") {
         job.rejectedBy = adminId;
         job.rejectionReason = rejectionReason;
         job.approvedBy = null;
         job.isPublished = false;
+        googleIndexingService.notify(
+          `${APP_BASE_URL}/jobs/${job.slug}`,
+          "URL_DELETED",
+        );
       } else if (status === "pending") {
         job.approvedBy = null;
         job.rejectedBy = null;
         job.rejectionReason = null;
         job.isPublished = false;
+        googleIndexingService.notify(
+          `${APP_BASE_URL}/jobs/${job.slug}`,
+          "URL_DELETED",
+        );
       }
 
       // ── Send Email & Notification ──
@@ -969,7 +971,7 @@ export const updateJobStatus = async (req, res) => {
             {
               businessName: job.title,
               category: categoryName,
-              listingUrl: `${APP_BASE_URL}/job/${job.slug}`,
+              listingUrl: `${APP_BASE_URL}/jobs/${job.slug}`,
               dashboardUrl: `${APP_BASE_URL}/dashboard`,
             },
           );

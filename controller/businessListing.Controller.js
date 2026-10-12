@@ -455,10 +455,6 @@ export const updateListingStep = async (req, res) => {
         }
         listing.plan = req.body.plan_id || null;
         listing.isPublished = true;
-        googleIndexingService.notify(
-          `${APP_BASE_URL}/${listing.slug}`,
-          "URL_UPDATED",
-        );
         break;
       }
 
@@ -1780,6 +1776,10 @@ export const updateListingStatus = async (req, res) => {
       listing.rejectionReason = null;
       listing.adminNote = null;
       console.log("i am hit approved");
+      googleIndexingService.notify(
+        `${APP_BASE_URL}/${listing.slug}`,
+        "URL_UPDATED",
+      );
     }
 
     if (status === "rejected") {
@@ -1788,6 +1788,10 @@ export const updateListingStatus = async (req, res) => {
       listing.adminNote = adminNote?.trim() || null;
       listing.approvedBy = null;
       console.log("i am hit rejected");
+      googleIndexingService.notify(
+        `${APP_BASE_URL}/${listing.slug}`,
+        "URL_DELETED",
+      );
     }
 
     if (status === "unapproved") {
@@ -1797,6 +1801,10 @@ export const updateListingStatus = async (req, res) => {
       listing.rejectionReason = null;
       listing.adminNote = null;
       console.log("i am hit unapproved");
+      googleIndexingService.notify(
+        `${APP_BASE_URL}/${listing.slug}`,
+        "URL_DELETED",
+      );
     }
 
     await listing.save();

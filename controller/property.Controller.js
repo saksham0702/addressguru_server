@@ -347,10 +347,6 @@ export const updatePropertyListingStep = async (req, res) => {
         }
         listing.plan = req.body.plan_id || null;
         listing.isPublished = true;
-        googleIndexingService.notify(
-          `${APP_BASE_URL}/property/${listing.slug}`,
-          "URL_UPDATED",
-        );
         break;
       }
 
@@ -884,16 +880,28 @@ export const updatePropertyListingStatus = async (req, res) => {
       listing.approvedBy = adminId;
       listing.rejectedBy = null;
       listing.rejectionReason = null;
+      googleIndexingService.notify(
+        `${APP_BASE_URL}/properties/${listing.slug}`,
+        "URL_UPDATED",
+      );
     } else if (status === "rejected") {
       listing.status = "rejected";
       listing.rejectedBy = adminId;
       listing.rejectionReason = rejectionReason.trim();
       listing.approvedBy = null;
+      googleIndexingService.notify(
+        `${APP_BASE_URL}/properties/${listing.slug}`,
+        "URL_DELETED",
+      );
     } else if (status === "unapproved") {
       listing.status = "pending";
       listing.approvedBy = null;
       listing.rejectedBy = null;
       listing.rejectionReason = null;
+      googleIndexingService.notify(
+        `${APP_BASE_URL}/properties/${listing.slug}`,
+        "URL_DELETED",
+      );
     }
 
     await listing.save();

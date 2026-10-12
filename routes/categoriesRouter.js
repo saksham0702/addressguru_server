@@ -6,6 +6,7 @@ import {
   updateCategory,
   deleteCategory,
   getCategoryByType,
+  getCategoryBySlug,
 } from "../controller/categories.Controller.js";
 import { authenticate } from "../middleware/userAuth.js";
 import { setUploadFolder } from "../middleware/setUploadFolder.js";
@@ -29,6 +30,7 @@ router.put(
 );
 router.get("/get-categories", getCategories);
 router.get("/get-categories-by-type/:type", getCategoryByType);
+router.get("/get-category-by-slug/:slug", getCategoryBySlug);
 router.get("/get-category/:id", getCategoryById);
 router.delete("/delete-category/:id", deleteCategory);
 

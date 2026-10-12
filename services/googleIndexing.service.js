@@ -62,6 +62,12 @@ class GoogleIndexingService {
    * @param {'URL_UPDATED' | 'URL_DELETED'} type The notification type.
    */
   async notify(url, type = 'URL_UPDATED') {
+    if (!url || typeof url !== 'string') return;
+    if (url.includes('[slug]') || url.includes('%5Bslug%5D') || url.includes('undefined') || url.includes('/null')) {
+      console.warn(`[GoogleIndexingService] Invalid URL pattern detected. Skipping: ${url}`);
+      return;
+    }
+
     if (!this.isInitialized) {
       await this.init();
     }
