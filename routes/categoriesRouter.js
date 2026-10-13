@@ -7,6 +7,7 @@ import {
   deleteCategory,
   getCategoryByType,
   getCategoryBySlug,
+  updateCategoryCustomization,
 } from "../controller/categories.Controller.js";
 import { authenticate } from "../middleware/userAuth.js";
 import { setUploadFolder } from "../middleware/setUploadFolder.js";
@@ -27,6 +28,11 @@ router.put(
   setUploadFolder("categories"),
   upload.single("ogImage"),
   updateCategory, 
+);
+router.put(
+  "/update-customization/:id",
+  authenticate,
+  updateCategoryCustomization,
 );
 router.get("/get-categories", getCategories);
 router.get("/get-categories-by-type/:type", getCategoryByType);

@@ -1397,7 +1397,7 @@ export const getListingBySlug = async (req, res) => {
       slug,
       isDeleted: false,
     })
-      .populate("category", "name iconSvg slug seo")
+      .populate("category", "name iconSvg slug seo imageLayout ctaButtonText enableBookingRooms")
       .populate("subCategory", "name iconSvg slug")
       .populate("city", "name iconSvg slug")
       .populate(
