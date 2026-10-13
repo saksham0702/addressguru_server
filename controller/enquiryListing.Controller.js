@@ -130,18 +130,57 @@ export const sendEnquiry = async (req, res) => {
   }
 };
 
+// ── Helper to determine whether a listing is on an active paid plan ────────────
+export const checkIsListingPaid = (listing) => {
+  if (!listing) return false;
+  // If planStatus is expired or expiry date is past, unpaid
+  if (listing.planStatus === "expired") return false;
+  if (listing.planExpiryDate && new Date(listing.planExpiryDate) < new Date()) {
+    return false;
+  }
+  // Admin assigned or role free = paid
+  if (
+    listing.planStatus === "admin_assigned" ||
+    listing.planStatus === "role_free"
+  ) {
+    return true;
+  }
+  // Active plan
+  if (listing.planStatus === "active") {
+    if (listing.paymentStatus === "paid") return true;
+    if (listing.plan && typeof listing.plan === "object" && listing.plan.price > 0) return true;
+  }
+  // If paymentStatus is explicitly 'paid'
+  if (listing.paymentStatus === "paid") return true;
+  return false;
+};
+
+const maskLeadEmail = (email) => {
+  if (!email) return "•••••@•••••.com";
+  const parts = email.split("@");
+  if (parts.length < 2) return "•••••@•••••.com";
+  const user = parts[0];
+  const domain = parts[1];
+  const maskedUser = user.length > 2 ? `${user.slice(0, 2)}••••` : "••••";
+  return `${maskedUser}@${domain}`;
+};
+
+const maskLeadPhone = (phoneNum) => {
+  if (!phoneNum) return "••••••••••";
+  const str = String(phoneNum).trim();
+  if (str.length <= 4) return "••••";
+  return `${str.slice(0, 2)}••••••${str.slice(-2)}`;
+};
+
 /**
  * ─── GET /api/listing-features/my-leads  (Owner leads Dashboard) ──────────────
- * Used by mobile app dashboard to show all enquiries for current user
+ * Used by owner dashboard to show all enquiries for current user
  */
 export const getMyLeads = async (req, res) => {
   try {
-    const { category, listingId, page = 1, limit = 20 } = req.query;
+    const { category, listingId, page = 1, limit = 50 } = req.query;
 
-    console.log("category = ", category);
-    console.log("listingId = ", listingId);
-
-    const type = normalizeCategory(category);
+    const type = normalizeCategory(category || "business");
     const entry = MODEL_MAP[type];
 
     if (!entry) {
@@ -149,8 +188,6 @@ export const getMyLeads = async (req, res) => {
         .status(400)
         .json({ success: false, message: "Invalid category" });
     }
-
-    // console.log("entry = ", entry);
 
     const { model, modelName } = entry;
 
@@ -160,10 +197,7 @@ export const getMyLeads = async (req, res) => {
       isDeleted: false,
     };
 
-    // console.log("filter = ", filter);
-
     if (listingId && listingId !== "" && listingId !== "All") {
-      // Find all listings belonging to this category for the user
       const listingIds = await model
         .find({
           createdBy: req.user.id,
@@ -172,8 +206,6 @@ export const getMyLeads = async (req, res) => {
         })
         .distinct("_id");
 
-      console.log("listingIds = ", listingIds);
-
       filter.listingId = { $in: listingIds };
     }
 
@@ -181,7 +213,11 @@ export const getMyLeads = async (req, res) => {
       Enquiry.find(filter)
         .populate({
           path: "listingId",
-          select: "businessName title",
+          select: "businessName title slug plan paymentStatus planStatus planExpiryDate",
+          populate: {
+            path: "plan",
+            select: "name price planCode durationInDays",
+          },
         })
         .sort({ createdAt: -1 })
         .skip((+page - 1) * +limit)
@@ -190,37 +226,77 @@ export const getMyLeads = async (req, res) => {
       Enquiry.countDocuments(filter),
     ]);
 
-    // console.log("enquiries = ", enquiries);
-    // console.log("total = ", total);
-
-    // Transform to match frontend CardEnquires expectations
+    // Transform leads with paid vs unpaid rules:
+    // If unpaid: Owner sees Name and Message; Phone and Email are locked/masked!
+    // If paid: Owner sees full contact details (Phone, Email, Name, Message).
     const result = enquiries.map((enq) => {
+      const listing = enq.listingId;
+      const isPaid = checkIsListingPaid(listing);
+
       const cc = enq.countryCode
         ? (String(enq.countryCode).startsWith("+")
             ? String(enq.countryCode)
             : `+${enq.countryCode}`)
         : "+971";
+
+      const rawPhone = enq.mobileNumber ? String(enq.mobileNumber) : "";
+      const fullPhone = rawPhone ? `${cc} ${rawPhone}` : "";
+      const maskedPhone = `${cc} ${maskLeadPhone(rawPhone)}`;
+      const maskedEmail = maskLeadEmail(enq.email);
+
       return {
         id: enq._id,
+        _id: enq._id,
         name: enq.fullName,
-        countryCode: cc,
-        ph_number: enq.mobileNumber,
-        phone: `${cc} ${enq.mobileNumber}`,
-        email: enq.email,
+        fullName: enq.fullName,
         message: enq.message || "",
+        status: enq.status || "",
         created_at: enq.createdAt,
+        createdAt: enq.createdAt,
+
+        // Business listing information
         title:
-          enq.listingId?.businessName ||
-          enq.listingId?.title ||
+          listing?.businessName ||
+          listing?.title ||
           enq.listingSlug,
-        listingId: enq.listingId?._id || enq.listingId,
+        listingName:
+          listing?.businessName ||
+          listing?.title ||
+          enq.listingSlug,
+        listingSlug: listing?.slug || enq.listingSlug,
+        listingId: listing?._id || enq.listingId,
+        listingModel: enq.listingModel,
+
+        // Paid status
+        isPaid,
+        isContactLocked: !isPaid,
+        planName: listing?.plan?.name || (isPaid ? "Paid Plan" : "Free Plan"),
+        planStatus: listing?.planStatus || (isPaid ? "active" : "free"),
+        paymentStatus: listing?.paymentStatus || (isPaid ? "paid" : "pending"),
+
+        // Contact info: locked for unpaid listings
+        countryCode: isPaid ? cc : "+971",
+        ph_number: isPaid ? enq.mobileNumber : null,
+        mobileNumber: isPaid ? enq.mobileNumber : null,
+        phone: isPaid ? fullPhone : maskedPhone,
+        email: isPaid ? enq.email : maskedEmail,
+        displayPhone: isPaid ? fullPhone : maskedPhone,
+        displayEmail: isPaid ? enq.email : maskedEmail,
       };
     });
+
+    const paidCount = result.filter((r) => r.isPaid).length;
+    const lockedCount = result.filter((r) => !r.isPaid).length;
 
     return res.json({
       success: true,
       result,
       total,
+      summary: {
+        total,
+        paidCount,
+        lockedCount,
+      },
       pagination: {
         total,
         page: +page,
