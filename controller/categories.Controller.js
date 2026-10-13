@@ -275,3 +275,32 @@ export const getCategoryBySlug = async (req, res) => {
     return errorData(res, 500, false, "Internal server error");
   }
 };
+
+// ✅ Update Category Customization (imageLayout, ctaButtonText, enableBookingRooms)
+export const updateCategoryCustomization = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { imageLayout, ctaButtonText, enableBookingRooms } = req.body;
+
+    const category = await Category.findOne({ _id: id, isDeleted: false });
+    if (!category) return errorData(res, 404, false, "Category not found");
+
+    if (imageLayout !== undefined) category.imageLayout = imageLayout;
+    if (ctaButtonText !== undefined) category.ctaButtonText = ctaButtonText;
+    if (enableBookingRooms !== undefined) category.enableBookingRooms = Boolean(enableBookingRooms);
+
+    await category.save();
+
+    return successData(
+      res,
+      200,
+      true,
+      "Category customization updated successfully",
+      category,
+    );
+  } catch (error) {
+    console.warn(error);
+    return errorData(res, 500, false, "Internal server error");
+  }
+};
+

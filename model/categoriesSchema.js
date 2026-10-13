@@ -43,6 +43,22 @@ const categorySchema = new mongoose.Schema(
       ogImage: String,
     },
 
+    // Customization fields for listings
+    imageLayout: {
+      type: String,
+      enum: ["slider", "grid"],
+      default: "slider",
+    },
+    ctaButtonText: {
+      type: String,
+      enum: ["Enquire Now", "Book Now"],
+      default: "Enquire Now",
+    },
+    enableBookingRooms: {
+      type: Boolean,
+      default: false,
+    },
+
     isActive: { type: Boolean, default: true },
     isDeleted: { type: Boolean, default: false },
   },
