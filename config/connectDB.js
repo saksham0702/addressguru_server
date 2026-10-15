@@ -11,8 +11,8 @@ const connectDB = async () => {
   }
   try {
     await mongoose.connect(MONGODB_URL, {
-      useNewUrlParser: true,
-      useUnifiedTopology: true,
+      serverSelectionTimeoutMS: 30000,
+      socketTimeoutMS: 45000,
     });
 
     for (const city of defaultCities) {
@@ -38,11 +38,15 @@ const connectDB = async () => {
   } catch (err) {
     console.warn("❌ MongoDB connection error:", err.message);
     logger.error("❌ MongoDB connection error:", err.message);
-    process.exit(1);
+    console.log("🔄 Retrying MongoDB connection in 5 seconds...");
+    setTimeout(connectDB, 5000);
   }
 
   mongoose.connection.on("disconnected", () => {
     console.log("⚠️ MongoDB disconnected");
+  });
+  mongoose.connection.on("error", (err) => {
+    console.warn("⚠️ MongoDB connection event error:", err.message);
   });
 };
 

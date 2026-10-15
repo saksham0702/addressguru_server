@@ -212,7 +212,6 @@ const businessListingSchema = new mongoose.Schema(
 );
 
 // ── Indexes ───────────────────────────────────────────────────────────────────
-businessListingSchema.index({ slug: 1 });
 businessListingSchema.index({ businessName: 1, isDeleted: 1 }); // for duplicate name check
 businessListingSchema.index({ category: 1, subCategory: 1 });
 businessListingSchema.index({ city: 1 });

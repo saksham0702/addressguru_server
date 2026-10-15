@@ -19,28 +19,33 @@ const queryCache = new Map(); // key: lowercased query, value: { data, expiresAt
 const QUERY_CACHE_TTL_MS = 5 * 60 * 1000; // 5 min
 
 export const loadBusinessEmbeddingCache = async () => {
-  const listings = await BusinessListing.find({
-    isDeleted: false,
-    status: "approved",
-    isPublished: true,
-    aiEmbedding: { $exists: true, $ne: [] },
-  })
-    .select("businessName slug category subCategory aiEmbedding")
-    .populate("category", "name")
-    .populate("subCategory", "name")
-    .lean();
+  try {
+    const listings = await BusinessListing.find({
+      isDeleted: false,
+      status: "approved",
+      isPublished: true,
+      aiEmbedding: { $exists: true, $ne: [] },
+    })
+      .select("businessName slug category subCategory aiEmbedding")
+      .populate("category", "name")
+      .populate("subCategory", "name")
+      .lean();
 
-  cache = listings.map((l) => ({
-    id: l._id.toString(),
-    businessName: l.businessName,
-    categoryName: l.category?.name || "",
-    subCategoryName: l.subCategory?.name || "",
-    embedding: l.aiEmbedding,
-  }));
+    cache = listings.map((l) => ({
+      id: l._id.toString(),
+      businessName: l.businessName,
+      categoryName: l.category?.name || "",
+      subCategoryName: l.subCategory?.name || "",
+      embedding: l.aiEmbedding,
+    }));
 
-  cacheLoadedAt = new Date();
-  console.log(`✅ AI business search cache loaded: ${cache.length} listings`);
-  return cache.length;
+    cacheLoadedAt = new Date();
+    console.log(`✅ AI business search cache loaded: ${cache.length} listings`);
+    return cache.length;
+  } catch (error) {
+    console.warn("⚠️ AI business search cache could not be loaded:", error.message);
+    return 0;
+  }
 };
 
 export const getCacheStatus = () => ({

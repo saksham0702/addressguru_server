@@ -63,8 +63,8 @@ import { restoreSessionOnBoot } from "./modules/whatsapp/services/whatsappClient
 import flashDealRoutes from "./modules/flash-deal/flashDeal.routes.js";
 import "./modules/whatsapp/whatsapEventhandler.js"; // registers business-event listeners
 import whatsappTemplateRouter from "./modules/whatsapp-template/whatsappTemplate.router.js";
-import { seedDefaultTemplates } from "./modules/whatsapp-template/whatsappTemplate.controller.js";
 import whatsappBulkRouter from "./modules/whatsapp-bulk/whatsappBulk.router.js";
+import websiteAuditRouter from "./modules/website-audit/websiteAudit.router.js";
 
 var app = express();
 
@@ -74,7 +74,7 @@ var app = express();
 // session restore never races against the DB connection.
 connectDB().then(() => {
   restoreSessionOnBoot();
-  seedDefaultTemplates();
+  // seedDefaultTemplates();
 
   // ── Sweep stale "online" users every 5 minutes ──────────────────────────
   // Marks isOnline=false for users whose lastSeen is older than 60 minutes.
@@ -90,18 +90,21 @@ connectDB().then(() => {
         { $set: { isOnline: false } },
       );
       if (result.modifiedCount > 0) {
-        console.log(`[session] Marked ${result.modifiedCount} idle user(s) offline`);
+        console.log(
+          `[session] Marked ${result.modifiedCount} idle user(s) offline`,
+        );
       }
     } catch (err) {
       console.warn("[session] sweepIdleUsers failed:", err.message);
     }
   };
   setInterval(sweepIdleUsers, 5 * 60 * 1000); // every 5 minutes
+  loadBusinessEmbeddingCache().catch((err) => {
+    console.warn("loadBusinessEmbeddingCache error:", err.message);
+  });
 });
 startBrokenLinkCron();
 initializeFirebase();
-loadBusinessEmbeddingCache();
-
 
 // view engine setup
 app.set("trust proxy", 1);
@@ -246,6 +249,7 @@ app.use("/broken-links", brokenLinkScannerRoutes);
 app.use("/ai-search", aiSearchRouter);
 app.use("/flash-deals", flashDealRoutes);
 app.use("/admin-notifications", adminNotificationRouter);
+app.use("/website-audit", websiteAuditRouter);
 // app.use("/gbp-tracker", gbpTrackerRoutes);
 
 // Silence disabled socket.io client polling/connection requests

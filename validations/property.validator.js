@@ -27,11 +27,11 @@ const propertyStepSchema = {
       "string.max": "Title must not exceed 100 characters",
     }),
 
-    description: Joi.string().min(200).max(500).required().messages({
+    description: Joi.string().min(10).max(1500).required().messages({
       "any.required": "Description is required",
       "string.empty": "Description is required",
-      "string.min": "Description must be at least 200 characters",
-      "string.max": "Description must not exceed 500 characters",
+      "string.min": "Description must be at least 10 characters",
+      "string.max": "Description must not exceed 1500 characters",
     }),
 
     purpose: Joi.string().valid("sale", "rent", "lease").required().messages({

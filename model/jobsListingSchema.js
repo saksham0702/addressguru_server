@@ -266,6 +266,5 @@ jobSchema.index({ status: 1, isDeleted: 1, isActive: 1 });
 jobSchema.index({ category: 1, subCategory: 1 });
 jobSchema.index({ isFeatured: 1, isUrgent: 1 });
 jobSchema.index({ applicationDeadline: 1 });
-jobSchema.index({ slug: 1 });
 
 export default mongoose.model("Job", jobSchema);

@@ -65,7 +65,6 @@ const categorySchema = new mongoose.Schema(
   { timestamps: true },
 );
 
-categorySchema.index({ slug: 1 });
 
 categorySchema.index({
   name: "text",
