@@ -16,12 +16,17 @@ export const getAllPlans = async (req, res) => {
   try {
     const { planType } = req.query;
 
-    const plans = await Plan.find({ planType })
-      .sort({ displayOrder: 1 })
+    const filter = { isDeleted: { $ne: true } };
+    if (planType) {
+      filter.planType = planType;
+    }
+
+    const plans = await Plan.find(filter)
+      .sort({ displayOrder: 1, createdAt: 1 })
       .lean();
 
     if (!plans.length) {
-      return errorData(res, 404, false, "No plans found");
+      return successData(res, 200, true, "No plans found", { plans: [] });
     }
 
     /*
@@ -154,20 +159,34 @@ export const createPlan = async (req, res) => {
       );
     }
 
+    const targetPlanType = planType || "business";
     const existing = await Plan.findOne({
       name: name.trim(),
+      planType: targetPlanType,
       isDeleted: false,
     });
-    if (existing)
-      return errorData(res, 400, false, "A plan with this name already exists");
+    if (existing) {
+      return errorData(
+        res,
+        400,
+        false,
+        `A ${targetPlanType} plan with this name already exists`,
+      );
+    }
 
-    const slug = slugify(name, { lower: true, strict: true });
+    const baseSlug = slugify(name, { lower: true, strict: true });
+    let slug = targetPlanType === "business" ? baseSlug : `${baseSlug}-${targetPlanType}`;
+    let slugSuffix = 1;
+    while (await Plan.findOne({ slug })) {
+      slug = `${baseSlug}-${targetPlanType}-${slugSuffix}`;
+      slugSuffix++;
+    }
 
     const plan = await Plan.create({
       name: name.trim(),
       slug,
       tagline: tagline || null,
-      planType: planType || "business",
+      planType: targetPlanType,
       displayOrder: displayOrder ?? 0,
       price,
       actualPrice: actualPrice ?? null,
@@ -230,8 +249,16 @@ export const updatePlan = async (req, res) => {
       plan.markModified("tableFeatures");
     }
 
-    if (req.body.name) {
-      plan.slug = slugify(req.body.name, { lower: true, strict: true });
+    if (req.body.name && req.body.name !== plan.name) {
+      const targetPlanType = plan.planType || "business";
+      const baseSlug = slugify(req.body.name, { lower: true, strict: true });
+      let slug = targetPlanType === "business" ? baseSlug : `${baseSlug}-${targetPlanType}`;
+      let slugSuffix = 1;
+      while (await Plan.findOne({ slug, _id: { $ne: plan._id } })) {
+        slug = `${baseSlug}-${targetPlanType}-${slugSuffix}`;
+        slugSuffix++;
+      }
+      plan.slug = slug;
     }
 
     await plan.save();
@@ -374,6 +401,8 @@ export const deletePlan = async (req, res) => {
 
     plan.isDeleted = true;
     plan.isActive = false;
+    // Release the unique slug so future plans can use the name
+    plan.slug = `${plan.slug}-deleted-${Date.now()}`;
     await plan.save();
 
     return successData(res, 200, true, "Plan deleted successfully", {

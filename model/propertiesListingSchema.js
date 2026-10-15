@@ -185,7 +185,6 @@ const propertyListingSchema = new mongoose.Schema(
 );
 
 // ── Indexes ───────────────────────────────────────────────────────────────────
-propertyListingSchema.index({ slug: 1 });
 propertyListingSchema.index({ title: 1, isDeleted: 1 }); // for duplicate check
 propertyListingSchema.index({ "price.amount": 1 });
 propertyListingSchema.index({ purpose: 1 });

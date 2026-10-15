@@ -101,7 +101,6 @@ const marketplaceListingSchema = new mongoose.Schema(
 );
 
 // ── Indexes ───────────────────────────────────────────────────────────────────
-marketplaceListingSchema.index({ slug: 1 });
 marketplaceListingSchema.index({ "price.amount": 1 });
 marketplaceListingSchema.index({ condition: 1 });
 marketplaceListingSchema.index({ category: 1, subCategory: 1 });

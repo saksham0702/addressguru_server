@@ -19,7 +19,9 @@ import mongoose from "mongoose";
 const validateAdditionalFields = async (additionalFields = []) => {
   if (!additionalFields.length) return { errors: [], validated: [] };
 
-  const fieldIds = additionalFields.map((f) => f.field_id);
+  const fieldIds = additionalFields
+    .map((f) => f.field_id)
+    .filter(Boolean);
   const fieldDocs = await AdditionalField.find({
     _id: { $in: fieldIds },
     is_active: true,
@@ -34,12 +36,24 @@ const validateAdditionalFields = async (additionalFields = []) => {
   const validated = [];
 
   for (const submitted of additionalFields) {
+    if (!submitted.field_id) continue;
     const doc = fieldMap[submitted.field_id?.toString()];
-    if (!doc) {
-      errors.push(`Unknown or inactive field: ${submitted.field_id}`);
+    // Skip if field definition was deleted or deactivated
+    if (!doc) continue;
+
+    const val = submitted.value;
+    // Skip if user removed / cleared the value
+    if (val === null || val === undefined || val === "") continue;
+    if (Array.isArray(val) && val.length === 0) continue;
+    if (
+      typeof val === "object" &&
+      !Array.isArray(val) &&
+      (!val.amount || val.amount.toString().trim() === "")
+    ) {
       continue;
     }
-    const fieldErrors = doc.validateValue(submitted.value);
+
+    const fieldErrors = doc.validateValue(val);
     if (fieldErrors.length) {
       errors.push(...fieldErrors);
       continue;
@@ -49,7 +63,7 @@ const validateAdditionalFields = async (additionalFields = []) => {
       field_id: doc._id,
       field_label: doc.field_label,
       field_type: doc.field_type,
-      value: submitted.value ?? null,
+      value: val,
     });
   }
 
@@ -642,10 +656,30 @@ export const getPropertyListingBySlug = async (req, res) => {
       .populate("category", "name")
       .populate("subCategory", "name")
       .populate("city", "name")
-      .populate("additionalFields.field_id", "field_label field_type")
+      .populate({
+        path: "additionalFields.field_id",
+        match: { is_deleted: false, is_active: true },
+        select: "field_label field_type is_deleted is_active",
+      })
       .lean();
 
     if (!listing) return errorData(res, 404, false, "Listing not found");
+
+    if (Array.isArray(listing.additionalFields)) {
+      listing.additionalFields = listing.additionalFields.filter(
+        (f) =>
+          f.field_id != null &&
+          !f.field_id.is_deleted &&
+          f.field_id.is_active !== false &&
+          f.value !== null &&
+          f.value !== undefined &&
+          f.value !== "" &&
+          (!Array.isArray(f.value) || f.value.length > 0) &&
+          (typeof f.value !== "object" ||
+            Array.isArray(f.value) ||
+            (f.value.amount && f.value.amount.toString().trim() !== "")),
+      );
+    }
 
     return successData(res, 200, true, "Listing fetched successfully", listing);
   } catch (error) {
@@ -692,7 +726,11 @@ export const getPropertyListingByUser = async (req, res) => {
         .populate("subCategory", "name")
         .populate("city", "name")
         .populate("plan", "name")
-        .populate("additionalFields.field_id", "field_label field_type")
+        .populate({
+          path: "additionalFields.field_id",
+          match: { is_deleted: false, is_active: true },
+          select: "field_label field_type is_deleted is_active",
+        })
         .populate("createdBy", "name email phone avatar") // optional: show owner info
         .sort({ createdAt: -1 })
         .skip(skip)
@@ -1069,7 +1107,11 @@ export const getApprovedListings = async (req, res) => {
       .populate("category", "name")
       .populate("subCategory", "name")
       .populate("city", "name")
-      .populate("additionalFields.field_id", "field_label field_type")
+      .populate({
+        path: "additionalFields.field_id",
+        match: { is_deleted: false, is_active: true },
+        select: "field_label field_type is_deleted is_active",
+      })
       .skip(skip)
       .limit(limit)
       .lean();

@@ -170,7 +170,6 @@ const planSchema = new mongoose.Schema(
 );
 
 // ── Indexes ───────────────────────────────────────────────────────────────────
-planSchema.index({ slug: 1 });
 planSchema.index({ isActive: 1, isDeleted: 1 });
 planSchema.index({ displayOrder: 1 });
 
