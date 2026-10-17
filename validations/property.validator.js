@@ -86,7 +86,7 @@ const propertyStepSchema = {
       )
       .optional()
       .default([]),
-  }).options({ allowUnknown: false }),
+  }).options({ allowUnknown: true }),
 
   /* =========================
      STEP 2 – IMAGES
@@ -142,7 +142,7 @@ const propertyStepSchema = {
       "number.min": "Longitude must be between -180 and 180",
       "number.max": "Longitude must be between -180 and 180",
     }),
-  }).options({ allowUnknown: false }),
+  }).options({ allowUnknown: true }),
 
   /* =========================
      STEP 4 – SEO
@@ -161,7 +161,7 @@ const propertyStepSchema = {
       "string.min": "SEO description must be at least 10 characters",
       "string.max": "SEO description must not exceed 300 characters",
     }),
-  }).options({ allowUnknown: false }),
+  }).options({ allowUnknown: true }),
 
   /* =========================
      STEP 5 – PLAN & PUBLISH
@@ -171,7 +171,7 @@ const propertyStepSchema = {
       "any.required": "Plan is required",
       "string.empty": "Plan is required",
     }),
-  }).options({ allowUnknown: false }),
+  }).options({ allowUnknown: true }),
 };
 
 export default propertyStepSchema;

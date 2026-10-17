@@ -94,6 +94,11 @@ export const createPropertyListing = async (req, res) => {
       additional_fields = [],
     } = req.body;
 
+    // Validate category ID
+    if (!category_id || !mongoose.Types.ObjectId.isValid(category_id)) {
+      return errorData(res, 400, false, "Valid Category ID is required");
+    }
+
     // Validate category
     const category = await Category.findOne({
       _id: category_id,
@@ -102,14 +107,29 @@ export const createPropertyListing = async (req, res) => {
     if (!category) return errorData(res, 404, false, "Category not found");
 
     // Validate sub-category if provided
-    if (sub_category_id) {
+    let validSubCategoryId = null;
+    if (sub_category_id && mongoose.Types.ObjectId.isValid(sub_category_id)) {
       const subCategory = await SubCategory.findOne({
         _id: sub_category_id,
         category: category_id,
         isDeleted: false,
       });
-      if (!subCategory)
-        return errorData(res, 404, false, "Sub-category not found");
+      if (subCategory) {
+        validSubCategoryId = subCategory._id;
+      }
+    }
+
+    // Normalize purpose
+    let cleanPurpose = String(purpose || "sale").toLowerCase().trim();
+    if (cleanPurpose.includes("rent")) cleanPurpose = "rent";
+    else if (cleanPurpose.includes("lease")) cleanPurpose = "lease";
+    else cleanPurpose = "sale";
+
+    // Normalize price period
+    const validPeriods = ["monthly", "yearly", "weekly", "one-time"];
+    let cleanPeriod = String(price_period || "one-time").toLowerCase().trim();
+    if (!validPeriods.includes(cleanPeriod)) {
+      cleanPeriod = cleanPurpose === "sale" ? "one-time" : "yearly";
     }
 
     // Parse additional_fields if string (multipart safety)
@@ -128,28 +148,40 @@ export const createPropertyListing = async (req, res) => {
     if (errors.length)
       return errorData(res, 400, false, "Validation failed", { errors });
 
-    const slug = `${slugify(title, { lower: true, strict: true })}`;
+    // Generate unique slug
+    let baseSlug =
+      slugify(title || "property", { lower: true, strict: true }) || "property";
+    let slug = baseSlug;
+    let counter = 1;
+    while (await PropertyListing.findOne({ slug })) {
+      slug = `${baseSlug}-${Math.floor(1000 + Math.random() * 9000)}${counter > 1 ? `-${counter}` : ""}`;
+      counter++;
+    }
+
+    const validPayments = toArray(payments).filter((p) =>
+      mongoose.Types.ObjectId.isValid(p),
+    );
 
     const listing = await PropertyListing.create({
       category: category_id,
-      subCategory: sub_category_id || null,
-      soldBy,
+      subCategory: validSubCategoryId,
+      soldBy: soldBy || "owner",
       title,
       description,
-      purpose,
+      purpose: cleanPurpose,
       price: {
-        amount: price_amount || null,
-        currency: price_currency,
+        amount: price_amount ? Number(price_amount) : null,
+        currency: price_currency || "AED",
         isNegotiable: price_negotiable,
-        period: price_period,
+        period: cleanPeriod,
       },
       area: {
-        size: area_size || null,
-        unit: area_unit,
+        size: area_size ? Number(area_size) : null,
+        unit: area_unit || "sqft",
       },
-      paymentModes: toArray(payments),
+      paymentModes: validPayments,
       additionalFields: validated,
-      cae_number,
+      cae_number: cae_number || null,
       slug,
       stepCompleted: 1,
       isVerified: false,
@@ -171,8 +203,6 @@ export const createPropertyListing = async (req, res) => {
       });
     }
 
-    await listing.save();
-
     return successData(
       res,
       201,
@@ -184,8 +214,13 @@ export const createPropertyListing = async (req, res) => {
       },
     );
   } catch (error) {
-    console.warn("Create property listing error:", error);
-    return errorData(res, 500, false, "Internal server error");
+    console.error("Create property listing error:", error);
+    return errorData(
+      res,
+      500,
+      false,
+      error?.message || "Internal server error",
+    );
   }
 };
 
@@ -278,34 +313,113 @@ export const updatePropertyListingStep = async (req, res) => {
         // Regenerate slug only if title changed
         if (title && title !== listing.title) {
           listing.title = title;
-          listing.slug = `${slugify(title, { lower: true, strict: true })}`;
+          let baseSlug =
+            slugify(title, { lower: true, strict: true }) || "property";
+          let slug = baseSlug;
+          let counter = 1;
+          while (
+            await PropertyListing.findOne({
+              slug,
+              _id: { $ne: listing._id },
+            })
+          ) {
+            slug = `${baseSlug}-${Math.floor(1000 + Math.random() * 9000)}${counter > 1 ? `-${counter}` : ""}`;
+            counter++;
+          }
+          listing.slug = slug;
         }
 
-        if (category_id) listing.category = category_id;
-        listing.subCategory = sub_category_id || null;
+        if (category_id && mongoose.Types.ObjectId.isValid(category_id)) {
+          listing.category = category_id;
+        }
+        if (sub_category_id !== undefined) {
+          listing.subCategory =
+            sub_category_id && mongoose.Types.ObjectId.isValid(sub_category_id)
+              ? sub_category_id
+              : null;
+        }
         if (description !== undefined) listing.description = description;
-        if (purpose !== undefined) listing.purpose = purpose;
+        if (purpose !== undefined) {
+          let cleanPurpose = String(purpose).toLowerCase().trim();
+          if (cleanPurpose.includes("rent")) cleanPurpose = "rent";
+          else if (cleanPurpose.includes("lease")) cleanPurpose = "lease";
+          else cleanPurpose = "sale";
+          listing.purpose = cleanPurpose;
+        }
+
+        const validPeriods = ["monthly", "yearly", "weekly", "one-time"];
+        let cleanPeriod = String(
+          price_period || listing.price?.period || "one-time",
+        )
+          .toLowerCase()
+          .trim();
+        if (!validPeriods.includes(cleanPeriod)) {
+          cleanPeriod = listing.purpose === "sale" ? "one-time" : "yearly";
+        }
+
         listing.price = {
-          amount: price_amount || null,
-          currency: price_currency,
-          isNegotiable: price_negotiable,
-          period: price_period,
+          amount: price_amount ? Number(price_amount) : null,
+          currency: price_currency || listing.price?.currency || "AED",
+          isNegotiable:
+            price_negotiable !== undefined
+              ? price_negotiable
+              : listing.price?.isNegotiable,
+          period: cleanPeriod,
         };
-        listing.area = { size: area_size || null, unit: area_unit };
+        listing.area = {
+          size: area_size ? Number(area_size) : null,
+          unit: area_unit || "sqft",
+        };
         listing.soldBy = soldBy || listing.soldBy;
         listing.cae_number = cae_number || listing.cae_number;
-        listing.paymentModes = toArray(payments);
+        if (payments && payments.length > 0) {
+          listing.paymentModes = toArray(payments).filter((p) =>
+            mongoose.Types.ObjectId.isValid(p),
+          );
+        }
         listing.additionalFields = validated;
         break;
       }
 
       /* ── STEP 2 – MEDIA (IMAGES) ── */
       case 2: {
-        if (req.files?.images?.length > 0) {
-          const newImages = req.files.images.map((img) => img.path);
-          listing.images = [...(listing.images || []), ...newImages];
+        let retainedImages = [];
+        if (req.body.existing_images) {
+          try {
+            retainedImages =
+              typeof req.body.existing_images === "string"
+                ? JSON.parse(req.body.existing_images)
+                : req.body.existing_images;
+          } catch {
+            retainedImages = [];
+          }
+        }
+
+        retainedImages = (
+          Array.isArray(retainedImages) ? retainedImages : []
+        )
+          .map((img) => {
+            if (!img || typeof img !== "string") return null;
+            return img.replace(/^https?:\/\/[^\/]+\/(api\/)?/, "");
+          })
+          .filter(Boolean);
+
+        const newImages =
+          req.files?.images?.length > 0
+            ? req.files.images.map((img) => img.path)
+            : [];
+
+        if (retainedImages.length === 0 && newImages.length === 0) {
+          if (!listing.images || listing.images.length === 0) {
+            return errorData(
+              res,
+              400,
+              false,
+              "Please provide at least one image",
+            );
+          }
         } else {
-          return errorData(res, 400, false, "No images provided");
+          listing.images = [...retainedImages, ...newImages];
         }
         break;
       }
