@@ -1,4 +1,5 @@
 import Category from "../model/categoriesSchema.js";
+import SubCategory from "../model/subCategoriesSchema.js";
 import slugify from "slugify";
 import { successData, errorData } from "../services/helper.js";
 
@@ -201,13 +202,30 @@ export const getCategoryByType = async (req, res) => {
       query = query.limit(parseInt(limit, 10));
     }
 
-    const category = await query;
+    const categories = await query.lean();
 
-    if (!category || category.length === 0) {
+    if (!categories || categories.length === 0) {
       return errorData(res, 404, false, "Category not found.");
     }
 
-    return successData(res, 200, true, "Get category successfully", category);
+    // Attach active subcategories
+    const categoryIds = categories.map((c) => c._id);
+    const subCats = await SubCategory.find({
+      category: { $in: categoryIds },
+      isDeleted: false,
+    })
+      .select("name slug category _id")
+      .sort({ createdAt: 1 })
+      .lean();
+
+    const categoriesWithSubs = categories.map((cat) => ({
+      ...cat,
+      subCategories: subCats.filter(
+        (s) => s.category.toString() === cat._id.toString(),
+      ),
+    }));
+
+    return successData(res, 200, true, "Get category successfully", categoriesWithSubs);
   } catch (error) {
     console.warn(error);
     return errorData(res, 500, false, "Internal server error");
