@@ -933,7 +933,7 @@ export const getMarketplaceCategoryInfo = async (req, res) => {
 
     const [subCategories, additionalFields] = await Promise.all([
       SubCategory.find({ category: categoryId, isDeleted: false }).select(
-        "name _id",
+        "name _id slug",
       ),
       AdditionalField.find({
         category_id: categoryId,
