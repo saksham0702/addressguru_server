@@ -3,6 +3,7 @@ import BusinessListing from "../model/businessListingSchema.js";
 import JobsListing from "../model/jobsListingSchema.js";
 import PropertyListing from "../model/propertiesListingSchema.js";
 import MarketplaceListing from "../model/marketplaceListingSchema.js";
+import Blog from "../model/blogsSchema.js";
 
 const SHARD_SIZE = 5000;
 
@@ -16,25 +17,32 @@ const getModelBySection = (section) => {
       return PropertyListing;
     case "marketplace":
       return MarketplaceListing;
+    case "blogs":
+      return Blog;
     default:
       return null;
   }
 };
 
-const getBaseFilter = () => ({
-  isDeleted: false,
-  status: "approved",
-});
+const getBaseFilter = (section) => {
+  if (section === "blogs") {
+    return { status: "published" };
+  }
+  return {
+    isDeleted: false,
+    status: "approved",
+  };
+};
 
 // ---------- ROOT: one row per section ----------
 export const getRootSitemap = async (req, res) => {
   try {
-    const sections = ["listing", "jobs", "properties", "marketplace"];
+    const sections = ["listing", "jobs", "properties", "marketplace", "blogs"];
     const result = [];
 
     for (const section of sections) {
       if (section === "listing") {
-        const filter = getBaseFilter();
+        const filter = getBaseFilter(section);
         const pipeline = [
           { $match: filter },
           { $group: { _id: { category: "$category", city: "$city" } } },
@@ -65,17 +73,19 @@ export const getRootSitemap = async (req, res) => {
         }
       } else {
         const Model = getModelBySection(section);
-        const filter = getBaseFilter();
+        const filter = getBaseFilter(section);
         const count = await Model.countDocuments(filter);
         if (count > 0) {
           const latest = await Model.findOne(filter)
             .sort({ updatedAt: -1 })
-            .select("updatedAt");
+            .select("updatedAt publishedAt");
           result.push({
             section,
             url_count: count,
             last_updated:
-              latest?.updatedAt?.toISOString() || new Date().toISOString(),
+              latest?.updatedAt?.toISOString() ||
+              latest?.publishedAt?.toISOString() ||
+              new Date().toISOString(),
           });
         }
       }
@@ -90,7 +100,7 @@ export const getRootSitemap = async (req, res) => {
   }
 };
 
-// ---------- SECTION META: total + shard count (used by all 4 index pages) ----------
+// ---------- SECTION META: total + shard count (used by all index pages) ----------
 export const getSectionMeta = async (req, res) => {
   try {
     const { section } = req.params;
@@ -100,18 +110,20 @@ export const getSectionMeta = async (req, res) => {
         .status(404)
         .json({ success: false, message: "Section not found" });
 
-    const filter = getBaseFilter();
+    const filter = getBaseFilter(section);
     const total = await Model.countDocuments(filter);
     const latest = await Model.findOne(filter)
       .sort({ updatedAt: -1 })
-      .select("updatedAt");
+      .select("updatedAt publishedAt");
 
     return res.status(200).json({
       success: true,
       total,
       totalShards: total > 0 ? Math.ceil(total / SHARD_SIZE) : 0,
       last_updated:
-        latest?.updatedAt?.toISOString() || new Date().toISOString(),
+        latest?.updatedAt?.toISOString() ||
+        latest?.publishedAt?.toISOString() ||
+        new Date().toISOString(),
     });
   } catch (error) {
     console.error("Error in getSectionMeta:", error);
@@ -121,7 +133,7 @@ export const getSectionMeta = async (req, res) => {
   }
 };
 
-// ---------- SHARDED SINGLE-PAGE URLS (jobs / marketplace / properties / listing) ----------
+// ---------- SHARDED SINGLE-PAGE URLS (jobs / marketplace / properties / listing / blogs) ----------
 export const getShardedListings = async (req, res) => {
   try {
     const { section } = req.params;
@@ -132,11 +144,11 @@ export const getShardedListings = async (req, res) => {
         .status(404)
         .json({ success: false, message: "Section not found" });
 
-    const filter = getBaseFilter();
+    const filter = getBaseFilter(section);
     const skip = (page - 1) * SHARD_SIZE;
 
     const docs = await Model.find(filter)
-      .select("slug updatedAt logo images coverImage")
+      .select("slug updatedAt publishedAt logo images coverImage")
       .sort({ _id: 1 }) // stable order so shard boundaries don't shift between requests
       .skip(skip)
       .limit(SHARD_SIZE)
@@ -146,8 +158,10 @@ export const getShardedListings = async (req, res) => {
       slug: d.slug,
       last_updated: d.updatedAt
         ? new Date(d.updatedAt).toISOString()
-        : new Date().toISOString(),
-      image: d.logo || d.coverImage || (d.images && d.images[0]) || null,
+        : d.publishedAt
+          ? new Date(d.publishedAt).toISOString()
+          : new Date().toISOString(),
+      image: d.coverImage || d.logo || (d.images && d.images[0]) || null,
     }));
 
     return res.status(200).json({ success: true, result });

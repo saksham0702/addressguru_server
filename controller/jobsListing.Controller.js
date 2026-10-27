@@ -959,57 +959,65 @@ export const updateJobStatus = async (req, res) => {
       // ── Send Email & Notification ──
       // Note: Only send email for moderation approval/rejection.
       if (["approved", "rejected"].includes(status)) {
-        try {
-          const categoryDoc = await Category.findById(job.category);
-          const categoryName = categoryDoc?.name || "";
-
-          await sendApprovedAndRejectedListingMail(
-            job.contact?.email || req.user.email,
-            job.contact?.name || "User",
-            status,
-            rejectionReason || `Your job listing has been ${status}.`,
-            {
-              businessName: job.title,
-              category: categoryName,
-              listingUrl: `${APP_BASE_URL}/jobs/${job.slug}`,
-              dashboardUrl: `${APP_BASE_URL}/dashboard`,
-            },
-          );
-
-          if (job.createdBy) {
-            const pushTitle =
-              status === "approved"
-                ? "Job Listing Approved 🎉"
-                : "Job Listing Rejected ❌";
-            const pushBody =
-              status === "approved"
-                ? `Congratulations! Your job listing "${job.title}" has been successfully approved.`
-                : `We're sorry, your job listing "${job.title}" was rejected. ${rejectionReason ? "Reason: " + rejectionReason.trim() : ""}`;
-
-            await sendPushNotification(job.createdBy, pushTitle, pushBody, {
-              type: "JOB_LISTING_STATUS",
-              listingId: job._id.toString(),
-              status: status,
-            });
+        let userDoc = null;
+        if (job.createdBy) {
+          try {
+            userDoc = await User.findById(job.createdBy);
+          } catch (uErr) {
+            console.warn("Could not fetch userDoc for job listing:", uErr.message);
           }
-        } catch (mailError) {
-          console.warn(
-            "❌ Admin status mail/notification failed:",
-            mailError.message,
-          );
+        }
+
+        const shouldSendEmail = req.body.sendEmail !== false;
+        const targetEmail = job.contact?.email || job.email || userDoc?.email || req.user?.email;
+
+        if (shouldSendEmail && targetEmail) {
+          try {
+            const categoryDoc = await Category.findById(job.category);
+            const categoryName = categoryDoc?.name || "";
+
+            await sendApprovedAndRejectedListingMail(
+              targetEmail,
+              job.contact?.name || userDoc?.name || "User",
+              status,
+              rejectionReason || `Your job listing has been ${status}.`,
+              {
+                businessName: job.title,
+                category: categoryName,
+                listingUrl: `${APP_BASE_URL}/jobs/${job.slug}`,
+                dashboardUrl: `${APP_BASE_URL}/dashboard`,
+              },
+            );
+
+            if (job.createdBy) {
+              const pushTitle =
+                status === "approved"
+                  ? "Job Listing Approved 🎉"
+                  : "Job Listing Rejected ❌";
+              const pushBody =
+                status === "approved"
+                  ? `Congratulations! Your job listing "${job.title}" has been successfully approved.`
+                  : `We're sorry, your job listing "${job.title}" was rejected. ${rejectionReason ? "Reason: " + rejectionReason.trim() : ""}`;
+
+              await sendPushNotification(job.createdBy, pushTitle, pushBody, {
+                type: "JOB_LISTING_STATUS",
+                listingId: job._id.toString(),
+                status: status,
+              });
+            }
+          } catch (mailError) {
+            console.warn(
+              "❌ Admin status mail/notification failed:",
+              mailError.message,
+            );
+          }
         }
 
         // ── Send WhatsApp Message ──
-        const shouldSendWhatsapp =
-          req.body.sendWhatsapp === true || !!req.body.whatsappMessage;
+        const shouldSendWhatsapp = req.body.sendWhatsapp !== false;
 
         if (shouldSendWhatsapp) {
           try {
-            let userDoc = null;
-            if (job.createdBy) {
-              userDoc = await User.findById(job.createdBy);
-            }
-
             const phone =
               req.body.whatsappPhone ||
               job.contact?.phone ||
@@ -1019,19 +1027,22 @@ export const updateJobStatus = async (req, res) => {
               userDoc?.mobileNumber ||
               userDoc?.phoneNumber;
 
-            const countryCode =
+            const rawCc = String(
               req.body.whatsappCountryCode ||
               job.contact?.countryCode ||
               job.countryCode ||
               userDoc?.countryCode ||
-              "+971";
+              "+971"
+            ).trim();
+            const countryCode = rawCc.startsWith("+") ? rawCc : `+${rawCc.replace(/\D/g, "")}`;
 
+            const recipientName = job.contact?.name || userDoc?.name || job.companyName || "Employer";
             let text = req.body.whatsappMessage;
             if (!text) {
               if (status === "approved") {
-                text = `Hello! 🎉 Your job opening "${job.title}" has been approved and is now live on AddressGuru UAE!\n\nView live: ${APP_BASE_URL}/job/${job.slug}\nDashboard: ${APP_BASE_URL}/dashboard`;
+                text = `Hello *${recipientName}*, 🎉 Congratulations! Your job opening *"${job.title}"* has been approved and is now live on AddressGuru UAE!\n\n📍 *View Live Job:* ${APP_BASE_URL}/jobs/${job.slug}\n👉 *Dashboard:* ${APP_BASE_URL}/dashboard\n\nThank you for choosing AddressGuru UAE!`;
               } else if (status === "rejected") {
-                text = `Hello! Your job opening "${job.title}" on AddressGuru UAE requires updates.\n\nReason: ${rejectionReason || "Please review guidelines"}\nDashboard: ${APP_BASE_URL}/dashboard`;
+                text = `Hello *${recipientName}*, your job opening *"${job.title}"* on AddressGuru UAE requires updates.\n\n❌ *Reason:* ${rejectionReason ? rejectionReason.trim() : "Please review job posting guidelines"}\n👉 *Dashboard:* ${APP_BASE_URL}/dashboard\n\nPlease update your posting so we can review it again.`;
               }
             }
 

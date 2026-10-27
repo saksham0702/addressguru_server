@@ -256,6 +256,7 @@ export const register = async (req, res) => {
       profile_location_area,
       membership_type,
       membership_expiresAt,
+      registrationSource,
       // preferences and others can be added as needed
     } = value;
 
@@ -319,6 +320,9 @@ export const register = async (req, res) => {
       profile_location_area,
       membership_type,
       membership_expiresAt,
+      registrationSource: registrationSource || req.body.registrationSource || {
+        source: "Direct Register (/register)",
+      },
       status: true,
       lastActive: Date.now(),
     };

@@ -23,8 +23,10 @@ import User from "../../model/userSchema.js";
 const MODEL_BY_PLAN_TYPE = {
   business: BusinessListing,
   job: Job,
+  jobs: Job,
   marketplace: MarketplaceListing,
-  property: PropertyListing, // FIX: was missing entirely — property listings never got updated
+  property: PropertyListing,
+  properties: PropertyListing,
 };
 
 /*
@@ -44,7 +46,8 @@ export const updateListingOnPayment = async (
 ) => {
   if (!listingId || !plan) return null;
 
-  const model = ModelOverride || MODEL_BY_PLAN_TYPE[planType];
+  const normalizedType = String(planType || plan?.planType || "").toLowerCase().trim();
+  const model = ModelOverride || MODEL_BY_PLAN_TYPE[normalizedType];
   if (!model) {
     console.warn(
       `⚠️ Unknown planType "${planType}" — listing ${listingId} not updated`,
@@ -72,12 +75,15 @@ export const updateListingOnPayment = async (
   }
 
   try {
+    const existingListing = await model.findById(listingId);
+    const newStatus = existingListing?.status === "approved" ? "approved" : "pending";
+
     const updated = await model.findByIdAndUpdate(
       listingId,
       {
         plan: plan._id, // unchanged — plan reference is never disturbed
         isPublished: true,
-        status: "pending",
+        status: newStatus,
         planStartedAt: now,
         planExpiryDate,
         planStatus,
@@ -105,6 +111,7 @@ export const createOrderService = async ({
   planId,
   listingId = null,
 }) => {
+  console.log("i am hit ");
   const plan = await Plan.findById(planId);
 
   if (!plan) {
@@ -193,23 +200,25 @@ export const createOrderService = async ({
   /*
    * PAID PLAN
    */
-  const existingPayment = await Payment.findOne({
-    user: userId,
-    plan: planId,
-    listing: listingId,
-    status: "created",
-  });
-
-  if (existingPayment) {
-    return {
-      isFreePlan: false,
-      payment: existingPayment,
-      order: {
-        id: existingPayment.razorpay.orderId,
-        amount: existingPayment.amountInSubunits,
-        currency: existingPayment.currency,
+  // Mark any old uncompleted 'created' payments for this user/plan as superseded
+  // so we never reuse an expired Razorpay order ID or outdated subunit amount
+  try {
+    await Payment.updateMany(
+      {
+        user: userId,
+        plan: planId,
+        listing: listingId,
+        status: "created",
       },
-    };
+      {
+        $set: {
+          status: "failed",
+          "notes.failureReason": "superseded_by_new_order",
+        },
+      },
+    );
+  } catch (cleanErr) {
+    console.warn("Could not clean old created payments:", cleanErr.message);
   }
 
   const amountInSubunits = convertToSubunits(plan.price);
@@ -225,6 +234,7 @@ export const createOrderService = async ({
       planName: plan.name,
     },
   });
+  console.log("order", order);
 
   const payment = await Payment.create({
     user: userId,

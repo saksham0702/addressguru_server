@@ -24,6 +24,12 @@ const blogSchema = new mongoose.Schema(
       required: true,
     },
 
+    updatedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      default: null,
+    },
+
     status: {
       type: String,
       enum: ["draft", "published", "rejected"],

@@ -306,7 +306,8 @@ export const getBlogBySlug = async (req, res) => {
 
     const blog = await Blog.findOne(query)
       .populate("category_id", "name slug")
-      .populate("author", "name avatar designation profile_bio socialLinks")
+      .populate("author", "name avatar designation profile_bio socialLinks email")
+      .populate("updatedBy", "name avatar designation profile_bio socialLinks email")
       .populate("relatedPosts", "title slug coverImage publishedAt")
       .lean();
 
@@ -408,6 +409,11 @@ export const updateBlog = async (req, res) => {
   try {
     const blog = await Blog.findById(req.params.id);
     if (!blog) return errorData(res, 404, false, "Blog not found");
+
+    const userId = req.user?.id || req.user?._id;
+    if (userId) {
+      blog.updatedBy = userId;
+    }
 
     const {
       title,
@@ -534,10 +540,11 @@ export const adminGetAllBlogs = async (req, res) => {
         Blog.countDocuments(query),
         Blog.find(query)
           .select(
-            "title slug coverImage status createdAt updatedAt publishedAt category_id author rejectionReason readingTime",
+            "title slug coverImage status createdAt updatedAt publishedAt category_id author updatedBy rejectionReason readingTime",
           )
           .populate("category_id", "name")
-          .populate("author", "name")
+          .populate("author", "name email")
+          .populate("updatedBy", "name email")
           .sort({ createdAt: -1 })
           .skip((Number(page) - 1) * Number(limit))
           .limit(Number(limit))

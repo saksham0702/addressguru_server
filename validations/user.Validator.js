@@ -89,5 +89,13 @@ export const validateUser = Joi.object({
   // status
   status: Joi.boolean().optional(),
 
+  // registration source tracking
+  registrationSource: Joi.object({
+    source: Joi.string().allow("", null).optional(),
+    lastPage: Joi.string().allow("", null).optional(),
+    secondLastPage: Joi.string().allow("", null).optional(),
+    referrer: Joi.string().allow("", null).optional(),
+  }).unknown(true).optional(),
+
   // Any extra fields must be explicitly allowed if you want to accept them
 }).options({ stripUnknown: true }); // strip unknown fields by default

@@ -1061,46 +1061,54 @@ export const updatePropertyListingStatus = async (req, res) => {
     // ── Send notification mail & push ────────────────────────────────────
     // Skip notification for "unapproved" (admin internal reset, no user-facing change)
     if (status !== "unapproved") {
-      try {
-        await sendApprovedAndRejectedListingMail(
-          listing.email,
-          listing.title, // property title as identifier in the mail
-          status,
-          status === "rejected" ? rejectionReason.trim() : null,
-        );
-        console.log(`✅ Mail sent to ${listing.email} for status: ${status}`);
-
-        if (listing.createdBy) {
-          const pushTitle =
-            status === "approved"
-              ? "Property Approved 🎉"
-              : "Property Rejected ❌";
-          const pushBody =
-            status === "approved"
-              ? `Congratulations! Your property listing "${listing.title}" has been successfully approved.`
-              : `We're sorry, your property listing "${listing.title}" was rejected. ${rejectionReason ? "Reason: " + rejectionReason.trim() : ""}`;
-
-          await sendPushNotification(listing.createdBy, pushTitle, pushBody, {
-            type: "PROPERTY_LISTING_STATUS",
-            listingId: listing._id.toString(),
-            status: status,
-          });
+      let userDoc = null;
+      if (listing.createdBy) {
+        try {
+          userDoc = await User.findById(listing.createdBy);
+        } catch (uErr) {
+          console.warn("Could not fetch userDoc for property listing:", uErr.message);
         }
-      } catch (mailError) {
-        console.error("❌ Mail/Notification send failed:", mailError.message);
+      }
+
+      const shouldSendEmail = req.body.sendEmail !== false;
+      const targetEmail = listing.email || userDoc?.email;
+
+      if (shouldSendEmail && targetEmail) {
+        try {
+          await sendApprovedAndRejectedListingMail(
+            targetEmail,
+            listing.title,
+            status,
+            status === "rejected" ? rejectionReason.trim() : null,
+          );
+          console.log(`✅ Mail sent to ${targetEmail} for status: ${status}`);
+
+          if (listing.createdBy) {
+            const pushTitle =
+              status === "approved"
+                ? "Property Approved 🎉"
+                : "Property Rejected ❌";
+            const pushBody =
+              status === "approved"
+                ? `Congratulations! Your property listing "${listing.title}" has been successfully approved.`
+                : `We're sorry, your property listing "${listing.title}" was rejected. ${rejectionReason ? "Reason: " + rejectionReason.trim() : ""}`;
+
+            await sendPushNotification(listing.createdBy, pushTitle, pushBody, {
+              type: "PROPERTY_LISTING_STATUS",
+              listingId: listing._id.toString(),
+              status: status,
+            });
+          }
+        } catch (mailError) {
+          console.error("❌ Mail/Notification send failed:", mailError.message);
+        }
       }
 
       // ── Send WhatsApp Message ──
-      const shouldSendWhatsapp =
-        req.body.sendWhatsapp === true || !!req.body.whatsappMessage;
+      const shouldSendWhatsapp = req.body.sendWhatsapp !== false;
 
       if (shouldSendWhatsapp) {
         try {
-          let userDoc = null;
-          if (listing.createdBy) {
-            userDoc = await User.findById(listing.createdBy);
-          }
-
           const phone =
             req.body.whatsappPhone ||
             listing.phone ||
@@ -1110,18 +1118,21 @@ export const updatePropertyListingStatus = async (req, res) => {
             userDoc?.mobileNumber ||
             userDoc?.phoneNumber;
 
-          const countryCode =
+          const rawCc = String(
             req.body.whatsappCountryCode ||
             listing.countryCode ||
             userDoc?.countryCode ||
-            "+971";
+            "+971"
+          ).trim();
+          const countryCode = rawCc.startsWith("+") ? rawCc : `+${rawCc.replace(/\D/g, "")}`;
 
+          const recipientName = listing.contactPersonName || listing.ownerName || userDoc?.name || listing.title || "User";
           let text = req.body.whatsappMessage;
           if (!text) {
             if (status === "approved") {
-              text = `Hello! 🏠 Your property "${listing.title}" has been approved and is now live on AddressGuru UAE!\n\nView live: ${APP_BASE_URL}/properties/${listing.slug}\nDashboard: ${APP_BASE_URL}/dashboard`;
+              text = `Hello *${recipientName}*, 🏠 Congratulations! Your property listing *"${listing.title}"* has been approved and is now live on AddressGuru UAE!\n\n📍 *View Live Listing:* ${APP_BASE_URL}/properties/${listing.slug}\n👉 *Dashboard:* ${APP_BASE_URL}/dashboard\n\nThank you for choosing AddressGuru UAE!`;
             } else if (status === "rejected") {
-              text = `Hello! Your property listing "${listing.title}" on AddressGuru UAE requires updates.\n\nReason: ${rejectionReason || "Please review guidelines"}\nDashboard: ${APP_BASE_URL}/dashboard`;
+              text = `Hello *${recipientName}*, your property listing *"${listing.title}"* on AddressGuru UAE requires updates.\n\n❌ *Reason:* ${rejectionReason ? rejectionReason.trim() : "Please review property guidelines"}\n👉 *Dashboard:* ${APP_BASE_URL}/dashboard\n\nPlease update your listing so we can review it again.`;
             }
           }
 
