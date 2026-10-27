@@ -20,13 +20,17 @@ import { sendPushNotification } from "../services/notification.service.js";
 import DigestMailLog from "../model/digestMailLogSchema.js";
 import ListingStats from "../model/listingStatsSchema.js";
 import ReviewListing from "../model/reviewListingSchema.js";
+import Room from "../model/roomsSchema.js";
 import { buildSearchText } from "../modules/search/search.utils.js";
 import FollowUp from "../model/followUpSchema.js";
 import mongoose from "mongoose";
 import businessListingSchema from "../model/businessListingSchema.js";
 import { generateEmbeddingForListing } from "../modules/ai-search/businessEmbedding.service.js";
 import { upsertCacheEntry } from "../modules/ai-search/businessSearch.service.js";
-import { sendTextMessage, sendMediaMessage } from "../modules/whatsapp/services/whatsappMessage.js";
+import {
+  sendTextMessage,
+  sendMediaMessage,
+} from "../modules/whatsapp/services/whatsappMessage.js";
 
 const validateAdditionalFields = async (additionalFields = []) => {
   if (!additionalFields.length) return { errors: [], validated: [] };
@@ -968,7 +972,7 @@ export const getAllListingsWithPaginationAndFilters = async (req, res) => {
 //     const [listings, total] = await Promise.all([
 //       BusinessListing.find(filter)
 //         .select(
-//           "businessName slug logo images businessAddress description " +
+//           "businessName slug logo images businessAddress locality workingHours description " +
 //             "category subCategory city countryCode mobileNumber " +
 //             "facilities services courses paymentModes " +
 //             "isVerified isPublished status createdAt",
@@ -1232,7 +1236,10 @@ export const getListingsByCategoryAndCity = async (req, res) => {
                   value: {
                     $in: values.map((val) =>
                       typeof val === "string"
-                        ? new RegExp(`^${val.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`, "i")
+                        ? new RegExp(
+                            `^${val.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`,
+                            "i",
+                          )
                         : val,
                     ),
                   },
@@ -1271,7 +1278,7 @@ export const getListingsByCategoryAndCity = async (req, res) => {
     const [listings, total] = await Promise.all([
       BusinessListing.find(filter)
         .select(
-          "businessName slug logo images businessAddress description " +
+          "businessName slug logo images businessAddress locality workingHours description " +
             "category subCategory city countryCode mobileNumber " +
             "facilities services courses paymentModes additionalFields " +
             "isVerified isPublished status createdAt views plan", // ✅ added "plan"
@@ -1338,6 +1345,28 @@ export const getListingsByCategoryAndCity = async (req, res) => {
       reviewStatsMap[rs._id.toString()] = rs;
     });
 
+    // Aggregate room min prices
+    const roomStatsData = await Room.aggregate([
+      {
+        $match: {
+          businessListing: { $in: listingIds },
+          isActive: true,
+          isDeleted: false,
+        },
+      },
+      {
+        $group: {
+          _id: "$businessListing",
+          minPrice: { $min: "$price" },
+        },
+      },
+    ]);
+
+    const roomPriceMap = {};
+    roomStatsData.forEach((rp) => {
+      roomPriceMap[rp._id.toString()] = rp.minPrice;
+    });
+
     // Attach stats + plan-gated fields
     listings.forEach((l) => {
       const lid = l._id.toString();
@@ -1361,6 +1390,30 @@ export const getListingsByCategoryAndCity = async (req, res) => {
       l.canEnquire = !!planFlags.leadEnquiryForm;
       l.isTrusted = !!planFlags.highlightBadge; // true only on Premium tier
       delete l.plan; // don't leak raw plan/flags to the client
+
+      // Starting price from rooms or additionalFields
+      let startingPrice = roomPriceMap[lid] || null;
+      if (!startingPrice && Array.isArray(l.additionalFields)) {
+        const priceField = l.additionalFields.find((af) => {
+          const label = (af.field_label || "").toLowerCase();
+          return (
+            af.field_type === "price" ||
+            label.includes("price") ||
+            label.includes("rate") ||
+            label.includes("starting") ||
+            label.includes("cost")
+          );
+        });
+        if (priceField && priceField.value) {
+          const parsed = parseFloat(
+            String(priceField.value).replace(/[^0-9.]/g, ""),
+          );
+          if (!isNaN(parsed) && parsed > 0) {
+            startingPrice = parsed;
+          }
+        }
+      }
+      l.startingPrice = startingPrice;
       // ──────────────────────────────────────────────────────────────────
 
       // Limit arrays
@@ -1397,7 +1450,10 @@ export const getListingBySlug = async (req, res) => {
       slug,
       isDeleted: false,
     })
-      .populate("category", "name iconSvg slug seo imageLayout ctaButtonText enableBookingRooms")
+      .populate(
+        "category",
+        "name iconSvg slug seo imageLayout ctaButtonText enableBookingRooms",
+      )
       .populate("subCategory", "name iconSvg slug")
       .populate("city", "name iconSvg slug")
       .populate(
@@ -1421,20 +1477,32 @@ export const getListingBySlug = async (req, res) => {
       for (let i = listing.additionalFields.length - 1; i >= 0; i--) {
         const item = listing.additionalFields[i];
         if (!item || !item.field_id) continue;
-        if (item.field_id.is_deleted === true || item.field_id.is_active === false) continue;
+        if (
+          item.field_id.is_deleted === true ||
+          item.field_id.is_active === false
+        )
+          continue;
 
-        const labelKey = (item.field_id.field_label || item.field_label || "").trim().toLowerCase();
+        const labelKey = (item.field_id.field_label || item.field_label || "")
+          .trim()
+          .toLowerCase();
         if (seenLabels.has(labelKey)) continue;
 
         let val = item.value;
         if (item.field_type === "checkbox" && Array.isArray(val)) {
-          if (item.field_id.checkbox_items && item.field_id.checkbox_items.length > 0) {
+          if (
+            item.field_id.checkbox_items &&
+            item.field_id.checkbox_items.length > 0
+          ) {
             const allowed = new Set(item.field_id.checkbox_items);
             val = val.filter((v) => allowed.has(v));
           }
           if (!val || val.length === 0) continue;
         } else if (item.field_type === "dropdown") {
-          if (item.field_id.dropdown_items && item.field_id.dropdown_items.length > 0) {
+          if (
+            item.field_id.dropdown_items &&
+            item.field_id.dropdown_items.length > 0
+          ) {
             if (!item.field_id.dropdown_items.includes(val)) {
               continue;
             }

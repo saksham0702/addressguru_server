@@ -164,6 +164,14 @@ const userSchema = new mongoose.Schema(
     login_ipaddress: { type: String },
     login_browser: { type: String },
 
+    // ── Registration Source Tracking ─────────────────────────────────────────
+    registrationSource: {
+      source: { type: String, default: "Direct Register (/register)" },
+      lastPage: { type: String, default: null },
+      secondLastPage: { type: String, default: null },
+      referrer: { type: String, default: null },
+    },
+
     // ── Notifications ─────────────────────────────────────────────────────────
     fcmToken: { type: String, default: null },
 

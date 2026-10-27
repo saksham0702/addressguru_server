@@ -328,8 +328,12 @@ export const upgradePlan = async (req, res) => {
       return errorData(res, 403, false, "Unauthorized");
     }
 
-    // ADMIN OVERRIDE — Direct Plan Assignment without payment
-    if (isAdmin) {
+    // ADMIN OVERRIDE — Direct Plan Assignment without payment ONLY IF explicitly requested from Admin Panel (isAdmin prop true in Admin UI)
+    const isExplicitAdminOverride = Boolean(
+      req.body.admin_override === true || req.body.admin_override === "true"
+    );
+
+    if (isAdmin && isExplicitAdminOverride) {
       await Model.findByIdAndUpdate(
         listing_id,
         {
@@ -348,12 +352,8 @@ export const upgradePlan = async (req, res) => {
       });
     }
 
-    // REGULAR USER FLOW
-    const isFreeAccessRole = userRoles.some((r) => [2, 3].includes(Number(r)));
-    const isFirstPlan = plan.displayOrder === 1;
-    const roleGetsItFree = isFreeAccessRole && isFirstPlan;
-
-    if (plan.price === 0 || roleGetsItFree) {
+    // FREE PLAN FLOW
+    if (plan.price === 0) {
       await Model.findByIdAndUpdate(
         listing_id,
         {
@@ -361,7 +361,7 @@ export const upgradePlan = async (req, res) => {
           isPublished: true,
           planStartedAt: new Date(),
           planExpiryDate: null,
-          planStatus: roleGetsItFree ? "role_free" : "free",
+          planStatus: "free",
         },
         { new: true, runValidators: false },
       );

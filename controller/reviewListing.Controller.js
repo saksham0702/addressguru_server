@@ -166,6 +166,7 @@ export const getReviews = async (req, res) => {
     const [reviews, total] = await Promise.all([
       Review.find(filter)
         .select("-email -ipAddress -userAgent")
+        .populate("reviewer", "name avatar")
         .sort(sortMap[sort] || sortMap.newest)
         .skip((+page - 1) * +limit)
         .limit(+limit),

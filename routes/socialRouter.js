@@ -60,6 +60,7 @@ async function findOrCreateUser({
   lastName = "",
   displayName = "",
   avatarUrl,
+  registrationSource,
 }) {
   const nameToSave = displayName || `${firstName} ${lastName}`.trim();
 
@@ -118,6 +119,9 @@ async function findOrCreateUser({
     socialLogins: [{ provider, providerId }],
     password: null,
     verified_email: true,
+    registrationSource: registrationSource || {
+      source: `${provider.charAt(0).toUpperCase() + provider.slice(1)} Social Signup`,
+    },
     status: true,
     isOnline: true,
     lastLoginAt: new Date(),
@@ -383,7 +387,10 @@ router.post("/auth/exchange", async (req, res) => {
     console.log("USER DATTA ::", userData);
 
     /* ===================== FINAL LINK / CREATE ===================== */
-    const user = await findOrCreateUser(userData);
+    const user = await findOrCreateUser({
+      ...userData,
+      registrationSource: req.body?.registrationSource,
+    });
     const sessionToken = createJwtToken(user);
 
     // 🍪 Set cookie
