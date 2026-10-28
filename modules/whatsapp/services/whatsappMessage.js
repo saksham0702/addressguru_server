@@ -77,7 +77,7 @@ export async function sendTextMessage({ to, text, message, countryCode }) {
       senderPhone: account.phoneNumber,
       receiverPhone: normalizedPhone,
       messageType: "text",
-      content: text,
+      content: content,
       status: "sent",
       timestamp: new Date(),
       user: identity.user?._id || null,
@@ -108,7 +108,7 @@ export async function sendTextMessage({ to, text, message, countryCode }) {
       senderPhone: account.phoneNumber,
       receiverPhone: normalizedPhone,
       messageType: "text",
-      content: text,
+      content: content,
       status: "failed",
       failReason: err.message,
       timestamp: new Date(),
@@ -223,13 +223,13 @@ export async function sendMediaMessage({ to, text, message, caption, countryCode
     detectedType = "image";
     waPayload = {
       image: fileBuffer,
-      caption: text || undefined,
+      caption: content || undefined,
     };
   } else if (detectedType === "video" || mimetype.startsWith("video/")) {
     detectedType = "video";
     waPayload = {
       video: fileBuffer,
-      caption: text || undefined,
+      caption: content || undefined,
     };
   } else if (detectedType === "audio" || mimetype.startsWith("audio/")) {
     detectedType = "audio";
@@ -243,7 +243,7 @@ export async function sendMediaMessage({ to, text, message, caption, countryCode
       document: fileBuffer,
       mimetype: mimetype,
       fileName: originalFileName,
-      caption: text || undefined,
+      caption: content || undefined,
     };
   }
 
@@ -261,7 +261,7 @@ export async function sendMediaMessage({ to, text, message, caption, countryCode
       senderPhone: account.phoneNumber || "business",
       receiverPhone: normalizedPhone,
       messageType: detectedType,
-      content: text || originalFileName,
+      content: content || originalFileName,
       mediaUrl: relativeMediaUrl,
       status: "sent",
       timestamp: new Date(),
@@ -274,15 +274,15 @@ export async function sendMediaMessage({ to, text, message, caption, countryCode
 
     await WhatsappChat.findByIdAndUpdate(chat._id, {
       lastMessageAt: new Date(),
-      lastMessagePreview: text
-        ? `[${detectedType}] ${text}`
+      lastMessagePreview: content
+        ? `[${detectedType}] ${content}`
         : `[${detectedType}] ${originalFileName}`,
     });
 
     whatsappEventBus.emit(WHATSAPP_EVENTS.MESSAGE_SENT, {
       messageId: message._id,
       to: normalizedPhone,
-      text: text || originalFileName,
+      text: content || originalFileName,
     });
 
     return message;

@@ -10,7 +10,10 @@ import googleIndexingService from "../services/googleIndexing.service.js";
 import { APP_BASE_URL } from "../services/constant.js";
 import { sendApprovedAndRejectedListingMail } from "../utils/sendMail.js";
 import { sendPushNotification } from "../services/notification.service.js";
-import { sendTextMessage, sendMediaMessage } from "../modules/whatsapp/services/whatsappMessage.js";
+import {
+  sendTextMessage,
+  sendMediaMessage,
+} from "../modules/whatsapp/services/whatsappMessage.js";
 import CitiesSchema from "../model/CitiesSchema.js";
 import Feature from "../model/featureSchema.js";
 import mongoose from "mongoose";
@@ -19,9 +22,7 @@ import mongoose from "mongoose";
 const validateAdditionalFields = async (additionalFields = []) => {
   if (!additionalFields.length) return { errors: [], validated: [] };
 
-  const fieldIds = additionalFields
-    .map((f) => f.field_id)
-    .filter(Boolean);
+  const fieldIds = additionalFields.map((f) => f.field_id).filter(Boolean);
   const fieldDocs = await AdditionalField.find({
     _id: { $in: fieldIds },
     is_active: true,
@@ -120,14 +121,18 @@ export const createPropertyListing = async (req, res) => {
     }
 
     // Normalize purpose
-    let cleanPurpose = String(purpose || "sale").toLowerCase().trim();
+    let cleanPurpose = String(purpose || "sale")
+      .toLowerCase()
+      .trim();
     if (cleanPurpose.includes("rent")) cleanPurpose = "rent";
     else if (cleanPurpose.includes("lease")) cleanPurpose = "lease";
     else cleanPurpose = "sale";
 
     // Normalize price period
     const validPeriods = ["monthly", "yearly", "weekly", "one-time"];
-    let cleanPeriod = String(price_period || "one-time").toLowerCase().trim();
+    let cleanPeriod = String(price_period || "one-time")
+      .toLowerCase()
+      .trim();
     if (!validPeriods.includes(cleanPeriod)) {
       cleanPeriod = cleanPurpose === "sale" ? "one-time" : "yearly";
     }
@@ -395,9 +400,7 @@ export const updatePropertyListingStep = async (req, res) => {
           }
         }
 
-        retainedImages = (
-          Array.isArray(retainedImages) ? retainedImages : []
-        )
+        retainedImages = (Array.isArray(retainedImages) ? retainedImages : [])
           .map((img) => {
             if (!img || typeof img !== "string") return null;
             return img.replace(/^https?:\/\/[^\/]+\/(api\/)?/, "");
@@ -952,10 +955,19 @@ export const deletePropertyListing = async (req, res) => {
     if (!listing) return errorData(res, 404, false, "Listing not found");
 
     // Ownership check
+    const userId = req.user?.id || req.user?._id;
+    const userRole =
+      req.user?.role ||
+      (Array.isArray(req.user?.roles) ? req.user.roles[0] : null);
+    const isAdmin =
+      userRole === 1 ||
+      (Array.isArray(req.user?.roles) && req.user.roles.includes(1));
+
     if (
+      !isAdmin &&
       listing.createdBy &&
-      req.user?._id &&
-      listing.createdBy.toString() !== req.user._id.toString()
+      userId &&
+      listing.createdBy.toString() !== userId.toString()
     ) {
       return errorData(
         res,
@@ -998,7 +1010,7 @@ export const updatePropertyListingStatus = async (req, res) => {
   try {
     const { id } = req.params;
     const { status, rejectionReason } = req.body;
-    const adminId = req.user._id;
+    const adminId = req.user?.id || req.user?._id;
 
     // ── Validate status value ─────────────────────────────────────────────
     const allowedStatuses = ["approved", "rejected", "unapproved"];
@@ -1010,7 +1022,8 @@ export const updatePropertyListingStatus = async (req, res) => {
     }
 
     // ── Rejection must have a reason ──────────────────────────────────────
-    if (status === "rejected" && !rejectionReason?.trim()) {
+    const effectiveReason = (rejectionReason || req.body.reason || "").trim();
+    if (status === "rejected" && !effectiveReason) {
       return res.status(400).json({
         success: false,
         message: "Rejection reason is required when rejecting a listing",
@@ -1018,7 +1031,9 @@ export const updatePropertyListingStatus = async (req, res) => {
     }
 
     // ── Find the listing ──────────────────────────────────────────────────
-    const listing = await PropertyListing.findById(id);
+    const listing = await PropertyListing.findById(id)
+      .populate("category", "name")
+      .populate("createdBy", "name email phone country_code");
     if (!listing) {
       return res.status(404).json({
         success: false,
@@ -1039,7 +1054,7 @@ export const updatePropertyListingStatus = async (req, res) => {
     } else if (status === "rejected") {
       listing.status = "rejected";
       listing.rejectedBy = adminId;
-      listing.rejectionReason = rejectionReason.trim();
+      listing.rejectionReason = effectiveReason;
       listing.approvedBy = null;
       googleIndexingService.notify(
         `${APP_BASE_URL}/properties/${listing.slug}`,
@@ -1058,49 +1073,18 @@ export const updatePropertyListingStatus = async (req, res) => {
 
     await listing.save();
 
-    // ── Send notification mail & push ────────────────────────────────────
-    // Skip notification for "unapproved" (admin internal reset, no user-facing change)
+    // ── Send WhatsApp Message FIRST (never blocked by email/push) ────────
     if (status !== "unapproved") {
       let userDoc = null;
-      if (listing.createdBy) {
+      const creatorId = listing.createdBy?._id || listing.createdBy;
+      if (creatorId) {
         try {
-          userDoc = await User.findById(listing.createdBy);
+          userDoc = await User.findById(creatorId).lean();
         } catch (uErr) {
-          console.warn("Could not fetch userDoc for property listing:", uErr.message);
-        }
-      }
-
-      const shouldSendEmail = req.body.sendEmail !== false;
-      const targetEmail = listing.email || userDoc?.email;
-
-      if (shouldSendEmail && targetEmail) {
-        try {
-          await sendApprovedAndRejectedListingMail(
-            targetEmail,
-            listing.title,
-            status,
-            status === "rejected" ? rejectionReason.trim() : null,
+          console.warn(
+            "Could not fetch userDoc for property listing:",
+            uErr.message,
           );
-          console.log(`✅ Mail sent to ${targetEmail} for status: ${status}`);
-
-          if (listing.createdBy) {
-            const pushTitle =
-              status === "approved"
-                ? "Property Approved 🎉"
-                : "Property Rejected ❌";
-            const pushBody =
-              status === "approved"
-                ? `Congratulations! Your property listing "${listing.title}" has been successfully approved.`
-                : `We're sorry, your property listing "${listing.title}" was rejected. ${rejectionReason ? "Reason: " + rejectionReason.trim() : ""}`;
-
-            await sendPushNotification(listing.createdBy, pushTitle, pushBody, {
-              type: "PROPERTY_LISTING_STATUS",
-              listingId: listing._id.toString(),
-              status: status,
-            });
-          }
-        } catch (mailError) {
-          console.error("❌ Mail/Notification send failed:", mailError.message);
         }
       }
 
@@ -1116,29 +1100,45 @@ export const updatePropertyListingStatus = async (req, res) => {
             listing.contactPhone ||
             listing.contactPersonPhone ||
             listing.alternateMobileNumber ||
+            listing.createdBy?.phone ||
+            listing.createdBy?.mobileNumber ||
+            listing.createdBy?.phoneNumber ||
+            userDoc?.phone ||
             userDoc?.mobileNumber ||
             userDoc?.phoneNumber;
 
           const rawCc = String(
             req.body.whatsappCountryCode ||
-            listing.countryCode ||
-            userDoc?.countryCode ||
-            userDoc?.country_code ||
-            "+971"
+              listing.countryCode ||
+              listing.createdBy?.country_code ||
+              listing.createdBy?.countryCode ||
+              userDoc?.country_code ||
+              userDoc?.countryCode ||
+              "+971",
           ).trim();
-          const countryCode = rawCc.startsWith("+") ? rawCc : `+${rawCc.replace(/\D/g, "")}`;
+          const countryCode = rawCc.startsWith("+")
+            ? rawCc
+            : "+" + rawCc.replace(/\D/g, "");
 
-          const recipientName = listing.contactPersonName || listing.ownerName || userDoc?.name || listing.title || "Valued Partner";
-          const listingUrl = `${APP_BASE_URL}/properties/${listing.slug}`;
-          const dashboardUrl = `${APP_BASE_URL}/dashboard`;
+          const recipientName =
+            listing.contactPersonName ||
+            listing.ownerName ||
+            listing.createdBy?.name ||
+            userDoc?.name ||
+            listing.title ||
+            "Valued Partner";
+          const listingUrl = APP_BASE_URL + "/properties/" + listing.slug;
+          const dashboardUrl = APP_BASE_URL + "/dashboard";
 
           let text = req.body.whatsappMessage;
           if (!text) {
             if (status === "approved") {
               text = `Hello *${recipientName}*, 🏠 Congratulations! Your property listing *"${listing.title}"* has been approved and is now live on AddressGuru UAE.\n\n📍 *Property Details:*\n• *Property:* ${listing.title}\n• *Live URL:* ${listingUrl}\n\nYou can manage your property listing, photos, and tenant/buyer inquiries anytime from your dashboard:\n👉 ${dashboardUrl}\n\nThank you for choosing AddressGuru UAE!`;
             } else if (status === "rejected") {
-              const reasonText = rejectionReason ? rejectionReason.trim() : "Details need revision";
-              const noteText = req.body.adminNote ? `\n\n📝 *Admin Note:*\n${req.body.adminNote.trim()}` : "";
+              const reasonText = effectiveReason || "Details need revision";
+              const noteText = req.body.adminNote
+                ? "\n\n📝 *Admin Note:*\n" + req.body.adminNote.trim()
+                : "";
               text = `Hello *${recipientName}*, Thank you for submitting your property listing *"${listing.title}"* on AddressGuru UAE. Our team reviewed your property details, but it requires updates before approval.\n\n⚠️ *Reason for Rejection:*\n${reasonText}${noteText}\n\nPlease log in to your dashboard to make the necessary changes and resubmit:\n👉 ${dashboardUrl}\n\nNeed help? Contact support@addressguru.ae`;
             }
           }
@@ -1155,12 +1155,77 @@ export const updatePropertyListingStatus = async (req, res) => {
             } else {
               await sendTextMessage({ to: phone, text, countryCode });
             }
-            console.log(`✅ WhatsApp ${status} message sent for property to ${phone}`);
+            console.log(
+              "✅ WhatsApp " +
+                status +
+                " message sent for property to " +
+                phone,
+            );
           } else {
-            console.warn(`⚠️ WhatsApp property message not sent: phone (${phone}) or text is missing`);
+            console.warn(
+              "⚠️ WhatsApp property message not sent: phone (" +
+                phone +
+                ") or text is missing",
+            );
           }
         } catch (waErr) {
-          console.warn("❌ WhatsApp send failed in updatePropertyListingStatus:", waErr.message);
+          console.warn(
+            "❌ WhatsApp send failed in updatePropertyListingStatus:",
+            waErr.message,
+          );
+        }
+      }
+
+      // ── Send Email & Push Notification ──
+      const shouldSendEmail = req.body.sendEmail !== false;
+      const targetEmail =
+        listing.email || listing.createdBy?.email || userDoc?.email;
+
+      if (shouldSendEmail && targetEmail) {
+        try {
+          await sendApprovedAndRejectedListingMail(
+            targetEmail,
+            listing.contactPersonName ||
+              listing.createdBy?.name ||
+              userDoc?.name ||
+              listing.title,
+            status,
+            status === "rejected" ? effectiveReason : null,
+            {
+              businessName: listing.title,
+              category: listing.category?.name || "Property",
+              listingUrl: APP_BASE_URL + "/properties/" + listing.slug,
+              dashboardUrl: APP_BASE_URL + "/dashboard",
+            },
+          );
+          console.log(
+            "✅ Mail sent to " + targetEmail + " for status: " + status,
+          );
+
+          const pushUserId = listing.createdBy?._id || listing.createdBy;
+          if (pushUserId) {
+            const pushTitle =
+              status === "approved"
+                ? "Property Approved 🎉"
+                : "Property Rejected ❌";
+            const pushBody =
+              status === "approved"
+                ? 'Congratulations! Your property listing "' +
+                  listing.title +
+                  '" has been successfully approved.'
+                : "We're sorry, your property listing \"" +
+                  listing.title +
+                  '" was rejected. ' +
+                  (effectiveReason ? "Reason: " + effectiveReason : "");
+
+            await sendPushNotification(pushUserId, pushTitle, pushBody, {
+              type: "PROPERTY_LISTING_STATUS",
+              listingId: listing._id.toString(),
+              status: status,
+            });
+          }
+        } catch (mailError) {
+          console.warn("❌ Mail/Notification send failed:", mailError.message);
         }
       }
     }

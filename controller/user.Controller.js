@@ -66,10 +66,10 @@ export const login = async (req, res) => {
     const isProduction = process.env.NODE_ENV === "production";
     res.cookie("authToken", authToken, {
       httpOnly: true,
-      // secure: isProduction,
-      // sameSite: isProduction ? "none" : "lax",
+      secure: isProduction,
+      sameSite: isProduction ? "none" : "lax",
       maxAge: 7 * 24 * 60 * 60 * 1000,
-      // path: "/",
+      path: "/",
     });
 
     if (!user?.verified_email) {
@@ -167,6 +167,10 @@ export const logout = async (req, res) => {
       secure: isProduction,
       sameSite: isProduction ? "none" : "lax",
       path: "/",
+    });
+    // Also clear cookie without path in case stale cookie was set on /api/user
+    res.clearCookie("authToken", {
+      httpOnly: true,
     });
 
     return successData(res, 200, true, "Logout successful");

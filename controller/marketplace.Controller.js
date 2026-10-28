@@ -677,7 +677,7 @@ export const deleteMarketplaceListing = async (req, res) => {
 
     // Ownership check
     const user = await User.findById(req.user.id);
-    const isAdmin = user?.roles?.includes(1) || false;
+    const isAdmin = user?.roles?.includes(1) || user?.role === 1 || false;
 
     if (
       listing.createdBy &&
@@ -726,7 +726,7 @@ export const updateMarketplaceListingStatus = async (req, res) => {
   try {
     const { id } = req.params;
     const { status, rejectionReason } = req.body;
-    const adminId = req.user._id;
+    const adminId = req.user?.id || req.user?._id;
 
     // ── Validate status value ─────────────────────────────────────────────
     const allowedStatuses = ["approved", "rejected", "unapproved"];
@@ -738,7 +738,8 @@ export const updateMarketplaceListingStatus = async (req, res) => {
     }
 
     // ── Rejection must have a reason ──────────────────────────────────────
-    if (status === "rejected" && !rejectionReason?.trim()) {
+    const effectiveReason = (rejectionReason || req.body.reason || "").trim();
+    if (status === "rejected" && !effectiveReason) {
       return res.status(400).json({
         success: false,
         message: "Rejection reason is required when rejecting a listing",
@@ -746,7 +747,9 @@ export const updateMarketplaceListingStatus = async (req, res) => {
     }
 
     // ── Find the listing ──────────────────────────────────────────────────
-    const listing = await MarketplaceListing.findById(id);
+    const listing = await MarketplaceListing.findById(id)
+      .populate("category", "name")
+      .populate("createdBy", "name email phone country_code");
     if (!listing) {
       return res.status(404).json({
         success: false,
@@ -768,7 +771,7 @@ export const updateMarketplaceListingStatus = async (req, res) => {
     } else if (status === "rejected") {
       listing.status = "rejected";
       listing.rejectedBy = adminId;
-      listing.rejectionReason = rejectionReason.trim();
+      listing.rejectionReason = effectiveReason;
       listing.approvedBy = null;
       googleIndexingService.notify(
         `${APP_BASE_URL}/marketplace/${listing.slug}`,
@@ -788,49 +791,15 @@ export const updateMarketplaceListingStatus = async (req, res) => {
 
     await listing.save();
 
-    // ── Send notification mail & push ────────────────────────────────────
-    // Skip notification for "unapproved" (admin internal action, no user-facing change)
+    // ── Send WhatsApp Message FIRST (never blocked by email/push) ────────
     if (status !== "unapproved") {
       let userDoc = null;
-      if (listing.createdBy) {
+      const creatorId = listing.createdBy?._id || listing.createdBy;
+      if (creatorId) {
         try {
-          userDoc = await User.findById(listing.createdBy);
+          userDoc = await User.findById(creatorId).lean();
         } catch (uErr) {
           console.warn("Could not fetch userDoc for marketplace listing:", uErr.message);
-        }
-      }
-
-      const shouldSendEmail = req.body.sendEmail !== false;
-      const targetEmail = listing.email || userDoc?.email;
-
-      if (shouldSendEmail && targetEmail) {
-        try {
-          await sendApprovedAndRejectedListingMail(
-            targetEmail,
-            listing.title,
-            status,
-            status === "rejected" ? rejectionReason.trim() : null,
-          );
-          console.log(`✅ Mail sent to ${targetEmail} for status: ${status}`);
-
-          if (listing.createdBy) {
-            const pushTitle =
-              status === "approved"
-                ? "Marketplace Listing Approved 🎉"
-                : "Marketplace Listing Rejected ❌";
-            const pushBody =
-              status === "approved"
-                ? `Congratulations! Your marketplace listing "${listing.title}" has been successfully approved.`
-                : `We're sorry, your marketplace listing "${listing.title}" was rejected. ${rejectionReason ? "Reason: " + rejectionReason.trim() : ""}`;
-
-            await sendPushNotification(listing.createdBy, pushTitle, pushBody, {
-              type: "MARKETPLACE_LISTING_STATUS",
-              listingId: listing._id.toString(),
-              status: status,
-            });
-          }
-        } catch (mailError) {
-          console.error("❌ Mail/Notification send failed:", mailError.message);
         }
       }
 
@@ -845,29 +814,40 @@ export const updateMarketplaceListingStatus = async (req, res) => {
             listing.phone ||
             listing.contactNumber ||
             listing.alternateMobileNumber ||
+            listing.createdBy?.phone ||
+            listing.createdBy?.mobileNumber ||
+            listing.createdBy?.phoneNumber ||
+            userDoc?.phone ||
             userDoc?.mobileNumber ||
             userDoc?.phoneNumber;
 
           const rawCc = String(
             req.body.whatsappCountryCode ||
             listing.countryCode ||
-            userDoc?.countryCode ||
+            listing.createdBy?.country_code ||
+            listing.createdBy?.countryCode ||
             userDoc?.country_code ||
+            userDoc?.countryCode ||
             "+971"
           ).trim();
-          const countryCode = rawCc.startsWith("+") ? rawCc : `+${rawCc.replace(/\D/g, "")}`;
+          const countryCode = rawCc.startsWith("+") ? rawCc : "+" + rawCc.replace(/\D/g, "");
 
-          const recipientName = listing.contactPersonName || userDoc?.name || listing.title || "Valued Seller";
-          const listingUrl = `${APP_BASE_URL}/marketplace/${listing.slug}`;
-          const dashboardUrl = `${APP_BASE_URL}/dashboard`;
+          const recipientName =
+            listing.contactPersonName ||
+            listing.createdBy?.name ||
+            userDoc?.name ||
+            listing.title ||
+            "Valued Seller";
+          const listingUrl = APP_BASE_URL + "/marketplace/" + listing.slug;
+          const dashboardUrl = APP_BASE_URL + "/dashboard";
 
           let text = req.body.whatsappMessage;
           if (!text) {
             if (status === "approved") {
               text = `Hello *${recipientName}*, 🎉 Congratulations! Your marketplace listing *"${listing.title}"* has been approved and is now live on AddressGuru UAE.\n\n🛍️ *Listing Details:*\n• *Item:* ${listing.title}\n• *Live URL:* ${listingUrl}\n\nYou can manage your listing details and buyer inquiries anytime from your dashboard:\n👉 ${dashboardUrl}\n\nThank you for selling on AddressGuru UAE!`;
             } else if (status === "rejected") {
-              const reasonText = rejectionReason ? rejectionReason.trim() : "Details need revision";
-              const noteText = req.body.adminNote ? `\n\n📝 *Admin Note:*\n${req.body.adminNote.trim()}` : "";
+              const reasonText = effectiveReason || "Details need revision";
+              const noteText = req.body.adminNote ? "\n\n📝 *Admin Note:*\n" + req.body.adminNote.trim() : "";
               text = `Hello *${recipientName}*, Thank you for submitting *"${listing.title}"* on AddressGuru UAE. Our team reviewed your item, but it requires updates before approval.\n\n⚠️ *Reason for Rejection:*\n${reasonText}${noteText}\n\nPlease log in to your dashboard to make the necessary changes and resubmit:\n👉 ${dashboardUrl}\n\nNeed help? Contact support@addressguru.ae`;
             }
           }
@@ -884,12 +864,54 @@ export const updateMarketplaceListingStatus = async (req, res) => {
             } else {
               await sendTextMessage({ to: phone, text, countryCode });
             }
-            console.log(`✅ WhatsApp ${status} message sent for marketplace item to ${phone}`);
+            console.log("✅ WhatsApp " + status + " message sent for marketplace item to " + phone);
           } else {
-            console.warn(`⚠️ WhatsApp marketplace message not sent: phone (${phone}) or text is missing`);
+            console.warn("⚠️ WhatsApp marketplace message not sent: phone (" + phone + ") or text is missing");
           }
         } catch (waErr) {
           console.warn("❌ WhatsApp send failed in updateMarketplaceListingStatus:", waErr.message);
+        }
+      }
+
+      // ── Send Email & Push Notification ──
+      const shouldSendEmail = req.body.sendEmail !== false;
+      const targetEmail = listing.email || listing.createdBy?.email || userDoc?.email;
+
+      if (shouldSendEmail && targetEmail) {
+        try {
+          await sendApprovedAndRejectedListingMail(
+            targetEmail,
+            listing.contactPersonName || listing.createdBy?.name || userDoc?.name || listing.title,
+            status,
+            status === "rejected" ? effectiveReason : null,
+            {
+              businessName: listing.title,
+              category: listing.category?.name || "Marketplace",
+              listingUrl: APP_BASE_URL + "/marketplace/" + listing.slug,
+              dashboardUrl: APP_BASE_URL + "/dashboard",
+            }
+          );
+          console.log("✅ Mail sent to " + targetEmail + " for status: " + status);
+
+          const pushUserId = listing.createdBy?._id || listing.createdBy;
+          if (pushUserId) {
+            const pushTitle =
+              status === "approved"
+                ? "Marketplace Listing Approved 🎉"
+                : "Marketplace Listing Rejected ❌";
+            const pushBody =
+              status === "approved"
+                ? "Congratulations! Your marketplace listing \"" + listing.title + "\" has been successfully approved."
+                : "We're sorry, your marketplace listing \"" + listing.title + "\" was rejected. " + (effectiveReason ? "Reason: " + effectiveReason : "");
+
+            await sendPushNotification(pushUserId, pushTitle, pushBody, {
+              type: "MARKETPLACE_LISTING_STATUS",
+              listingId: listing._id.toString(),
+              status: status,
+            });
+          }
+        } catch (mailError) {
+          console.warn("❌ Mail/Notification send failed:", mailError.message);
         }
       }
     }

@@ -888,7 +888,10 @@ export const updateJobStatus = async (req, res) => {
   try {
     const { id } = req.params;
     let { status, availableStatus, rejectionReason } = req.body;
-    const adminId = req.user._id;
+    if (!rejectionReason && req.body.reason) rejectionReason = req.body.reason;
+    if (!status && (rejectionReason || req.body.reason)) status = "rejected";
+    const effectiveReason = (rejectionReason || req.body.reason || "").trim();
+    const adminId = req.user?.id || req.user?._id;
 
     const validAvailableStatuses = ["open", "closed", "expired", "pending"];
 
@@ -918,11 +921,11 @@ export const updateJobStatus = async (req, res) => {
       return errorData(res, 400, false, "No valid status provided");
     }
 
-    if (status === "rejected" && !rejectionReason?.trim()) {
+    if (status === "rejected" && !effectiveReason) {
       return errorData(res, 400, false, "Rejection reason is required");
     }
 
-    const job = await Job.findById(id);
+    const job = await Job.findById(id).populate("category", "name").populate("createdBy", "name email phone country_code");
     if (!job) return errorData(res, 404, false, "Job not found");
 
     if (status) {
@@ -956,123 +959,132 @@ export const updateJobStatus = async (req, res) => {
         );
       }
 
-      // ── Send Email & Notification ──
-      // Note: Only send email for moderation approval/rejection.
-      if (["approved", "rejected"].includes(status)) {
-        let userDoc = null;
-        if (job.createdBy) {
-          try {
-            userDoc = await User.findById(job.createdBy);
-          } catch (uErr) {
-            console.warn("Could not fetch userDoc for job listing:", uErr.message);
-          }
+      // ── Send WhatsApp Message FIRST (never blocked by email/push) ────────
+      let userDoc = null;
+      const creatorId = job.createdBy?._id || job.createdBy;
+      if (creatorId) {
+        try {
+          userDoc = await User.findById(creatorId).lean();
+        } catch (uErr) {
+          console.warn("Could not fetch userDoc for job listing:", uErr.message);
         }
+      }
 
-        const shouldSendEmail = req.body.sendEmail !== false;
-        const targetEmail = job.contact?.email || job.email || userDoc?.email || req.user?.email;
+      // ── Send WhatsApp Message ──
+      const shouldSendWhatsapp = req.body.sendWhatsapp !== false;
 
-        if (shouldSendEmail && targetEmail) {
-          try {
-            const categoryDoc = await Category.findById(job.category);
-            const categoryName = categoryDoc?.name || "";
+      if (shouldSendWhatsapp) {
+        try {
+          const phone =
+            req.body.whatsappPhone ||
+            job.contact?.phone ||
+            job.contact?.whatsapp ||
+            job.contactPhone ||
+            job.mobileNumber ||
+            job.phone ||
+            job.phoneNumber ||
+            job.createdBy?.phone ||
+            job.createdBy?.mobileNumber ||
+            job.createdBy?.phoneNumber ||
+            userDoc?.phone ||
+            userDoc?.mobileNumber ||
+            userDoc?.phoneNumber;
 
-            await sendApprovedAndRejectedListingMail(
-              targetEmail,
-              job.contact?.name || userDoc?.name || "User",
-              status,
-              rejectionReason || `Your job listing has been ${status}.`,
-              {
-                businessName: job.title,
-                category: categoryName,
-                listingUrl: `${APP_BASE_URL}/jobs/${job.slug}`,
-                dashboardUrl: `${APP_BASE_URL}/dashboard`,
-              },
-            );
+          const rawCc = String(
+            req.body.whatsappCountryCode ||
+            job.contact?.countryCode ||
+            job.countryCode ||
+            job.createdBy?.country_code ||
+            job.createdBy?.countryCode ||
+            userDoc?.country_code ||
+            userDoc?.countryCode ||
+            "+971"
+          ).trim();
+          const countryCode = rawCc.startsWith("+") ? rawCc : "+" + rawCc.replace(/\D/g, "");
 
-            if (job.createdBy) {
-              const pushTitle =
-                status === "approved"
-                  ? "Job Listing Approved 🎉"
-                  : "Job Listing Rejected ❌";
-              const pushBody =
-                status === "approved"
-                  ? `Congratulations! Your job listing "${job.title}" has been successfully approved.`
-                  : `We're sorry, your job listing "${job.title}" was rejected. ${rejectionReason ? "Reason: " + rejectionReason.trim() : ""}`;
+          const recipientName =
+            job.contact?.name ||
+            job.createdBy?.name ||
+            userDoc?.name ||
+            job.companyName ||
+            job.company?.name ||
+            "Employer";
+          const listingUrl = APP_BASE_URL + "/jobs/" + job.slug;
+          const dashboardUrl = APP_BASE_URL + "/dashboard";
 
-              await sendPushNotification(job.createdBy, pushTitle, pushBody, {
-                type: "JOB_LISTING_STATUS",
-                listingId: job._id.toString(),
-                status: status,
+          let text = req.body.whatsappMessage;
+          if (!text) {
+            if (status === "approved") {
+              text = `Hello *${recipientName}*, 🎉 Congratulations! Your job opening *"${job.title}"* has been approved and is now live on AddressGuru UAE.\n\n💼 *Job Details:*\n• *Position:* ${job.title}\n• *Live URL:* ${listingUrl}\n\nYou can manage your job posting and review candidate applications directly from your dashboard:\n👉 ${dashboardUrl}\n\nThank you for choosing AddressGuru UAE!`;
+            } else if (status === "rejected") {
+              const reasonText = effectiveReason || "Details need revision";
+              const noteText = req.body.adminNote ? "\n\n📝 *Admin Note:*\n" + req.body.adminNote.trim() : "";
+              text = `Hello *${recipientName}*, Thank you for submitting the job opening *"${job.title}"* on AddressGuru UAE. Our team reviewed your job posting, but it requires updates before approval.\n\n⚠️ *Reason for Rejection:*\n${reasonText}${noteText}\n\nPlease log in to your dashboard to make the necessary changes and resubmit:\n👉 ${dashboardUrl}\n\nNeed help? Contact support@addressguru.ae`;
+            }
+          }
+
+          if (phone && text) {
+            if (req.body.mediaUrl) {
+              await sendMediaMessage({
+                to: phone,
+                text,
+                countryCode,
+                mediaUrl: req.body.mediaUrl,
+                messageType: req.body.mediaType || "document",
               });
-            }
-          } catch (mailError) {
-            console.warn(
-              "❌ Admin status mail/notification failed:",
-              mailError.message,
-            );
-          }
-        }
-
-        // ── Send WhatsApp Message ──
-        const shouldSendWhatsapp = req.body.sendWhatsapp !== false;
-
-        if (shouldSendWhatsapp) {
-          try {
-            const phone =
-              req.body.whatsappPhone ||
-              job.contact?.phone ||
-              job.contact?.whatsapp ||
-              job.contactPhone ||
-              job.mobileNumber ||
-              job.phone ||
-              job.phoneNumber ||
-              userDoc?.mobileNumber ||
-              userDoc?.phoneNumber;
-
-            const rawCc = String(
-              req.body.whatsappCountryCode ||
-              job.contact?.countryCode ||
-              job.countryCode ||
-              userDoc?.countryCode ||
-              userDoc?.country_code ||
-              "+971"
-            ).trim();
-            const countryCode = rawCc.startsWith("+") ? rawCc : `+${rawCc.replace(/\D/g, "")}`;
-
-            const recipientName = job.contact?.name || userDoc?.name || job.companyName || "Employer";
-            const listingUrl = `${APP_BASE_URL}/jobs/${job.slug}`;
-            const dashboardUrl = `${APP_BASE_URL}/dashboard`;
-
-            let text = req.body.whatsappMessage;
-            if (!text) {
-              if (status === "approved") {
-                text = `Hello *${recipientName}*, 🎉 Congratulations! Your job opening *"${job.title}"* has been approved and is now live on AddressGuru UAE.\n\n💼 *Job Details:*\n• *Position:* ${job.title}\n• *Live URL:* ${listingUrl}\n\nYou can manage your job posting and review candidate applications directly from your dashboard:\n👉 ${dashboardUrl}\n\nThank you for choosing AddressGuru UAE!`;
-              } else if (status === "rejected") {
-                const reasonText = rejectionReason ? rejectionReason.trim() : "Details need revision";
-                const noteText = req.body.adminNote ? `\n\n📝 *Admin Note:*\n${req.body.adminNote.trim()}` : "";
-                text = `Hello *${recipientName}*, Thank you for submitting the job opening *"${job.title}"* on AddressGuru UAE. Our team reviewed your job posting, but it requires updates before approval.\n\n⚠️ *Reason for Rejection:*\n${reasonText}${noteText}\n\nPlease log in to your dashboard to make the necessary changes and resubmit:\n👉 ${dashboardUrl}\n\nNeed help? Contact support@addressguru.ae`;
-              }
-            }
-
-            if (phone && text) {
-              if (req.body.mediaUrl) {
-                await sendMediaMessage({
-                  to: phone,
-                  text,
-                  countryCode,
-                  mediaUrl: req.body.mediaUrl,
-                  messageType: req.body.mediaType || "document",
-                });
-              } else {
-                await sendTextMessage({ to: phone, text, countryCode });
-              }
-              console.log(`✅ WhatsApp ${status} message sent for job to ${phone}`);
             } else {
-              console.warn(`⚠️ WhatsApp job message not sent: phone (${phone}) or text is missing`);
+              await sendTextMessage({ to: phone, text, countryCode });
             }
-          } catch (waErr) {
-            console.warn("❌ WhatsApp send failed in updateJobStatus:", waErr.message);
+            console.log("✅ WhatsApp " + status + " message sent for job to " + phone);
+          } else {
+            console.warn("⚠️ WhatsApp job message not sent: phone (" + phone + ") or text is missing");
           }
+        } catch (waErr) {
+          console.warn("❌ WhatsApp send failed in updateJobStatus:", waErr.message);
+        }
+      }
+
+      // ── Send Email & Push Notification ──
+      const shouldSendEmail = req.body.sendEmail !== false;
+      const targetEmail = job.contact?.email || job.email || job.createdBy?.email || userDoc?.email || req.user?.email;
+
+      if (shouldSendEmail && targetEmail) {
+        try {
+          const categoryName = job.category?.name || "";
+
+          await sendApprovedAndRejectedListingMail(
+            targetEmail,
+            recipientName,
+            status,
+            effectiveReason || ("Your job listing has been " + status + "."),
+            {
+              businessName: job.title,
+              category: categoryName || "Jobs",
+              listingUrl: APP_BASE_URL + "/jobs/" + job.slug,
+              dashboardUrl: APP_BASE_URL + "/dashboard",
+            }
+          );
+          console.log("✅ Mail sent to " + targetEmail + " for status: " + status);
+
+          const pushUserId = job.createdBy?._id || job.createdBy;
+          if (pushUserId) {
+            const pushTitle =
+              status === "approved"
+                ? "Job Listing Approved 🎉"
+                : "Job Listing Rejected ❌";
+            const pushBody =
+              status === "approved"
+                ? "Congratulations! Your job listing \"" + job.title + "\" has been successfully approved."
+                : "We're sorry, your job listing \"" + job.title + "\" was rejected. " + (effectiveReason ? "Reason: " + effectiveReason : "");
+
+            await sendPushNotification(pushUserId, pushTitle, pushBody, {
+              type: "JOB_LISTING_STATUS",
+              listingId: job._id.toString(),
+              status: status,
+            });
+          }
+        } catch (mailError) {
+          console.warn("❌ Admin status mail/notification failed:", mailError.message);
         }
       }
     }

@@ -63,63 +63,72 @@ async function findOrCreateUser({
   registrationSource,
 }) {
   const nameToSave = displayName || `${firstName} ${lastName}`.trim();
+  const cleanEmail = email ? String(email).toLowerCase().trim() : null;
+  const strProviderId = providerId ? String(providerId) : null;
+  const now = new Date();
 
-  // 1️⃣ Match by provider (already linked)
-  let user = await User.findOne({
-    "socialLogins.provider": provider,
-    "socialLogins.providerId": providerId,
-  });
-
-  if (user) {
-    // Sync missing info if user exists
-    if (!user.name && nameToSave) user.name = nameToSave;
-    if (!user.avatar && avatarUrl) user.avatar = avatarUrl;
-    user.lastActive = new Date();
-    user.isOnline = true;
-    user.lastLoginAt = new Date();
-    user.lastSeen = new Date();
-    await user.save();
-    return user;
+  // 1️⃣ Match by provider (already linked via socialLogins array OR top-level fields)
+  let user = null;
+  if (strProviderId) {
+    user = await User.findOne({
+      $or: [
+        { "socialLogins.provider": provider, "socialLogins.providerId": strProviderId },
+        { provider: provider, providerId: strProviderId },
+      ],
+    });
   }
 
   // 2️⃣ Match by email (MAIN RULE)
-  if (email) {
-    user = await User.findOne({ email });
+  if (!user && cleanEmail) {
+    user = await User.findOne({ email: cleanEmail });
+  }
 
-    if (user) {
-      const alreadyLinked = user.socialLogins.some(
-        (s) => s.provider === provider,
-      );
-
-      if (!alreadyLinked) {
-        user.socialLogins.push({ provider, providerId });
-      }
-
-      // Sync missing info
-      if (!user.name && nameToSave) user.name = nameToSave;
-      if (!user.avatar && avatarUrl) user.avatar = avatarUrl;
-      if (!user.login_type || user.login_type === "email") {
-        user.login_type = provider; // upgrade to social login preference
-      }
-
-      user.verified_email = true; // Google/Apple emails are verified
-      user.lastActive = new Date();
-      user.isOnline = true;
-      user.lastLoginAt = new Date();
-      user.lastSeen = new Date();
-      await user.save();
-      return user;
+  if (user) {
+    // Ensure socialLogins is initialized as an array
+    if (!Array.isArray(user.socialLogins)) {
+      user.socialLogins = [];
     }
+
+    const alreadyLinked = strProviderId && user.socialLogins.some(
+      (s) => s.provider === provider && String(s.providerId) === strProviderId,
+    );
+
+    if (!alreadyLinked && strProviderId) {
+      user.socialLogins.push({ provider, providerId: strProviderId });
+    }
+
+    if (!user.provider) user.provider = provider;
+    if (!user.providerId && strProviderId) user.providerId = strProviderId;
+
+    // Sync missing info
+    if (!user.name && nameToSave) user.name = nameToSave;
+    if (!user.avatar && avatarUrl) user.avatar = avatarUrl;
+    if (!user.login_type || user.login_type === "email") {
+      user.login_type = provider; // upgrade to social login preference
+    }
+
+    // Always restore, activate and refresh login session
+    user.deletedAt = null;
+    user.verified_email = true;
+    user.status = true;
+    user.isOnline = true;
+    user.lastActive = now;
+    user.lastLoginAt = now;
+    user.lastSeen = now;
+    await user.save();
+    return user;
   }
 
   // 3️⃣ Create new user
   user = await User.create({
     name: nameToSave,
-    email,
+    email: cleanEmail,
     login_type: provider,
-    username: email?.split("@")[0] || `${provider}_${providerId.slice(0, 6)}`,
+    username: cleanEmail?.split("@")[0] || `${provider}_${strProviderId ? strProviderId.slice(0, 6) : Date.now()}`,
     avatar: avatarUrl || undefined,
-    socialLogins: [{ provider, providerId }],
+    provider,
+    providerId: strProviderId || undefined,
+    socialLogins: strProviderId ? [{ provider, providerId: strProviderId }] : [],
     password: null,
     verified_email: true,
     registrationSource: registrationSource || {
@@ -127,9 +136,9 @@ async function findOrCreateUser({
     },
     status: true,
     isOnline: true,
-    lastLoginAt: new Date(),
-    lastSeen: new Date(),
-    lastActive: new Date(),
+    lastLoginAt: now,
+    lastSeen: now,
+    lastActive: now,
   });
 
   return user;
@@ -188,27 +197,13 @@ router.get("/google/callback", async (req, res) => {
 
     const userInfo = userInfoResp.data;
 
-    let user = await User.findOne({
+    const user = await findOrCreateUser({
       provider: "google",
       providerId: userInfo.sub,
+      email: userInfo.email,
+      displayName: userInfo.name,
+      avatarUrl: userInfo.picture,
     });
-    if (!user) {
-      user = await User.create({
-        // provider: "google",
-        // providerId: userInfo.sub,
-        email: userInfo.email,
-        name: userInfo.name,
-        picture: userInfo.picture,
-        socialLogins: [{ provider: "google", providerId: userInfo.sub }],
-        createdAt: new Date(),
-      });
-    } else {
-      user.lastLoginAt = new Date();
-      user.isOnline = true;
-      user.lastSeen = new Date();
-      user.lastActive = new Date();
-      await user.save();
-    }
 
     if (refresh_token) {
       // encrypt and store
@@ -216,8 +211,15 @@ router.get("/google/callback", async (req, res) => {
       await user.save();
     }
 
-    const sessionToken = createSessionToken(user);
+    const sessionToken = createJwtToken(user);
     setSessionCookie(res, sessionToken);
+    res.cookie("authToken", sessionToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+      path: "/",
+    });
 
     // Redirect to frontend app
     res.redirect(`${APP_BASE_URL}/auth/success`);
@@ -413,11 +415,21 @@ router.post("/auth/exchange", async (req, res) => {
 
     return res.status(200).json({
       success: true,
-      data: { user: user, accessToken: sessionToken },
+      data: {
+        user: user,
+        accessToken: sessionToken,
+        authToken: sessionToken,
+        token: sessionToken,
+      },
+      accessToken: sessionToken,
+      authToken: sessionToken,
     });
   } catch (err) {
-    console.warn(err.response?.data || err.message);
-    return res.status(500).json({ error: "auth_exchange_failed" });
+    console.warn("Google auth exchange error:", err.response?.data || err.message || err);
+    return res.status(500).json({
+      error: "auth_exchange_failed",
+      message: err?.message || "Google authentication failed",
+    });
   }
 });
 
