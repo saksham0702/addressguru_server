@@ -29,7 +29,8 @@ const ACCOUNT_LABEL = process.env.WHATSAPP_ACCOUNT_LABEL || "default";
  * @param {string} params.text - message body
  * @param {string} [params.countryCode] - optional, combined with `to` via normalizeToE164
  */
-export async function sendTextMessage({ to, text, countryCode }) {
+export async function sendTextMessage({ to, text, message, countryCode }) {
+  const content = text !== undefined && text !== null ? text : (message || "");
   const account = await WhatsappAccount.findOne({
     status: "connected",
   });
@@ -66,7 +67,7 @@ export async function sendTextMessage({ to, text, countryCode }) {
 
   try {
     const sock = getSocket();
-    waMessage = await sock.sendMessage(jid, { text });
+    waMessage = await sock.sendMessage(jid, { text: content });
 
     const message = await WhatsappMessage.create({
       whatsappAccount: account._id,
@@ -88,7 +89,7 @@ export async function sendTextMessage({ to, text, countryCode }) {
 
     await WhatsappChat.findByIdAndUpdate(chat._id, {
       lastMessageAt: new Date(),
-      lastMessagePreview: text.slice(0, 100),
+      lastMessagePreview: (content || "").slice(0, 100),
     });
 
     whatsappEventBus.emit(WHATSAPP_EVENTS.MESSAGE_SENT, {
@@ -149,7 +150,8 @@ const MIME_MAP = {
 /**
  * Send image, document, video, or audio file via WhatsApp
  */
-export async function sendMediaMessage({ to, text, countryCode, file, mediaUrl, messageType }) {
+export async function sendMediaMessage({ to, text, message, caption, countryCode, file, mediaUrl, messageType }) {
+  const content = text !== undefined && text !== null ? text : (caption !== undefined && caption !== null ? caption : (message || ""));
   const account = await WhatsappAccount.findOne({
     status: "connected",
   });

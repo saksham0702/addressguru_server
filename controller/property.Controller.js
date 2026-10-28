@@ -10,7 +10,7 @@ import googleIndexingService from "../services/googleIndexing.service.js";
 import { APP_BASE_URL } from "../services/constant.js";
 import { sendApprovedAndRejectedListingMail } from "../utils/sendMail.js";
 import { sendPushNotification } from "../services/notification.service.js";
-import { sendTextMessage } from "../modules/whatsapp/services/whatsappMessage.js";
+import { sendTextMessage, sendMediaMessage } from "../modules/whatsapp/services/whatsappMessage.js";
 import CitiesSchema from "../model/CitiesSchema.js";
 import Feature from "../model/featureSchema.js";
 import mongoose from "mongoose";
@@ -1111,10 +1111,11 @@ export const updatePropertyListingStatus = async (req, res) => {
         try {
           const phone =
             req.body.whatsappPhone ||
-            listing.phone ||
             listing.mobileNumber ||
+            listing.phone ||
             listing.contactPhone ||
             listing.contactPersonPhone ||
+            listing.alternateMobileNumber ||
             userDoc?.mobileNumber ||
             userDoc?.phoneNumber;
 
@@ -1122,29 +1123,41 @@ export const updatePropertyListingStatus = async (req, res) => {
             req.body.whatsappCountryCode ||
             listing.countryCode ||
             userDoc?.countryCode ||
+            userDoc?.country_code ||
             "+971"
           ).trim();
           const countryCode = rawCc.startsWith("+") ? rawCc : `+${rawCc.replace(/\D/g, "")}`;
 
-          const recipientName = listing.contactPersonName || listing.ownerName || userDoc?.name || listing.title || "User";
+          const recipientName = listing.contactPersonName || listing.ownerName || userDoc?.name || listing.title || "Valued Partner";
+          const listingUrl = `${APP_BASE_URL}/properties/${listing.slug}`;
+          const dashboardUrl = `${APP_BASE_URL}/dashboard`;
+
           let text = req.body.whatsappMessage;
           if (!text) {
             if (status === "approved") {
-              text = `Hello *${recipientName}*, 🏠 Congratulations! Your property listing *"${listing.title}"* has been approved and is now live on AddressGuru UAE!\n\n📍 *View Live Listing:* ${APP_BASE_URL}/properties/${listing.slug}\n👉 *Dashboard:* ${APP_BASE_URL}/dashboard\n\nThank you for choosing AddressGuru UAE!`;
+              text = `Hello *${recipientName}*, 🏠 Congratulations! Your property listing *"${listing.title}"* has been approved and is now live on AddressGuru UAE.\n\n📍 *Property Details:*\n• *Property:* ${listing.title}\n• *Live URL:* ${listingUrl}\n\nYou can manage your property listing, photos, and tenant/buyer inquiries anytime from your dashboard:\n👉 ${dashboardUrl}\n\nThank you for choosing AddressGuru UAE!`;
             } else if (status === "rejected") {
-              text = `Hello *${recipientName}*, your property listing *"${listing.title}"* on AddressGuru UAE requires updates.\n\n❌ *Reason:* ${rejectionReason ? rejectionReason.trim() : "Please review property guidelines"}\n👉 *Dashboard:* ${APP_BASE_URL}/dashboard\n\nPlease update your listing so we can review it again.`;
+              const reasonText = rejectionReason ? rejectionReason.trim() : "Details need revision";
+              const noteText = req.body.adminNote ? `\n\n📝 *Admin Note:*\n${req.body.adminNote.trim()}` : "";
+              text = `Hello *${recipientName}*, Thank you for submitting your property listing *"${listing.title}"* on AddressGuru UAE. Our team reviewed your property details, but it requires updates before approval.\n\n⚠️ *Reason for Rejection:*\n${reasonText}${noteText}\n\nPlease log in to your dashboard to make the necessary changes and resubmit:\n👉 ${dashboardUrl}\n\nNeed help? Contact support@addressguru.ae`;
             }
           }
 
           if (phone && text) {
-            await sendTextMessage({
-              to: phone,
-              message: text,
-              countryCode,
-              mediaUrl: req.body.mediaUrl || null,
-              mediaType: req.body.mediaType || "document",
-            });
+            if (req.body.mediaUrl) {
+              await sendMediaMessage({
+                to: phone,
+                text,
+                countryCode,
+                mediaUrl: req.body.mediaUrl,
+                messageType: req.body.mediaType || "document",
+              });
+            } else {
+              await sendTextMessage({ to: phone, text, countryCode });
+            }
             console.log(`✅ WhatsApp ${status} message sent for property to ${phone}`);
+          } else {
+            console.warn(`⚠️ WhatsApp property message not sent: phone (${phone}) or text is missing`);
           }
         } catch (waErr) {
           console.warn("❌ WhatsApp send failed in updatePropertyListingStatus:", waErr.message);

@@ -9,7 +9,7 @@ import { successData, errorData } from "../services/helper.js";
 import googleIndexingService from "../services/googleIndexing.service.js";
 import { APP_BASE_URL } from "../services/constant.js";
 import { sendPushNotification } from "../services/notification.service.js";
-import { sendTextMessage } from "../modules/whatsapp/services/whatsappMessage.js";
+import { sendTextMessage, sendMediaMessage } from "../modules/whatsapp/services/whatsappMessage.js";
 
 // ─── Helper: validate additional fields ──────────────────────────────────────
 const validateAdditionalFields = async (additionalFields = []) => {
@@ -841,9 +841,10 @@ export const updateMarketplaceListingStatus = async (req, res) => {
         try {
           const phone =
             req.body.whatsappPhone ||
-            listing.phone ||
             listing.mobileNumber ||
+            listing.phone ||
             listing.contactNumber ||
+            listing.alternateMobileNumber ||
             userDoc?.mobileNumber ||
             userDoc?.phoneNumber;
 
@@ -851,29 +852,41 @@ export const updateMarketplaceListingStatus = async (req, res) => {
             req.body.whatsappCountryCode ||
             listing.countryCode ||
             userDoc?.countryCode ||
+            userDoc?.country_code ||
             "+971"
           ).trim();
           const countryCode = rawCc.startsWith("+") ? rawCc : `+${rawCc.replace(/\D/g, "")}`;
 
-          const recipientName = listing.contactPersonName || userDoc?.name || listing.title || "User";
+          const recipientName = listing.contactPersonName || userDoc?.name || listing.title || "Valued Seller";
+          const listingUrl = `${APP_BASE_URL}/marketplace/${listing.slug}`;
+          const dashboardUrl = `${APP_BASE_URL}/dashboard`;
+
           let text = req.body.whatsappMessage;
           if (!text) {
             if (status === "approved") {
-              text = `Hello *${recipientName}*, 🎉 Congratulations! Your marketplace listing *"${listing.title}"* has been approved and is now live on AddressGuru UAE!\n\n📍 *View Live Listing:* ${APP_BASE_URL}/marketplace/${listing.slug}\n👉 *Dashboard:* ${APP_BASE_URL}/dashboard\n\nThank you for choosing AddressGuru UAE!`;
+              text = `Hello *${recipientName}*, 🎉 Congratulations! Your marketplace listing *"${listing.title}"* has been approved and is now live on AddressGuru UAE.\n\n🛍️ *Listing Details:*\n• *Item:* ${listing.title}\n• *Live URL:* ${listingUrl}\n\nYou can manage your listing details and buyer inquiries anytime from your dashboard:\n👉 ${dashboardUrl}\n\nThank you for selling on AddressGuru UAE!`;
             } else if (status === "rejected") {
-              text = `Hello *${recipientName}*, your marketplace listing *"${listing.title}"* on AddressGuru UAE requires updates.\n\n❌ *Reason:* ${rejectionReason ? rejectionReason.trim() : "Please review listing guidelines"}\n👉 *Dashboard:* ${APP_BASE_URL}/dashboard\n\nPlease update your listing so we can review it again.`;
+              const reasonText = rejectionReason ? rejectionReason.trim() : "Details need revision";
+              const noteText = req.body.adminNote ? `\n\n📝 *Admin Note:*\n${req.body.adminNote.trim()}` : "";
+              text = `Hello *${recipientName}*, Thank you for submitting *"${listing.title}"* on AddressGuru UAE. Our team reviewed your item, but it requires updates before approval.\n\n⚠️ *Reason for Rejection:*\n${reasonText}${noteText}\n\nPlease log in to your dashboard to make the necessary changes and resubmit:\n👉 ${dashboardUrl}\n\nNeed help? Contact support@addressguru.ae`;
             }
           }
 
           if (phone && text) {
-            await sendTextMessage({
-              to: phone,
-              message: text,
-              countryCode,
-              mediaUrl: req.body.mediaUrl || null,
-              mediaType: req.body.mediaType || "document",
-            });
+            if (req.body.mediaUrl) {
+              await sendMediaMessage({
+                to: phone,
+                text,
+                countryCode,
+                mediaUrl: req.body.mediaUrl,
+                messageType: req.body.mediaType || "document",
+              });
+            } else {
+              await sendTextMessage({ to: phone, text, countryCode });
+            }
             console.log(`✅ WhatsApp ${status} message sent for marketplace item to ${phone}`);
+          } else {
+            console.warn(`⚠️ WhatsApp marketplace message not sent: phone (${phone}) or text is missing`);
           }
         } catch (waErr) {
           console.warn("❌ WhatsApp send failed in updateMarketplaceListingStatus:", waErr.message);

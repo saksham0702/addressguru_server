@@ -42,13 +42,33 @@ export const authenticate = async (req, res, next) => {
     const userId = req.user?.id || req.user?._id;
 
     if (userId) {
-      const dbUser = await User.findById(userId).select("lastSeen isOnline").lean();
+      const dbUser = await User.findById(userId).select("lastSeen isOnline lastLoginAt").lean();
 
       if (dbUser) {
         const INACTIVITY_MS = 60 * 60 * 1000; // 60 minutes
         const now = new Date();
+
+        // 1. Fresh session guard: if token was issued within the last 60 minutes (iat),
+        // or user logged in within the last 60 minutes (lastLoginAt), this is an active session
+        // and cannot be considered expired due to inactivity.
+        const tokenIssuedAt = decoded?.iat ? new Date(decoded.iat * 1000) : null;
+        const isFreshToken = tokenIssuedAt && (now.getTime() - tokenIssuedAt.getTime()) <= INACTIVITY_MS;
+
+        const lastLoginAt = dbUser.lastLoginAt ? new Date(dbUser.lastLoginAt) : null;
+        const isFreshLogin = lastLoginAt && (now.getTime() - lastLoginAt.getTime()) <= INACTIVITY_MS;
+
+        if (isFreshToken || isFreshLogin) {
+          // Keep user online and refresh lastSeen
+          User.findByIdAndUpdate(userId, {
+            lastSeen: now,
+            isOnline: true,
+          }).catch(() => {});
+          return next();
+        }
+
+        // 2. Inactivity check: only enforce if the token is > 60m old AND lastSeen is > 60m old
         const lastSeen = dbUser.lastSeen ? new Date(dbUser.lastSeen) : null;
-        const isInactive = lastSeen && (now - lastSeen) > INACTIVITY_MS;
+        const isInactive = lastSeen && (now.getTime() - lastSeen.getTime()) > INACTIVITY_MS;
 
         if (isInactive) {
           // Mark offline in background, then reject

@@ -12,7 +12,7 @@ import {
   sendListingSubmittedMail,
 } from "../utils/sendMail.js";
 import { sendPushNotification } from "../services/notification.service.js";
-import { sendTextMessage } from "../modules/whatsapp/services/whatsappMessage.js";
+import { sendTextMessage, sendMediaMessage } from "../modules/whatsapp/services/whatsappMessage.js";
 
 export const saveJobStep = async (req, res) => {
   try {
@@ -1021,9 +1021,11 @@ export const updateJobStatus = async (req, res) => {
             const phone =
               req.body.whatsappPhone ||
               job.contact?.phone ||
+              job.contact?.whatsapp ||
               job.contactPhone ||
-              job.phone ||
               job.mobileNumber ||
+              job.phone ||
+              job.phoneNumber ||
               userDoc?.mobileNumber ||
               userDoc?.phoneNumber;
 
@@ -1032,29 +1034,41 @@ export const updateJobStatus = async (req, res) => {
               job.contact?.countryCode ||
               job.countryCode ||
               userDoc?.countryCode ||
+              userDoc?.country_code ||
               "+971"
             ).trim();
             const countryCode = rawCc.startsWith("+") ? rawCc : `+${rawCc.replace(/\D/g, "")}`;
 
             const recipientName = job.contact?.name || userDoc?.name || job.companyName || "Employer";
+            const listingUrl = `${APP_BASE_URL}/jobs/${job.slug}`;
+            const dashboardUrl = `${APP_BASE_URL}/dashboard`;
+
             let text = req.body.whatsappMessage;
             if (!text) {
               if (status === "approved") {
-                text = `Hello *${recipientName}*, 🎉 Congratulations! Your job opening *"${job.title}"* has been approved and is now live on AddressGuru UAE!\n\n📍 *View Live Job:* ${APP_BASE_URL}/jobs/${job.slug}\n👉 *Dashboard:* ${APP_BASE_URL}/dashboard\n\nThank you for choosing AddressGuru UAE!`;
+                text = `Hello *${recipientName}*, 🎉 Congratulations! Your job opening *"${job.title}"* has been approved and is now live on AddressGuru UAE.\n\n💼 *Job Details:*\n• *Position:* ${job.title}\n• *Live URL:* ${listingUrl}\n\nYou can manage your job posting and review candidate applications directly from your dashboard:\n👉 ${dashboardUrl}\n\nThank you for choosing AddressGuru UAE!`;
               } else if (status === "rejected") {
-                text = `Hello *${recipientName}*, your job opening *"${job.title}"* on AddressGuru UAE requires updates.\n\n❌ *Reason:* ${rejectionReason ? rejectionReason.trim() : "Please review job posting guidelines"}\n👉 *Dashboard:* ${APP_BASE_URL}/dashboard\n\nPlease update your posting so we can review it again.`;
+                const reasonText = rejectionReason ? rejectionReason.trim() : "Details need revision";
+                const noteText = req.body.adminNote ? `\n\n📝 *Admin Note:*\n${req.body.adminNote.trim()}` : "";
+                text = `Hello *${recipientName}*, Thank you for submitting the job opening *"${job.title}"* on AddressGuru UAE. Our team reviewed your job posting, but it requires updates before approval.\n\n⚠️ *Reason for Rejection:*\n${reasonText}${noteText}\n\nPlease log in to your dashboard to make the necessary changes and resubmit:\n👉 ${dashboardUrl}\n\nNeed help? Contact support@addressguru.ae`;
               }
             }
 
             if (phone && text) {
-              await sendTextMessage({
-                to: phone,
-                message: text,
-                countryCode,
-                mediaUrl: req.body.mediaUrl || null,
-                mediaType: req.body.mediaType || "document",
-              });
+              if (req.body.mediaUrl) {
+                await sendMediaMessage({
+                  to: phone,
+                  text,
+                  countryCode,
+                  mediaUrl: req.body.mediaUrl,
+                  messageType: req.body.mediaType || "document",
+                });
+              } else {
+                await sendTextMessage({ to: phone, text, countryCode });
+              }
               console.log(`✅ WhatsApp ${status} message sent for job to ${phone}`);
+            } else {
+              console.warn(`⚠️ WhatsApp job message not sent: phone (${phone}) or text is missing`);
             }
           } catch (waErr) {
             console.warn("❌ WhatsApp send failed in updateJobStatus:", waErr.message);

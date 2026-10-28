@@ -200,16 +200,22 @@ export const createOrderService = async ({
   /*
    * PAID PLAN
    */
-  // Mark any old uncompleted 'created' payments for this user/plan as superseded
+  // Mark any old uncompleted 'created' payments for this user as superseded
   // so we never reuse an expired Razorpay order ID or outdated subunit amount
   try {
+    const cleanFilter = {
+      user: userId,
+      status: "created",
+    };
+    if (listingId) {
+      cleanFilter.$or = [
+        { listing: listingId },
+        { listing: null },
+        { listing: { $exists: false } },
+      ];
+    }
     await Payment.updateMany(
-      {
-        user: userId,
-        plan: planId,
-        listing: listingId,
-        status: "created",
-      },
+      cleanFilter,
       {
         $set: {
           status: "failed",
@@ -478,6 +484,27 @@ export const createFlashDealOrderService = async ({
   }
 
   /* PAID FLASH DEAL */
+  try {
+    await Payment.updateMany(
+      {
+        user: userId,
+        status: "created",
+        $or: [
+          { flashDealClaim: claim._id },
+          { plan: plan._id },
+        ],
+      },
+      {
+        $set: {
+          status: "failed",
+          "notes.failureReason": "superseded_by_new_order",
+        },
+      },
+    );
+  } catch (cleanErr) {
+    console.warn("Could not clean old flash deal created payments:", cleanErr.message);
+  }
+
   const amountInSubunits = convertToSubunits(deal.dealPrice);
   const receipt = generateReceipt();
 
