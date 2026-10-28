@@ -14,7 +14,13 @@ const extractToken = (req) => {
   }
 
   // 2. Cookie (web fallback)
-  if (req?.cookies?.authToken) return req?.cookies?.authToken;
+  if (
+    req?.cookies?.authToken &&
+    req.cookies.authToken !== "null" &&
+    req.cookies.authToken !== "undefined"
+  ) {
+    return req.cookies.authToken;
+  }
 
   return null;
 };
@@ -29,7 +35,14 @@ export const authenticate = async (req, res, next) => {
     }
 
     const decoded = jwt.verify(token, SECRET_KEY);
-    req.user = decoded?.user;
+    req.user = decoded?.user || {
+      id: decoded?.sub || decoded?.id || decoded?._id,
+      _id: decoded?.sub || decoded?.id || decoded?._id,
+      roles: [5],
+      role: 5,
+      email: decoded?.email,
+      name: decoded?.name,
+    };
 
     // Impersonated session: bypass inactivity check
     if (req.user?.impersonated) {
@@ -39,7 +52,7 @@ export const authenticate = async (req, res, next) => {
     // ── Inactivity check: enforce 60-minute idle timeout ─────────────────────
     // Import lazily to avoid circular dep issues at module load time.
     const { default: User } = await import("../model/userSchema.js");
-    const userId = req.user?.id || req.user?._id;
+    const userId = req.user?.id || req.user?._id || decoded?.sub || decoded?.id || decoded?._id;
 
     if (userId) {
       const dbUser = await User.findById(userId).select("lastSeen isOnline lastLoginAt").lean();
