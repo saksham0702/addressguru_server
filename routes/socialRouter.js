@@ -75,6 +75,9 @@ async function findOrCreateUser({
     if (!user.name && nameToSave) user.name = nameToSave;
     if (!user.avatar && avatarUrl) user.avatar = avatarUrl;
     user.lastActive = new Date();
+    user.isOnline = true;
+    user.lastLoginAt = new Date();
+    user.lastSeen = new Date();
     await user.save();
     return user;
   }
@@ -201,6 +204,9 @@ router.get("/google/callback", async (req, res) => {
       });
     } else {
       user.lastLoginAt = new Date();
+      user.isOnline = true;
+      user.lastSeen = new Date();
+      user.lastActive = new Date();
       await user.save();
     }
 
