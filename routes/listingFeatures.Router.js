@@ -59,6 +59,7 @@ const router = express.Router();
 
 // Send enquiry to listing owner
 router.post("/:type/:slug/enquiry", sendEnquiry);
+router.post("/:type/:slug/enquiries", sendEnquiry);
 
 // List enquiries for a listing  (owner / admin)
 router.get("/:type/:slug/enquiries", getEnquiries);
@@ -113,6 +114,7 @@ router.get("/report-reasons", getReportReasons);
 
 // Submit a report
 router.post("/:type/:slug/report", submitReport);
+router.post("/:type/:slug/reports", submitReport);
 
 // My reports (dashboard)
 router.get("/my-reports", authenticate, getMyReports);

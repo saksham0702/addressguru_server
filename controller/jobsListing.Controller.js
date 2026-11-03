@@ -369,6 +369,11 @@ export const saveJobStep = async (req, res) => {
       // job.isPublished = true;
       job.stepCompleted = Math.max(job.stepCompleted || 1, 2);
 
+      googleIndexingService.notify(
+        `${APP_BASE_URL}/job/${job.slug}`,
+        "URL_UPDATED",
+      );
+
       // ── Send submitted mail ──
       try {
         const categoryDoc = await Category.findById(job.category);
@@ -408,6 +413,11 @@ export const saveJobStep = async (req, res) => {
       job.isPublished = true;
       job.status = "pending"; // Admin still needs to approve
       job.stepCompleted = Math.max(job.stepCompleted || 1, 3);
+
+      googleIndexingService.notify(
+        `${APP_BASE_URL}/job/${job.slug}`,
+        "URL_UPDATED",
+      );
     }
 
     await job.save();
@@ -935,28 +945,16 @@ export const updateJobStatus = async (req, res) => {
         job.rejectedBy = null;
         job.rejectionReason = null;
         job.isPublished = true;
-        googleIndexingService.notify(
-          `${APP_BASE_URL}/jobs/${job.slug}`,
-          "URL_UPDATED",
-        );
       } else if (status === "rejected") {
         job.rejectedBy = adminId;
-        job.rejectionReason = rejectionReason;
+        job.rejectionReason = effectiveReason;
         job.approvedBy = null;
         job.isPublished = false;
-        googleIndexingService.notify(
-          `${APP_BASE_URL}/jobs/${job.slug}`,
-          "URL_DELETED",
-        );
       } else if (status === "pending") {
         job.approvedBy = null;
         job.rejectedBy = null;
         job.rejectionReason = null;
         job.isPublished = false;
-        googleIndexingService.notify(
-          `${APP_BASE_URL}/jobs/${job.slug}`,
-          "URL_DELETED",
-        );
       }
 
       // ── Send WhatsApp Message FIRST (never blocked by email/push) ────────
@@ -1015,11 +1013,11 @@ export const updateJobStatus = async (req, res) => {
           let text = req.body.whatsappMessage;
           if (!text) {
             if (status === "approved") {
-              text = `Hello *${recipientName}*, 🎉 Congratulations! Your job opening *"${job.title}"* has been approved and is now live on AddressGuru UAE.\n\n💼 *Job Details:*\n• *Position:* ${job.title}\n• *Live URL:* ${listingUrl}\n\nYou can manage your job posting and review candidate applications directly from your dashboard:\n👉 ${dashboardUrl}\n\nThank you for choosing AddressGuru UAE!`;
+              text = "Hello *" + recipientName + "*, 🎉 Congratulations! Your job opening *\"" + job.title + "\"* has been approved and is now live on AddressGuru UAE.\n\n💼 *Job Details:*\n• *Position:* " + job.title + "\n• *Live URL:* " + listingUrl + "\n\nYou can manage your job posting and review candidate applications directly from your dashboard:\n👉 " + dashboardUrl + "\n\nThank you for choosing AddressGuru UAE!";
             } else if (status === "rejected") {
               const reasonText = effectiveReason || "Details need revision";
               const noteText = req.body.adminNote ? "\n\n📝 *Admin Note:*\n" + req.body.adminNote.trim() : "";
-              text = `Hello *${recipientName}*, Thank you for submitting the job opening *"${job.title}"* on AddressGuru UAE. Our team reviewed your job posting, but it requires updates before approval.\n\n⚠️ *Reason for Rejection:*\n${reasonText}${noteText}\n\nPlease log in to your dashboard to make the necessary changes and resubmit:\n👉 ${dashboardUrl}\n\nNeed help? Contact support@addressguru.ae`;
+              text = "Hello *" + recipientName + "*, Thank you for submitting the job opening *\"" + job.title + "\"* on AddressGuru UAE. Our team reviewed your job posting, but it requires updates before approval.\n\n⚠️ *Reason for Rejection:*\n" + reasonText + noteText + "\n\nPlease log in to your dashboard to make the necessary changes and resubmit:\n👉 " + dashboardUrl + "\n\nNeed help? Contact support@addressguru.ae";
             }
           }
 
@@ -1293,6 +1291,78 @@ export const unpublishListing = async (req, res) => {
     });
   } catch (error) {
     console.warn("Listing unpublish error:", error);
+    return errorData(res, 500, false, "Internal server error");
+  }
+};
+
+/* =========================
+   STAR / SAVE JOB
+========================== */
+export const toggleSaveJob = async (req, res) => {
+  try {
+    const userId = req.user?.id;
+    const { id } = req.params;
+
+    if (!userId) {
+      return errorData(res, 401, false, "Unauthorized");
+    }
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return errorData(res, 404, false, "User not found");
+    }
+
+    const isSaved = user.savedJobs?.some((jobId) => jobId.toString() === id);
+
+    if (isSaved) {
+      await User.findByIdAndUpdate(userId, {
+        $pull: { savedJobs: id },
+      });
+      return successData(res, 200, true, "Job removed from saved jobs", {
+        isSaved: false,
+      });
+    } else {
+      await User.findByIdAndUpdate(userId, {
+        $addToSet: { savedJobs: id },
+      });
+      return successData(res, 200, true, "Job saved successfully", {
+        isSaved: true,
+      });
+    }
+  } catch (error) {
+    console.warn("toggleSaveJob error:", error);
+    return errorData(res, 500, false, "Internal server error");
+  }
+};
+
+/* =========================
+   SAVED JOBS
+========================== */
+export const getSavedJobs = async (req, res) => {
+  try {
+    const userId = req.user?.id;
+    if (!userId) {
+      return errorData(res, 401, false, "Unauthorized");
+    }
+
+    const user = await User.findById(userId).populate({
+      path: "savedJobs",
+      match: { isDeleted: false },
+      populate: [
+        { path: "category", select: "name" },
+        { path: "subCategory", select: "name" },
+      ],
+    });
+
+    return successData(
+      res,
+      200,
+      true,
+      "Saved jobs retrieved successfully",
+      user?.savedJobs || [],
+    );
+  } catch (error) {
+    console.warn("getSavedJobs error:", error);
     return errorData(res, 500, false, "Internal server error");
   }
 };

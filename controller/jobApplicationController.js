@@ -1,6 +1,9 @@
 // controllers/jobApplicationController.js
 import JobApplication from "../model/jobApplicationSchema.js";
 import Job from "../model/jobsListingSchema.js";
+import Enquiry from "../model/listingEnquirySchema.js";
+import ListingStats from "../model/listingStatsSchema.js";
+import User from "../model/userSchema.js";
 import { successData, errorData } from "../services/helper.js";
 
 /* ═══════════════════════════════════════════════════════════
@@ -103,6 +106,54 @@ export const applyForJob = async (req, res) => {
 
     // ── 7. Increment job application counter ──────────────────
     await Job.findByIdAndUpdate(job._id, { $inc: { applications: 1 } });
+
+    // ── 8. Create Enquiry record so it appears in Admin Leads & Dashboard ──
+    try {
+      const cleanPhoneDigits = phone ? String(phone).replace(/\D/g, "") : "";
+      const numericPhone = cleanPhoneDigits ? parseInt(cleanPhoneDigits, 10) : 0;
+
+      const leadMessage = [
+        `Job Application for: ${job.title}`,
+        currentJobTitle ? `Current Title: ${currentJobTitle}` : null,
+        totalExperience ? `Experience: ${totalExperience}` : null,
+        expectedSalary ? `Expected Salary: ${expectedSalary}` : null,
+        coverLetter ? `Cover Letter: ${coverLetter}` : null,
+        resume?.url ? `Resume: ${resume.url}` : null,
+      ]
+        .filter(Boolean)
+        .join("\n");
+
+      await Enquiry.create({
+        listingId: job._id,
+        listingModel: "Job",
+        listingSlug: job.slug,
+        listingOwner: job.createdBy || null,
+        fullName: fullName.trim(),
+        email: email.toLowerCase().trim(),
+        countryCode: "+971",
+        mobileNumber: numericPhone || 0,
+        message: leadMessage,
+        ipAddress: req.ip,
+        userAgent: req.headers["user-agent"],
+      });
+
+      await ListingStats.create({
+        listingId: job._id,
+        listingModel: "Job",
+        type: "lead",
+        userId: user?.id || null,
+        ipAddress: req.ip,
+        userAgent: req.headers["user-agent"],
+      });
+
+      if (job.createdBy) {
+        await User.findByIdAndUpdate(job.createdBy, {
+          $inc: { statistics_totalLeads: 1 },
+        });
+      }
+    } catch (leadErr) {
+      console.warn("Failed to create Enquiry record for job application:", leadErr);
+    }
 
     return successData(res, 201, true, "Application submitted successfully", {
       applicationId: application._id,

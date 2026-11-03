@@ -197,6 +197,9 @@ const userSchema = new mongoose.Schema(
     // Soft-delete
     deletedAt: { type: Date, default: null },
 
+    // Saved/Starred jobs
+    savedJobs: [{ type: mongoose.Schema.Types.ObjectId, ref: "Job" }],
+
     // Who created this account (for admin-created staff accounts)
     createdBy: {
       type: mongoose.Schema.Types.ObjectId,

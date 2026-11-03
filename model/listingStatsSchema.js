@@ -16,7 +16,17 @@ const listingStatsSchema = new mongoose.Schema(
     type: {
       type: String,
       required: true,
-      enum: ["view", "call", "website_visit", "lead", "review"],
+      enum: [
+        "view",
+        "call",
+        "website_visit",
+        "lead",
+        "review",
+        "whatsapp",
+        "impression",
+        "click",
+        "application_click",
+      ],
       index: true,
     },
     userId: {
@@ -36,7 +46,7 @@ const listingStatsSchema = new mongoose.Schema(
   {
     timestamps: { createdAt: true, updatedAt: false },
     collection: "listing_stats",
-  }
+  },
 );
 
 listingStatsSchema.index({ createdAt: 1 });
