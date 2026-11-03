@@ -170,6 +170,7 @@ const propertyListingSchema = new mongoose.Schema(
       ref: "User",
       default: null,
     },
+    views: { type: Number, default: 0 },
     cityNameLower: {
       type: String,
       index: true,

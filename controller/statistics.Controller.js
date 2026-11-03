@@ -12,7 +12,17 @@ export const trackEvent = async (req, res) => {
   try {
     const { type, slug } = req.params;
     const { type: eventType } = req.body;
-    if (!["view", "call", "website_visit"].includes(eventType)) {
+    if (
+      ![
+        "view",
+        "call",
+        "website_visit",
+        "whatsapp",
+        "impression",
+        "click",
+        "application_click",
+      ].includes(eventType)
+    ) {
       return errorData(res, 400, false, "Invalid event type");
     }
 
@@ -44,11 +54,40 @@ export const trackEvent = async (req, res) => {
       userAgent: req.headers["user-agent"],
     });
 
+    // Increment listing counters
+    try {
+      if (eventType === "view") {
+        await listing.constructor.findByIdAndUpdate(listingId, {
+          $inc: { views: 1 },
+        });
+      } else if (listingModel === "Job") {
+        if (eventType === "impression") {
+          await listing.constructor.findByIdAndUpdate(listingId, {
+            $inc: { impressions: 1 },
+          });
+        } else if (eventType === "click") {
+          await listing.constructor.findByIdAndUpdate(listingId, {
+            $inc: { clicks: 1 },
+          });
+        } else if (eventType === "application_click") {
+          await listing.constructor.findByIdAndUpdate(listingId, {
+            $inc: { applicationClicks: 1 },
+          });
+        }
+      }
+    } catch (countErr) {
+      console.warn("Error incrementing listing counter:", countErr);
+    }
+
     // Increment user stats
     const updateField =
-      eventType === "view" ? "statistics_totalViews" :
-      eventType === "call" ? "statistics_totalCalls" :
-      eventType === "website_visit" ? "statistics_totalWebsiteVisits" : null;
+      eventType === "view"
+        ? "statistics_totalViews"
+        : eventType === "call" || eventType === "whatsapp"
+          ? "statistics_totalCalls"
+          : eventType === "website_visit"
+            ? "statistics_totalWebsiteVisits"
+            : null;
 
     if (updateField && ownerId) {
       await User.findByIdAndUpdate(ownerId, { $inc: { [updateField]: 1 } });

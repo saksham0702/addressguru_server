@@ -230,6 +230,7 @@ app.use(`/blogs`, blogRouter);
 app.use(`/property-listings`, propertyRouter);
 app.use(`/google-listing`, googleListingRoutes);
 
+app.use(`/listing-features`, listingFeaturesRoutes);
 app.use(`/`, listingFeaturesRoutes);
 app.use(`/applications`, jobApplicationRoutes);
 app.use(`/plans`, plansRouter);

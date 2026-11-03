@@ -212,6 +212,8 @@ If you believe this is an error or have additional supporting documents, please 
     category: "lead_notification",
     message: `Hello *{{name}}*, 🔔 Great news! You have received a new customer lead for *{{businessName}}* on AddressGuru UAE.
 
+📍 *Listing:* {{businessName}}
+
 👤 *Customer Details:*
 • *Name:* {{leadName}}
 • *Phone:* {{leadPhone}}
@@ -220,10 +222,11 @@ If you believe this is an error or have additional supporting documents, please 
 💬 *Customer Enquiry:*
 "{{leadMessage}}"
 
-We recommend reaching out to the customer promptly to convert this lead!
-
-View all your enquiries in your dashboard:
-👉 {{dashboardUrl}}`,
+────────────────────
+*AddressGuru UAE* — Premier Business Directory
+Manage all your leads and listings in your dashboard:
+👉 {{dashboardUrl}}
+Need support? Reply to this message or contact support@addressguru.ae`,
     variables: [
       "name",
       "businessName",
@@ -291,14 +294,19 @@ Need assistance? Reply directly to this message.`,
     category: "lead_notification",
     message: `Hello *{{name}}*, 🔔 You have received a new application for *{{businessName}}* on AddressGuru UAE!
 
+💼 *Job Posting:* {{businessName}}
+
 👤 *Candidate Info:*
 • *Name:* {{leadName}}
 • *Phone:* {{leadPhone}}
 • *Email:* {{leadEmail}}
 • *Note:* {{leadMessage}}
 
+────────────────────
+*AddressGuru UAE* — Premier Jobs & Careers Portal
 Review all candidate resumes and manage applications here:
-👉 {{dashboardUrl}}`,
+👉 {{dashboardUrl}}
+Need help? Reply to this message or contact support@addressguru.ae`,
     variables: ["name", "businessName", "leadName", "leadPhone", "leadEmail", "leadMessage", "dashboardUrl"],
     isSystem: true,
     status: "active",
@@ -375,14 +383,19 @@ Need help? Reply to this message.`,
     category: "lead_notification",
     message: `Hello *{{name}}*, 💬 A buyer is interested in your item *{{businessName}}* on AddressGuru UAE!
 
+🛍️ *Item:* {{businessName}}
+
 👤 *Buyer Contact:*
 • *Name:* {{leadName}}
 • *Phone:* {{leadPhone}}
 • *Email:* {{leadEmail}}
 • *Inquiry:* "{{leadMessage}}"
 
-Connect with the buyer quickly to close the sale!
-👉 {{dashboardUrl}}`,
+────────────────────
+*AddressGuru UAE* — Marketplace
+Connect with the buyer quickly from your dashboard:
+👉 {{dashboardUrl}}
+Need support? Reply to this message or contact support@addressguru.ae`,
     variables: ["name", "businessName", "leadName", "leadPhone", "leadEmail", "leadMessage", "dashboardUrl"],
     isSystem: true,
     status: "active",
@@ -438,14 +451,19 @@ Please log in to your dashboard to provide the updated details or verification d
     category: "lead_notification",
     message: `Hello *{{name}}*, 🔔 High-intent client enquiry for your property *{{businessName}}* on AddressGuru UAE!
 
+🏠 *Property:* {{businessName}}
+
 👤 *Client Information:*
 • *Name:* {{leadName}}
 • *Phone:* {{leadPhone}}
 • *Email:* {{leadEmail}}
 • *Message / Viewing Request:* "{{leadMessage}}"
 
-Contact this client promptly to arrange a viewing:
-👉 {{dashboardUrl}}`,
+────────────────────
+*AddressGuru UAE* — Real Estate Portal
+Contact this client or manage viewings from your dashboard:
+👉 {{dashboardUrl}}
+Need support? Reply to this message or contact support@addressguru.ae`,
     variables: ["name", "businessName", "leadName", "leadPhone", "leadEmail", "leadMessage", "dashboardUrl"],
     isSystem: true,
     status: "active",

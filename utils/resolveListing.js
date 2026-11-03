@@ -9,9 +9,16 @@ import MarketplaceListing from "../model/marketplaceListingSchema.js";
  */
 const MODEL_MAP = {
   business: { model: BusinessListing, modelName: "BusinessListing" },
+  listing: { model: BusinessListing, modelName: "BusinessListing" },
+  businesslisting: { model: BusinessListing, modelName: "BusinessListing" },
   job: { model: Job, modelName: "Job" },
+  jobs: { model: Job, modelName: "Job" },
   property: { model: PropertyListing, modelName: "PropertyListing" },
+  properties: { model: PropertyListing, modelName: "PropertyListing" },
+  propertylisting: { model: PropertyListing, modelName: "PropertyListing" },
   marketplace: { model: MarketplaceListing, modelName: "MarketplaceListing" },
+  market: { model: MarketplaceListing, modelName: "MarketplaceListing" },
+  marketplacelisting: { model: MarketplaceListing, modelName: "MarketplaceListing" },
 };
 
 /**

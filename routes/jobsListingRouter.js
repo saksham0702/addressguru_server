@@ -12,6 +12,8 @@ import {
   getJobsByCategoryAndCity,
   unpublishListing,
   publishListing,
+  toggleSaveJob,
+  getSavedJobs,
 } from "../controller/jobsListing.Controller.js";
 import upload from "../middleware/multerConfig.js";
 import { authenticate } from "../middleware/userAuth.js";
@@ -69,6 +71,8 @@ router.get("/job-benefit", getJobBenefits);
 router.get("/company-size", getCompanySizes);
 router.get("/monthly-salary", getMonthlySalaryRanges);
 
-
+// Star / Save Job Routes
+router.post("/star-job/:id", authenticate, toggleSaveJob);
+router.get("/saved-jobs", authenticate, getSavedJobs);
 
 export default router;

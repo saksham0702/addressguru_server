@@ -92,6 +92,7 @@ const marketplaceListingSchema = new mongoose.Schema(
     isVerified: { type: Boolean, default: false },
     isPublished: { type: Boolean, default: false },
     isSold: { type: Boolean, default: false },
+    views: { type: Number, default: 0 },
     createdBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
 
     // ── Soft Delete ───────────────────────────────────────────────────────

@@ -247,7 +247,10 @@ const jobSchema = new mongoose.Schema(
 
     // ─── Stats ────────────────────────────────────────────────
     views: { type: Number, default: 0 },
+    impressions: { type: Number, default: 0 },
+    clicks: { type: Number, default: 0 },
     applications: { type: Number, default: 0 },
+    applicationClicks: { type: Number, default: 0 },
   },
   { timestamps: true },
 );

@@ -23,7 +23,14 @@ const reportListingSchema = new mongoose.Schema(
     listingModel: {
       type: String,
       required: true,
-      enum: ["BusinessListing", "Job", "Property", "Marketplace"],
+      enum: [
+        "BusinessListing",
+        "Job",
+        "PropertyListing",
+        "MarketplaceListing",
+        "Property",
+        "Marketplace",
+      ],
     },
     listingSlug: {
       type: String,
