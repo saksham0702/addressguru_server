@@ -180,40 +180,29 @@ export const getMyLeads = async (req, res) => {
   try {
     const { category, listingId, page = 1, limit = 50 } = req.query;
 
-    const type = normalizeCategory(category || "business");
-    const entry = MODEL_MAP[type];
-
-    if (!entry) {
-      return res
-        .status(400)
-        .json({ success: false, message: "Invalid category" });
-    }
-
-    const { model, modelName } = entry;
-
     const filter = {
       listingOwner: req.user.id,
-      listingModel: modelName,
       isDeleted: false,
     };
 
-    if (listingId && listingId !== "" && listingId !== "All") {
-      const listingIds = await model
-        .find({
-          createdBy: req.user.id,
-          _id: listingId,
-          isDeleted: false,
-        })
-        .distinct("_id");
+    if (category && category !== "all" && category !== "All") {
+      const type = normalizeCategory(category);
+      const entry = MODEL_MAP[type];
+      if (entry) {
+        filter.listingModel = entry.modelName;
+      }
+    }
 
-      filter.listingId = { $in: listingIds };
+    if (listingId && listingId !== "" && listingId !== "All") {
+      filter.listingId = listingId;
     }
 
     const [enquiries, total] = await Promise.all([
       Enquiry.find(filter)
         .populate({
           path: "listingId",
-          select: "businessName title slug plan paymentStatus planStatus planExpiryDate",
+          select:
+            "businessName title name slug plan paymentStatus planStatus planExpiryDate company",
           populate: {
             path: "plan",
             select: "name price planCode durationInDays",
@@ -426,6 +415,19 @@ export const updateEnquiryStatus = async (req, res) => {
       return res
         .status(404)
         .json({ success: false, message: "Enquiry not found" });
+
+    // Also sync JobApplication if this was a Job lead
+    if (enquiry.listingModel === "Job") {
+      try {
+        const JobApplication = (await import("../model/jobApplicationSchema.js")).default;
+        await JobApplication.findOneAndUpdate(
+          { job: enquiry.listingId, email: enquiry.email },
+          { status }
+        );
+      } catch (syncErr) {
+        // silent sync
+      }
+    }
 
     return res.json({ success: true, data: enquiry });
   } catch (err) {

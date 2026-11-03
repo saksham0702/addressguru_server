@@ -5,6 +5,7 @@ import PropertyListing from "../model/propertiesListingSchema.js";
 import JobListing from "../model/jobsListingSchema.js";
 import { successData, errorData } from "../services/helper.js";
 import User from "../model/userSchema.js";
+import mongoose from "mongoose";
 // import { createPaymentRecord } from "../modules/payment/payment.service.js";
 
 import slugify from "slugify";
@@ -18,7 +19,14 @@ export const getAllPlans = async (req, res) => {
 
     const filter = { isDeleted: { $ne: true } };
     if (planType) {
-      filter.planType = planType;
+      const pt = String(planType).toLowerCase().trim();
+      if (pt === "job" || pt === "jobs") {
+        filter.planType = { $in: ["job", "jobs"] };
+      } else if (pt === "property" || pt === "properties") {
+        filter.planType = { $in: ["property", "properties"] };
+      } else {
+        filter.planType = pt;
+      }
     }
 
     const plans = await Plan.find(filter)
@@ -296,8 +304,13 @@ export const upgradePlan = async (req, res) => {
       Model = JobListing;
     else return errorData(res, 400, false, "Invalid listing type");
 
-    const listing = await Model.findById(listing_id);
+    const isObjectId = mongoose.isValidObjectId(listing_id);
+    const listing = isObjectId
+      ? await Model.findById(listing_id)
+      : await Model.findOne({ slug: listing_id });
     if (!listing) return errorData(res, 404, false, "Listing not found");
+
+    const targetListingId = listing._id;
 
     // Extract user ID safely across various JWT payload formats
     const userId = req.user?.id || req.user?._id || req.user;
@@ -335,7 +348,7 @@ export const upgradePlan = async (req, res) => {
 
     if (isAdmin && isExplicitAdminOverride) {
       await Model.findByIdAndUpdate(
-        listing_id,
+        targetListingId,
         {
           plan: plan._id,
           isPublished: true,
@@ -355,7 +368,7 @@ export const upgradePlan = async (req, res) => {
     // FREE PLAN FLOW
     if (plan.price === 0) {
       await Model.findByIdAndUpdate(
-        listing_id,
+        targetListingId,
         {
           plan: plan._id,
           isPublished: true,
