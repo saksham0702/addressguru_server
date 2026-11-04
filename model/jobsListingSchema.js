@@ -236,6 +236,13 @@ const jobSchema = new mongoose.Schema(
     isPublished: { type: Boolean, default: false },
     isDeleted: { type: Boolean, default: false },
     plan: { type: mongoose.Schema.Types.ObjectId, ref: "Plan" },
+    planStartedAt: { type: Date, default: null },
+    planExpiryDate: { type: Date, default: null, index: true },
+    planStatus: {
+      type: String,
+      enum: ["free", "active", "expired", "admin_assigned"],
+      default: "free",
+    },
     stepCompleted: { type: Number, default: 1 },
 
     // ─── SEO ──────────────────────────────────────────────────
