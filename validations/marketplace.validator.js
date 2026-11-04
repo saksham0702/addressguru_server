@@ -12,11 +12,11 @@ const marketplaceStepSchema = {
 
     sub_category_id: Joi.string().allow("", null).optional(),
 
-    title: Joi.string().min(5).max(100).required().messages({
+    title: Joi.string().min(5).max(60).required().messages({
       "any.required": "Title is required",
       "string.empty": "Title is required",
       "string.min": "Title must be at least 5 characters",
-      "string.max": "Title must not exceed 100 characters",
+      "string.max": "Title must not exceed 60 characters",
     }),
 
     description: Joi.string().min(200).max(700).required().messages({

@@ -53,11 +53,11 @@ const businessStepSchema = {
 
     sub_category_id: Joi.string().allow("", null).optional(),
 
-    business_name: Joi.string().min(5).max(100).required().messages({
+    business_name: Joi.string().min(5).max(60).required().messages({
       "any.required": "Business name is required",
       "string.empty": "Business name is required",
       "string.min": "Business name must be at least 5 characters",
-      "string.max": "Business name must not exceed 100 characters",
+      "string.max": "Business name must not exceed 60 characters",
     }),
 
     business_address: Joi.string().min(10).max(200).required().messages({
