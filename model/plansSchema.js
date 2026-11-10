@@ -110,35 +110,12 @@ const planSchema = new mongoose.Schema(
     },
 
     /* =========================
-       LEGACY — kept as-is so marketplace/property/job plans
-       (which still use the old bullet-list card design) are unaffected.
-       Not used by the new business comparison table.
+       LEGACY — kept for backward compatibility so older plans
+       without tableFeatures can display their feature list.
     ========================== */
     features: {
       type: [String],
       default: [],
-    },
-
-    limits: {
-      descriptionWords: { type: Number, default: 100 },
-      businessImages: { type: Number, default: 0 },
-    },
-
-    flags: {
-      websiteLinkAllowed: { type: Boolean, default: false },
-      imagesGalleryAllowed: { type: Boolean, default: false },
-      seoOptimised: { type: Boolean, default: false },
-      socialMediaLinks: { type: Boolean, default: false },
-      leadEnquiryForm: { type: Boolean, default: false },
-      performanceInsights: { type: Boolean, default: false },
-      verifiedBadge: { type: Boolean, default: false },
-      highlightBadge: { type: Boolean, default: false },
-      featuredInMainCities: { type: Boolean, default: false },
-      topOfSearchResults: { type: Boolean, default: false },
-      monthlyOptimisation: { type: Boolean, default: false },
-      dedicatedSupport: { type: Boolean, default: false },
-      priorityListing: { type: Boolean, default: false },
-      videoLinkAllowed: { type: Boolean, default: false },
     },
 
     /* =========================

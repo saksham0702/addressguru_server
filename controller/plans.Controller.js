@@ -139,8 +139,6 @@ export const createPlan = async (req, res) => {
       billingCycle, // FIX: was missing
       features, // FIX: was missing
       tableFeatures, // NEW: comparison table features
-      limits,
-      flags,
       theme,
       ctaLabel,
       isHighlighted,
@@ -201,8 +199,6 @@ export const createPlan = async (req, res) => {
       billingCycle: billingCycle || "year",
       features: Array.isArray(features) ? features : [],
       tableFeatures: Array.isArray(tableFeatures) ? tableFeatures : [],
-      limits: limits || {},
-      flags: flags || {},
       theme: theme || "default",
       ctaLabel: ctaLabel || "Get Started",
       isHighlighted: isHighlighted ?? false,
@@ -237,8 +233,6 @@ export const updatePlan = async (req, res) => {
       "billingCycle",
       "features",
       "tableFeatures", // NEW: comparison table features
-      "limits",
-      "flags",
       "theme",
       "ctaLabel",
       "isHighlighted",

@@ -58,7 +58,7 @@ const serializeClaim = (claim, deal) => ({
   planId: deal.basePlan._id,
   planName: deal.basePlan.name,
   theme: deal.basePlan.theme,
-  flags: deal.basePlan.flags,
+  flags: deal.basePlan.flags || {},
   billingCycle: deal.basePlan.billingCycle,
   durationInDays: deal.basePlan.durationInDays,
   planFeatures: buildFeatureList(deal.basePlan),
