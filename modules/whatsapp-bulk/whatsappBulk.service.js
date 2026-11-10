@@ -205,6 +205,7 @@ export async function fetchDatabaseAudience({
   modules = ["business", "property", "marketplace", "jobs", "users"],
   role = "all",
   listingStatus = "all",
+  completionStatus = "all", // "all" | "completed" | "incomplete"
   city = "all",
   deduplicate = true,
 }) {
@@ -214,6 +215,16 @@ export async function fetchDatabaseAudience({
   const selectedModules = Array.isArray(modules)
     ? modules
     : [modules].filter(Boolean);
+
+  const getRoleLabel = (roles) => {
+    const rList = Array.isArray(roles) ? roles : [roles];
+    if (rList.some((r) => Number(r) === 1)) return "Admin";
+    if (rList.some((r) => Number(r) === 2)) return "Editor";
+    if (rList.some((r) => Number(r) === 3)) return "Agent";
+    if (rList.some((r) => Number(r) === 4)) return "BDE";
+    if (rList.some((r) => Number(r) === 5)) return "User";
+    return "User";
+  };
 
   // Helper to add contact
   const addContact = ({
@@ -229,6 +240,10 @@ export async function fetchDatabaseAudience({
     slug,
     listingUrl,
     claimUrl,
+    stepCompleted = null,
+    totalSteps = null,
+    isCompleted = true,
+    creatorRole = "User",
   }) => {
     if (!phone) return;
     const rawDigits = String(phone).replace(/[^\d+]/g, "").trim();
@@ -252,7 +267,11 @@ export async function fetchDatabaseAudience({
     let itemListingUrl = listingUrl || "";
     let itemClaimUrl = claimUrl || "";
 
-    if (!itemListingUrl && itemSlug) {
+    if (!isCompleted) {
+      // Incomplete listings redirect to user dashboard to resume
+      itemListingUrl = "https://addressguru.ae/dashboard";
+      itemClaimUrl = "https://addressguru.ae/dashboard";
+    } else if (!itemListingUrl && itemSlug) {
       if (sourceModule === "property") {
         itemListingUrl = `https://addressguru.ae/properties/${itemSlug}`;
         itemClaimUrl = `https://addressguru.ae/properties/${itemSlug}?claim=true`;
@@ -285,6 +304,10 @@ export async function fetchDatabaseAudience({
       claimUrl: itemClaimUrl,
       sourceModule,
       sourceId,
+      stepCompleted,
+      totalSteps,
+      isCompleted,
+      creatorRole,
       status: "pending",
     });
   };
@@ -301,8 +324,8 @@ export async function fetchDatabaseAudience({
     return userRoles.includes(targetRole);
   };
 
-  // Status query helper
-  const buildListingQuery = () => {
+  // Status and completion query helper
+  const buildListingQuery = (maxSteps) => {
     const query = { isDeleted: { $ne: true } };
     if (listingStatus === "approved") {
       query.$or = [{ status: "approved" }, { isPublished: true }];
@@ -311,12 +334,21 @@ export async function fetchDatabaseAudience({
     } else if (listingStatus === "rejected") {
       query.status = "rejected";
     }
+
+    if (maxSteps) {
+      if (completionStatus === "completed") {
+        query.stepCompleted = { $gte: maxSteps };
+      } else if (completionStatus === "incomplete") {
+        query.stepCompleted = { $lt: maxSteps };
+      }
+    }
+
     return query;
   };
 
-  // 1. BUSINESS LISTINGS
+  // 1. BUSINESS LISTINGS (6 steps)
   if (selectedModules.includes("business")) {
-    const query = buildListingQuery();
+    const query = buildListingQuery(6);
 
     const businessDocs = await BusinessListing.find(query)
       .populate("createdBy", "name email roles phone")
@@ -339,6 +371,7 @@ export async function fetchDatabaseAudience({
         doc.mobileNumber || doc.alternateMobileNumber || doc.createdBy?.phone;
       const cCode = doc.countryCode || doc.altCountryCode || "+971";
       const contactEmail = doc.email || doc.createdBy?.email || "";
+      const stepVal = doc.stepCompleted || 1;
 
       addContact({
         name: doc.contactPersonName || doc.businessName,
@@ -351,13 +384,17 @@ export async function fetchDatabaseAudience({
         slug: doc.slug,
         sourceModule: "business",
         sourceId: doc._id,
+        stepCompleted: stepVal,
+        totalSteps: 6,
+        isCompleted: stepVal >= 6,
+        creatorRole: getRoleLabel(doc.createdBy?.roles),
       });
     }
   }
 
-  // 2. PROPERTY LISTINGS
+  // 2. PROPERTY LISTINGS (5 steps)
   if (selectedModules.includes("property")) {
-    const query = buildListingQuery();
+    const query = buildListingQuery(5);
 
     const propertyDocs = await PropertiesListing.find(query)
       .populate("createdBy", "name email roles phone")
@@ -380,6 +417,7 @@ export async function fetchDatabaseAudience({
         doc.mobileNumber || doc.alternateMobileNumber || doc.createdBy?.phone;
       const cCode = doc.countryCode || doc.altCountryCode || "+971";
       const contactEmail = doc.email || doc.createdBy?.email || "";
+      const stepVal = doc.stepCompleted || 1;
 
       addContact({
         name: doc.contactPersonName || doc.title,
@@ -392,13 +430,17 @@ export async function fetchDatabaseAudience({
         slug: doc.slug,
         sourceModule: "property",
         sourceId: doc._id,
+        stepCompleted: stepVal,
+        totalSteps: 5,
+        isCompleted: stepVal >= 5,
+        creatorRole: getRoleLabel(doc.createdBy?.roles),
       });
     }
   }
 
-  // 3. MARKETPLACE LISTINGS
+  // 3. MARKETPLACE LISTINGS (5 steps)
   if (selectedModules.includes("marketplace")) {
-    const query = buildListingQuery();
+    const query = buildListingQuery(5);
 
     const marketplaceDocs = await MarketplaceListing.find(query)
       .populate("createdBy", "name email roles phone")
@@ -421,6 +463,7 @@ export async function fetchDatabaseAudience({
         doc.mobileNumber || doc.alternateMobileNumber || doc.createdBy?.phone;
       const cCode = doc.countryCode || doc.altCountryCode || "+971";
       const contactEmail = doc.email || doc.createdBy?.email || "";
+      const stepVal = doc.stepCompleted || 1;
 
       addContact({
         name: doc.contactPersonName || doc.title,
@@ -433,13 +476,17 @@ export async function fetchDatabaseAudience({
         slug: doc.slug,
         sourceModule: "marketplace",
         sourceId: doc._id,
+        stepCompleted: stepVal,
+        totalSteps: 5,
+        isCompleted: stepVal >= 5,
+        creatorRole: getRoleLabel(doc.createdBy?.roles),
       });
     }
   }
 
-  // 4. JOBS LISTINGS
+  // 4. JOBS LISTINGS (3 steps)
   if (selectedModules.includes("jobs")) {
-    const query = buildListingQuery();
+    const query = buildListingQuery(3);
 
     const jobDocs = await JobsListing.find(query)
       .populate("createdBy", "name email roles phone")
@@ -481,6 +528,7 @@ export async function fetchDatabaseAudience({
         doc.contact?.email ||
         doc.createdBy?.email ||
         "";
+      const stepVal = doc.stepCompleted || 1;
 
       addContact({
         name: doc.contactPersonName || doc.contact?.name || bName,
@@ -494,12 +542,16 @@ export async function fetchDatabaseAudience({
         slug: doc.slug,
         sourceModule: "jobs",
         sourceId: doc._id,
+        stepCompleted: stepVal,
+        totalSteps: 3,
+        isCompleted: stepVal >= 3,
+        creatorRole: getRoleLabel(doc.createdBy?.roles),
       });
     }
   }
 
-  // 5. DIRECT USERS
-  if (selectedModules.includes("users")) {
+  // 5. DIRECT USERS (Skip if specifically targeting incomplete listings)
+  if (selectedModules.includes("users") && completionStatus !== "incomplete") {
     const userQuery = { phone: { $exists: true, $ne: "" } };
     if (role && role !== "all") {
       const targetRole = ROLE_MAP[String(role).toLowerCase()] || Number(role);
@@ -531,6 +583,10 @@ export async function fetchDatabaseAudience({
         slug: "",
         sourceModule: "users",
         sourceId: u._id,
+        stepCompleted: null,
+        totalSteps: null,
+        isCompleted: true,
+        creatorRole: getRoleLabel(u.roles),
       });
     }
   }

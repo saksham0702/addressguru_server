@@ -51,6 +51,7 @@ export async function previewAudience(req, res) {
       modules = ["business", "property", "marketplace", "jobs", "users"],
       role = "all",
       listingStatus = "all",
+      completionStatus = "all", // "all" | "completed" | "incomplete"
       city = "all",
       deduplicate = true,
     } = req.body || {};
@@ -79,6 +80,7 @@ export async function previewAudience(req, res) {
         modules: parsedModules,
         role,
         listingStatus,
+        completionStatus,
         city,
         deduplicate: deduplicate === "true" || deduplicate === true,
       });
@@ -176,6 +178,7 @@ export async function createCampaign(req, res) {
 
         const role = body.role || "all";
         const listingStatus = body.listingStatus || "all";
+        const completionStatus = body.completionStatus || "all";
         const city = body.city || "all";
         const deduplicate =
           body.deduplicate === "true" || body.deduplicate === true;
@@ -184,6 +187,7 @@ export async function createCampaign(req, res) {
           modules,
           role,
           listingStatus,
+          completionStatus,
           city,
           deduplicate,
         };
