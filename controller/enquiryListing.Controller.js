@@ -87,7 +87,14 @@ export const sendEnquiry = async (req, res) => {
 
       const ownerEmail = listing.email || owner?.email;
       const ownerName =
-        listing.contactPersonName || owner?.name || listing.businessName;
+        listing.contactPersonName ||
+        owner?.name ||
+        listing.businessName ||
+        listing.title ||
+        listing.name ||
+        "Valued Partner";
+      const listingTitle =
+        listing.businessName || listing.title || listing.name || listing.slug;
 
       if (ownerEmail) {
         // A listing is considered claimed if it has a createdBy user
@@ -96,7 +103,7 @@ export const sendEnquiry = async (req, res) => {
         await sendEnquiryReceivedMail(
           ownerEmail,
           ownerName,
-          listing.businessName || listing.slug,
+          listingTitle,
           listing.slug,
           {
             fullName,
@@ -215,12 +222,40 @@ export const getMyLeads = async (req, res) => {
       Enquiry.countDocuments(filter),
     ]);
 
+    // Check if current user is admin or editor
+    const userRoles = req.user?.roles || (req.user?.role ? [req.user.role] : []);
+    const isAdminOrEditor =
+      userRoles.some((r) => r === 1 || r === 2 || r === "1" || r === "2" || r === "admin" || r === "editor") ||
+      ["admin", "editor"].includes(String(req.user?.role || "").toLowerCase());
+
+    // Track free leads count per listing (free listings unlock first 7 leads, then ask to pay/upgrade)
+    const freeLeadCountsByListing = {};
+
     // Transform leads with paid vs unpaid rules:
-    // If unpaid: Owner sees Name and Message; Phone and Email are locked/masked!
-    // If paid: Owner sees full contact details (Phone, Email, Name, Message).
+    // • Admin & Editor: 100% full contact details for all leads
+    // • Paid Listings: 100% full contact details for all leads
+    // • Free Listings: First 7 leads are free & unlocked; lead 8+ locked/masked asking to upgrade
     const result = enquiries.map((enq) => {
       const listing = enq.listingId;
-      const isPaid = checkIsListingPaid(listing);
+      const isListingPaid = checkIsListingPaid(listing);
+
+      let isUnlocked = isAdminOrEditor || isListingPaid;
+      let freeLeadNumber = null;
+      let freeQuotaExceeded = false;
+
+      if (!isAdminOrEditor && !isListingPaid) {
+        const lidKey = String(listing?._id || enq.listingId || "unknown");
+        freeLeadCountsByListing[lidKey] = (freeLeadCountsByListing[lidKey] || 0) + 1;
+        freeLeadNumber = freeLeadCountsByListing[lidKey];
+
+        // First 7 leads on free plan are unlocked
+        if (freeLeadCountsByListing[lidKey] <= 7) {
+          isUnlocked = true;
+        } else {
+          isUnlocked = false;
+          freeQuotaExceeded = true;
+        }
+      }
 
       const cc = enq.countryCode
         ? (String(enq.countryCode).startsWith("+")
@@ -243,7 +278,7 @@ export const getMyLeads = async (req, res) => {
         created_at: enq.createdAt,
         createdAt: enq.createdAt,
 
-        // Business listing information
+        // Listing information
         title:
           listing?.businessName ||
           listing?.title ||
@@ -256,26 +291,29 @@ export const getMyLeads = async (req, res) => {
         listingId: listing?._id || enq.listingId,
         listingModel: enq.listingModel,
 
-        // Paid status
-        isPaid,
-        isContactLocked: !isPaid,
-        planName: listing?.plan?.name || (isPaid ? "Paid Plan" : "Free Plan"),
-        planStatus: listing?.planStatus || (isPaid ? "active" : "free"),
-        paymentStatus: listing?.paymentStatus || (isPaid ? "paid" : "pending"),
+        // Access & Paid status
+        isPaid: isListingPaid,
+        isUnlocked,
+        isContactLocked: !isUnlocked,
+        freeQuotaExceeded,
+        freeLeadNumber,
+        planName: listing?.plan?.name || (isListingPaid ? "Paid Plan" : "Free Plan"),
+        planStatus: listing?.planStatus || (isListingPaid ? "active" : "free"),
+        paymentStatus: listing?.paymentStatus || (isListingPaid ? "paid" : "pending"),
 
-        // Contact info: locked for unpaid listings
-        countryCode: isPaid ? cc : "+971",
-        ph_number: isPaid ? enq.mobileNumber : null,
-        mobileNumber: isPaid ? enq.mobileNumber : null,
-        phone: isPaid ? fullPhone : maskedPhone,
-        email: isPaid ? enq.email : maskedEmail,
-        displayPhone: isPaid ? fullPhone : maskedPhone,
-        displayEmail: isPaid ? enq.email : maskedEmail,
+        // Contact info: unlocked if paid or within 7 free leads quota or admin/editor
+        countryCode: isUnlocked ? cc : "+971",
+        ph_number: isUnlocked ? enq.mobileNumber : null,
+        mobileNumber: isUnlocked ? enq.mobileNumber : null,
+        phone: isUnlocked ? fullPhone : maskedPhone,
+        email: isUnlocked ? enq.email : maskedEmail,
+        displayPhone: isUnlocked ? fullPhone : maskedPhone,
+        displayEmail: isUnlocked ? enq.email : maskedEmail,
       };
     });
 
-    const paidCount = result.filter((r) => r.isPaid).length;
-    const lockedCount = result.filter((r) => !r.isPaid).length;
+    const paidCount = result.filter((r) => r.isUnlocked).length;
+    const lockedCount = result.filter((r) => !r.isUnlocked).length;
 
     return res.json({
       success: true,

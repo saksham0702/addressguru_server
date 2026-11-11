@@ -498,20 +498,12 @@ const sendEnquiryReceivedMail = async (
     const compiledTemplate = Hogan.compile(template);
 
     const mailBody = compiledTemplate.render({
-      ownerName,
-      businessName,
+      ownerName: ownerName || "Valued Partner",
+      businessName: businessName || "Your Listing",
       listingSlug,
 
-      leadName: enquirer.fullName,
-      leadEmail: enquirer.email,
-      leadPhone: enquirer.mobileNumber,
-      countryCode: enquirer.countryCode
-        ? (String(enquirer.countryCode).startsWith("+")
-            ? String(enquirer.countryCode)
-            : `+${enquirer.countryCode}`)
-        : "+971",
-
-      previewMessage: enquirer.message,
+      leadName: enquirer?.fullName || "Prospective Client",
+      previewMessage: enquirer?.message || "",
       isClaimed,
 
       dashboardUrl: "https://addressguru.ae/dashboard",
@@ -534,8 +526,8 @@ const sendEnquiryReceivedMail = async (
     const mailOptions = {
       from: `"AddressGuru UAE" <${emailConfig.SMTP_EMAIL}>`,
       to: ownerEmail,
-      subject: `📩 New Enquiry for ${businessName} — AddressGuru UAE`,
-      text: `You have received a new enquiry for ${businessName}.`,
+      subject: `📩 New Lead for ${businessName || "Your Listing"} — AddressGuru UAE`,
+      text: `You have received a new lead for "${businessName || "Your Listing"}" from ${enquirer?.fullName || "a client"}. Direct phone and email contact details are protected — log in to your dashboard at https://addressguru.ae/dashboard to view complete details.`,
       html: mailBody,
     };
 

@@ -90,6 +90,12 @@ const marketplaceListingSchema = new mongoose.Schema(
     // ── Status & Flow ─────────────────────────────────────────────────────
     stepCompleted: { type: Number, default: 1 },
     isVerified: { type: Boolean, default: false },
+    isClaimed: { type: Boolean, default: false },
+    claimedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      default: null,
+    },
     isPublished: { type: Boolean, default: false },
     isSold: { type: Boolean, default: false },
     views: { type: Number, default: 0 },

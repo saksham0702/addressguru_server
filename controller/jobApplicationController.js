@@ -5,6 +5,7 @@ import Enquiry from "../model/listingEnquirySchema.js";
 import ListingStats from "../model/listingStatsSchema.js";
 import User from "../model/userSchema.js";
 import { successData, errorData } from "../services/helper.js";
+import { sendEnquiryReceivedMail } from "../utils/sendMail.js";
 
 /* ═══════════════════════════════════════════════════════════
    APPLY FOR A JOB
@@ -150,6 +151,33 @@ export const applyForJob = async (req, res) => {
         await User.findByIdAndUpdate(job.createdBy, {
           $inc: { statistics_totalLeads: 1 },
         });
+      }
+
+      // ── Send lead notification mail to job poster ──
+      try {
+        const owner = job.createdBy
+          ? await User.findById(job.createdBy).select("email name").lean()
+          : null;
+        const ownerEmail = job.contact?.email || job.email || owner?.email;
+        const ownerName = job.contactPersonName || owner?.name || "Job Poster";
+        if (ownerEmail) {
+          await sendEnquiryReceivedMail(
+            ownerEmail,
+            ownerName,
+            job.title || "Job Listing",
+            job.slug,
+            {
+              fullName: fullName.trim(),
+              message: coverLetter
+                ? `Cover Letter: ${coverLetter}`
+                : `New application received for ${job.title}`,
+            },
+            !!job.createdBy
+          );
+          console.log(`✅ Job application lead email sent to owner: ${ownerEmail}`);
+        }
+      } catch (mailErr) {
+        console.warn("Job application lead email failed:", mailErr.message);
       }
     } catch (leadErr) {
       console.warn("Failed to create Enquiry record for job application:", leadErr);
