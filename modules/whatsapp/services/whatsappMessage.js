@@ -31,9 +31,19 @@ const ACCOUNT_LABEL = process.env.WHATSAPP_ACCOUNT_LABEL || "default";
  */
 export async function sendTextMessage({ to, text, message, countryCode }) {
   const content = text !== undefined && text !== null ? text : (message || "");
-  const account = await WhatsappAccount.findOne({
+  let account = await WhatsappAccount.findOne({
     status: "connected",
   });
+  const liveSock = getSocketOrNull();
+  if (!account && liveSock && liveSock.user) {
+    account = await WhatsappAccount.findOne();
+    if (account) {
+      await WhatsappAccount.findByIdAndUpdate(account._id, {
+        status: "connected",
+        phoneNumber: liveSock.user.id?.split(":")[0] || account.phoneNumber,
+      });
+    }
+  }
   if (!account) {
     throw new Error("WhatsApp is not connected");
   }
@@ -152,9 +162,19 @@ const MIME_MAP = {
  */
 export async function sendMediaMessage({ to, text, message, caption, countryCode, file, mediaUrl, messageType }) {
   const content = text !== undefined && text !== null ? text : (caption !== undefined && caption !== null ? caption : (message || ""));
-  const account = await WhatsappAccount.findOne({
+  let account = await WhatsappAccount.findOne({
     status: "connected",
   });
+  const liveSock = getSocketOrNull();
+  if (!account && liveSock && liveSock.user) {
+    account = await WhatsappAccount.findOne();
+    if (account) {
+      await WhatsappAccount.findByIdAndUpdate(account._id, {
+        status: "connected",
+        phoneNumber: liveSock.user.id?.split(":")[0] || account.phoneNumber,
+      });
+    }
+  }
   if (!account) {
     throw new Error("WhatsApp is not connected");
   }
