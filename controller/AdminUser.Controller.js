@@ -42,7 +42,7 @@ const sanitizeUser = (user) => {
 export const adminCreateUser = async (req, res) => {
   try {
     const adminId = req.user?.user?.id ?? req.user?.id;
-    const { name, email, password, roles, phone, country_code, city } =
+    const { name, email, password, roles, phone, country_code, city, permission, permissions } =
       req.body;
 
     // required
@@ -79,8 +79,9 @@ export const adminCreateUser = async (req, res) => {
           (r) => `${r}=${ROLE_NAMES[r]}`,
         ).join(", ")}`,
       );
-    if (parsedRoles.includes(ROLES.ADMIN))
-      return errorData(res, 403, false, "Admin role cannot be assigned here.");
+    const requesterRoles = req.user?.roles || (req.user?.role ? [Number(req.user.role)] : [5]);
+    if (parsedRoles.includes(ROLES.ADMIN) && !requesterRoles.includes(ROLES.ADMIN))
+      return errorData(res, 403, false, "Only Admin can assign Admin role.");
 
     // duplicates
     const emailExists = await User.findOne({
@@ -101,11 +102,16 @@ export const adminCreateUser = async (req, res) => {
 
     const hashedPassword = await bcrypt.hash(password, SALT_ROUNDS);
 
+    const assignedPermissions = Array.isArray(permission || permissions)
+      ? (permission || permissions)
+      : (parsedRoles.includes(ROLES.ADMIN) ? ["all"] : []);
+
     const newUser = await User.create({
       name: name.trim(),
       email: email.toLowerCase().trim(),
       password: hashedPassword,
       roles: parsedRoles,
+      permission: assignedPermissions,
       phone: phone || undefined,
       country_code: country_code
         ? (String(country_code).trim().startsWith("+")
@@ -230,7 +236,7 @@ export const adminGetUserById = async (req, res) => {
 
 export const adminUpdateUser = async (req, res) => {
   try {
-    const { name, email, phone, country_code, roles, city, status, password } =
+    const { name, email, phone, country_code, roles, city, status, password, permission, permissions } =
       req.body;
 
     const updateData = {};
@@ -247,6 +253,12 @@ export const adminUpdateUser = async (req, res) => {
     if (status !== undefined)
       updateData.status = status === true || status === "true";
 
+    if (permission !== undefined || permissions !== undefined) {
+      updateData.permission = Array.isArray(permission || permissions)
+        ? (permission || permissions)
+        : [];
+    }
+
     // roles
     if (roles !== undefined) {
       if (!Array.isArray(roles) || roles.length === 0)
@@ -261,12 +273,13 @@ export const adminUpdateUser = async (req, res) => {
           false,
           `Invalid role(s): ${invalidRoles.join(", ")}`,
         );
-      if (parsedRoles.includes(ROLES.ADMIN))
+      const requesterRoles = req.user?.roles || (req.user?.role ? [Number(req.user.role)] : [5]);
+      if (parsedRoles.includes(ROLES.ADMIN) && !requesterRoles.includes(ROLES.ADMIN))
         return errorData(
           res,
           403,
           false,
-          "Admin role cannot be assigned here.",
+          "Only Admin can assign Admin role.",
         );
 
       updateData.roles = parsedRoles;

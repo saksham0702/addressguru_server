@@ -745,24 +745,38 @@ export async function executeCampaign(campaignId) {
     }
   } else {
     // Verify Baileys is connected
+    const { getSocketOrNull, startConnection } = await import(
+      "../whatsapp/services/whatsappClient.js"
+    );
+    let liveSock = getSocketOrNull();
+    let isLiveConnected = Boolean(liveSock && liveSock.user);
+
     let connectedAccount = await WhatsappAccount.findOne({
       status: "connected",
     });
 
-    if (!connectedAccount) {
-      // Check if credentials exist and auto-start connection
+    if (isLiveConnected && !connectedAccount) {
+      connectedAccount = await WhatsappAccount.findOne();
+      if (connectedAccount) {
+        await WhatsappAccount.findByIdAndUpdate(connectedAccount._id, {
+          status: "connected",
+          phoneNumber: liveSock.user.id?.split(":")[0] || connectedAccount.phoneNumber,
+        });
+      }
+    }
+
+    if (!isLiveConnected || !connectedAccount) {
       const accountWithCreds = await WhatsappAccount.findOne().select("+authCreds");
       if (accountWithCreds?.authCreds) {
         try {
-          const { startConnection, getSocketOrNull } = await import(
-            "../whatsapp/services/whatsappClient.js"
-          );
+          console.log("[WhatsAppBulk] Auto-reconnecting Baileys socket before starting campaign...");
           await startConnection({ label: accountWithCreds.label });
-          for (let w = 0; w < 6; w++) {
-            await sleep(600);
-            const liveSock = getSocketOrNull();
+          for (let w = 0; w < 24; w++) {
+            await sleep(500);
+            liveSock = getSocketOrNull();
             if (liveSock && liveSock.user) {
               connectedAccount = await WhatsappAccount.findById(accountWithCreds._id);
+              isLiveConnected = true;
               break;
             }
           }
@@ -772,7 +786,7 @@ export async function executeCampaign(campaignId) {
       }
     }
 
-    if (!connectedAccount || connectedAccount.status !== "connected") {
+    if (!isLiveConnected || !connectedAccount || connectedAccount.status !== "connected") {
       campaign.status = "paused";
       campaign.errorMessage =
         "WhatsApp Web (Baileys) is not connected on the server. Please scan QR in the header, then click Resume.";
@@ -1025,10 +1039,12 @@ export async function resumeCampaign(campaignId) {
   if (
     campaign.status !== "paused" &&
     campaign.status !== "draft" &&
-    campaign.status !== "failed"
+    campaign.status !== "failed" &&
+    campaign.status !== "cancelled"
   ) {
     throw new Error(`Cannot resume campaign with status "${campaign.status}"`);
   }
+  campaign.errorMessage = null;
 
   activeCampaignControllers.set(campaignId.toString(), "running");
   campaign.status = "running";

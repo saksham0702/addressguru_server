@@ -41,20 +41,38 @@ async function getOrCreateAccount(customLabel) {
 export async function getStatus() {
   const account = await getOrCreateAccount();
 
-  // If DB says "connected" but we have no live socket, correct the status
-  // so the frontend always sees the real state (fixes stale-after-restart bug).
   let liveStatus = account.status;
-  if (account.status === "connected" && (!sock || !sock.user)) {
-    liveStatus = "disconnected";
-    await WhatsappAccount.findByIdAndUpdate(account._id, {
-      status: "disconnected",
-    });
+  if (sock && sock.user) {
+    liveStatus = "connected";
+    if (account.status !== "connected") {
+      await WhatsappAccount.findByIdAndUpdate(account._id, {
+        status: "connected",
+        phoneNumber: sock.user.id?.split(":")[0] || account.phoneNumber,
+        disconnectReason: null,
+      });
+    }
+  } else if (isConnecting) {
+    liveStatus = "connecting";
+  } else if (account.status === "connected" && (!sock || !sock.user)) {
+    // Check if auth creds exist and auto-reconnect if not already running
+    const accountWithCreds = await WhatsappAccount.findById(account._id).select("+authCreds");
+    if (accountWithCreds?.authCreds && !reconnectTimer) {
+      liveStatus = "connecting";
+      startConnection({ label: account.label }).catch((err) =>
+        console.error("[whatsapp] auto-reconnect in getStatus failed:", err.message)
+      );
+    } else {
+      liveStatus = "disconnected";
+      await WhatsappAccount.findByIdAndUpdate(account._id, {
+        status: "disconnected",
+      });
+    }
   }
 
   return {
     label: account.label,
     status: liveStatus,
-    phoneNumber: account.phoneNumber,
+    phoneNumber: sock?.user?.id?.split(":")[0] || account.phoneNumber,
     lastConnectedAt: account.lastConnectedAt,
     lastDisconnectedAt: account.lastDisconnectedAt,
   };
