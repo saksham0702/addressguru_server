@@ -12,6 +12,14 @@ import BusinessListing from "../model/businessListingSchema.js";
 import { errorData, successData } from "../services/helper.js";
 import { sendTextMessage, sendMediaMessage } from "../modules/whatsapp/services/whatsappMessage.js";
 
+const resolveListingUrlByModel = (modelName, slug) => {
+  const m = String(modelName || "").toLowerCase();
+  if (m.includes("job")) return `https://addressguru.ae/jobs/${slug}`;
+  if (m.includes("property")) return `https://addressguru.ae/properties/${slug}`;
+  if (m.includes("market")) return `https://addressguru.ae/marketplace/${slug}`;
+  return `https://addressguru.ae/${slug}`;
+};
+
 // ─── POST /api/:type/:slug/claim ──────────────────────────────────────────────
 
 // ─── submitClaim ──────────────────────────────────────────────────────────────
@@ -104,7 +112,7 @@ export const submitClaim = async (req, res) => {
 
     // ✅ 1. Send Automated 2-Step Verification WhatsApp Message to Claimant
     try {
-      const waText = `Hello *${existingUser.name || fullName}*, 👋\n\nThank you for claiming your business listing *${businessName}* on AddressGuru UAE.\n\nBefore we transfer the listing ownership to your account, we require a simple 2-step verification for security purposes.\n\nYou can complete the verification using either one of the following options:\n\n*Option 1 – Email Verification*\nSend us an email from the email address currently associated with the business listing.\n\n*Option 2 – WhatsApp Verification*\nSend us a WhatsApp message from the phone number currently registered on the business listing.\n\nOnce we receive and verify either one, we will complete the ownership transfer of your business listing to your account.\n\nThank you for your cooperation and for helping us keep business listings secure.\n\nBest regards,\n*AddressGuru UAE Team*`;
+      const waText = `Hello *${existingUser.name || fullName}*, 👋\n\nThank you for claiming your listing *${businessName}* on AddressGuru UAE.\n\nBefore we transfer the listing ownership to your account, we require a simple 2-step verification for security purposes.\n\nYou can complete the verification using either one of the following options:\n\n*Option 1 – Email Verification*\nSend us an email from the email address currently associated with the listing.\n\n*Option 2 – WhatsApp Verification*\nSend us a WhatsApp message from the phone number currently registered on the listing.\n\nOnce we receive and verify either one, we will complete the ownership transfer of your listing to your account.\n\nThank you for your cooperation and for helping us keep listings secure.\n\nBest regards,\n*AddressGuru UAE Team*`;
 
       await sendTextMessage({
         to: String(mobileNumber).replace(/\D/g, ""),
@@ -278,12 +286,45 @@ export const getMyClaims = async (req, res) => {
 // ─── GET /api/admin/claims  (admin panel list) ────────────────────────────────
 export const adminListClaims = async (req, res) => {
   try {
-    const { page = 1, limit = 20, status, listingModel } = req.query;
+    const { page = 1, limit = 20, status, listingModel, search } = req.query;
     const filter = { isDeleted: false };
     if (status) filter.status = status;
-    if (listingModel) filter.listingModel = listingModel;
 
-    const [claims, total] = await Promise.all([
+    if (listingModel && listingModel !== "all") {
+      const lm = String(listingModel).toLowerCase();
+      if (lm.includes("job")) {
+        filter.listingModel = { $in: ["Job", "job", "jobs"] };
+      } else if (lm.includes("prop")) {
+        filter.listingModel = {
+          $in: ["PropertyListing", "Property", "property", "properties"],
+        };
+      } else if (lm.includes("market")) {
+        filter.listingModel = {
+          $in: ["MarketplaceListing", "Marketplace", "marketplace"],
+        };
+      } else if (lm.includes("business")) {
+        filter.listingModel = {
+          $in: ["BusinessListing", "business", "businesslisting"],
+        };
+      } else {
+        filter.listingModel = listingModel;
+      }
+    }
+
+    if (search && search.trim()) {
+      const sRegex = new RegExp(search.trim(), "i");
+      filter.$or = [
+        { fullName: sRegex },
+        { email: sRegex },
+        { listingSlug: sRegex },
+        { reasonForClaim: sRegex },
+      ];
+    }
+
+    const statsFilter = { isDeleted: false };
+    if (filter.listingModel) statsFilter.listingModel = filter.listingModel;
+
+    const [claims, total, statsAgg] = await Promise.all([
       ClaimBusiness.find(filter)
         .populate("claimedBy", "name email")
         .populate("listingId", "businessName title name slug")
@@ -291,11 +332,22 @@ export const adminListClaims = async (req, res) => {
         .skip((+page - 1) * +limit)
         .limit(+limit),
       ClaimBusiness.countDocuments(filter),
+      ClaimBusiness.aggregate([
+        { $match: statsFilter },
+        { $group: { _id: "$status", count: { $sum: 1 } } },
+      ]),
     ]);
+
+    const statistics = { total: 0, pending: 0, approved: 0, rejected: 0 };
+    statsAgg.forEach((s) => {
+      if (statistics[s._id] !== undefined) statistics[s._id] = s.count;
+      statistics.total += s.count;
+    });
 
     return res.json({
       success: true,
       data: claims,
+      statistics,
       pagination: {
         total,
         page: +page,
@@ -427,7 +479,10 @@ export const adminReviewClaim = async (req, res) => {
       // Send Claim Approved Email
       if (req.body.sendEmail !== false) {
         try {
-          const listingUrl = `https://addressguru.ae/${claim.listingSlug}`;
+          const listingUrl = resolveListingUrlByModel(
+            claim.listingModel,
+            claim.listingSlug,
+          );
           await sendClaimApprovedMail(
             claim.email,
             claim.fullName,
@@ -559,7 +614,10 @@ export const transferOwnership = async (req, res) => {
       updatedListing.name ||
       claim.listingSlug;
 
-    const listingUrl = `https://addressguru.ae/${updatedListing.slug || claim.listingSlug}`;
+    const listingUrl = resolveListingUrlByModel(
+      claim.listingModel,
+      updatedListing.slug || claim.listingSlug,
+    );
     const dashboardUrl = "https://addressguru.ae/dashboard";
 
     // ── 1. Send Claim Approved Email to Claimant ──

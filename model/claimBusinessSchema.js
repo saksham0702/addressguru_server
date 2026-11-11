@@ -13,7 +13,14 @@ const claimBusinessSchema = new mongoose.Schema(
     listingModel: {
       type: String,
       required: true,
-      enum: ["BusinessListing", "Job", "Property", "Marketplace"],
+      enum: [
+        "BusinessListing",
+        "Job",
+        "Property",
+        "PropertyListing",
+        "Marketplace",
+        "MarketplaceListing",
+      ],
     },
     listingSlug: {
       type: String,

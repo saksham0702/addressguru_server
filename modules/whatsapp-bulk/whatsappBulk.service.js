@@ -230,6 +230,7 @@ export async function fetchDatabaseAudience({
   const addContact = ({
     name,
     businessName,
+    listingTitle,
     contactPersonName,
     email,
     countryCode,
@@ -266,10 +267,19 @@ export async function fetchDatabaseAudience({
     const itemSlug = slug || "";
     let itemListingUrl = listingUrl || "";
     let itemClaimUrl = claimUrl || "";
+    const resolvedTitle = (listingTitle || businessName || name || "Listing").trim();
 
     if (!isCompleted) {
-      // Incomplete listings redirect to user dashboard to resume
-      itemListingUrl = "https://addressguru.ae/dashboard";
+      // Incomplete listings redirect directly to that module's dashboard edit page
+      if (sourceModule === "jobs") {
+        itemListingUrl = "https://addressguru.ae/dashboard/jobs";
+      } else if (sourceModule === "property") {
+        itemListingUrl = "https://addressguru.ae/dashboard/properties";
+      } else if (sourceModule === "marketplace") {
+        itemListingUrl = "https://addressguru.ae/dashboard/marketplace";
+      } else {
+        itemListingUrl = "https://addressguru.ae/dashboard/listings";
+      }
       itemClaimUrl = "https://addressguru.ae/dashboard";
     } else if (!itemListingUrl && itemSlug) {
       if (sourceModule === "property") {
@@ -294,6 +304,7 @@ export async function fetchDatabaseAudience({
       id: `${sourceModule}_${sourceId || "item"}_${rawDigits}`,
       name: (contactPersonName || businessName || name || "Valued Partner").trim(),
       businessName: (businessName || "").trim(),
+      listingTitle: resolvedTitle,
       contactPersonName: (contactPersonName || name || "").trim(),
       email: (email || "").trim(),
       countryCode: cCode,
@@ -376,6 +387,7 @@ export async function fetchDatabaseAudience({
       addContact({
         name: doc.contactPersonName || doc.businessName,
         businessName: doc.businessName,
+        listingTitle: doc.businessName || "Business Listing",
         contactPersonName: doc.contactPersonName || doc.createdBy?.name,
         email: contactEmail,
         countryCode: cCode,
@@ -422,6 +434,7 @@ export async function fetchDatabaseAudience({
       addContact({
         name: doc.contactPersonName || doc.title,
         businessName: doc.title,
+        listingTitle: doc.title || "Property Listing",
         contactPersonName: doc.contactPersonName || doc.createdBy?.name,
         email: contactEmail,
         countryCode: cCode,
@@ -468,6 +481,7 @@ export async function fetchDatabaseAudience({
       addContact({
         name: doc.contactPersonName || doc.title,
         businessName: doc.title,
+        listingTitle: doc.title || "Marketplace Listing",
         contactPersonName: doc.contactPersonName || doc.createdBy?.name,
         email: contactEmail,
         countryCode: cCode,
@@ -533,6 +547,7 @@ export async function fetchDatabaseAudience({
       addContact({
         name: doc.contactPersonName || doc.contact?.name || bName,
         businessName: bName,
+        listingTitle: doc.title || bName || "Job Listing",
         contactPersonName:
           doc.contactPersonName || doc.contact?.name || doc.createdBy?.name,
         email: contactEmail,
@@ -602,41 +617,83 @@ export function renderTemplateVariables(text, recipient) {
   let rendered = text;
 
   // Resolve exact URLs for recipient's listing
-  const resolvedListingUrl =
-    recipient.listingUrl ||
-    (recipient.slug
-      ? recipient.sourceModule === "property"
-        ? `https://addressguru.ae/properties/${recipient.slug}`
-        : recipient.sourceModule === "jobs"
-        ? `https://addressguru.ae/jobs/${recipient.slug}`
-        : recipient.sourceModule === "marketplace"
-        ? `https://addressguru.ae/marketplace/${recipient.slug}`
-        : `https://addressguru.ae/${recipient.slug}`
-      : "https://addressguru.ae");
+  const isCompleted = recipient.isCompleted !== false;
+  let resolvedListingUrl = recipient.listingUrl;
+  let resolvedClaimUrl = recipient.claimUrl;
 
-  const resolvedClaimUrl =
-    recipient.claimUrl ||
-    (recipient.slug
-      ? recipient.sourceModule === "property"
-        ? `https://addressguru.ae/properties/${recipient.slug}?claim=true`
-        : recipient.sourceModule === "jobs"
-        ? `https://addressguru.ae/jobs/${recipient.slug}?claim=true`
-        : recipient.sourceModule === "marketplace"
-        ? `https://addressguru.ae/marketplace/${recipient.slug}?claim=true`
-        : `https://addressguru.ae/${recipient.slug}?claim=true`
-      : "https://addressguru.ae/dashboard");
+  if (!resolvedListingUrl) {
+    if (!isCompleted) {
+      if (recipient.sourceModule === "business") resolvedListingUrl = "https://addressguru.ae/dashboard/listings";
+      else if (recipient.sourceModule === "jobs") resolvedListingUrl = "https://addressguru.ae/dashboard/jobs";
+      else if (recipient.sourceModule === "property") resolvedListingUrl = "https://addressguru.ae/dashboard/properties";
+      else if (recipient.sourceModule === "marketplace") resolvedListingUrl = "https://addressguru.ae/dashboard/marketplace";
+      else resolvedListingUrl = "https://addressguru.ae/dashboard";
+    } else if (recipient.slug) {
+      if (recipient.sourceModule === "property") resolvedListingUrl = `https://addressguru.ae/properties/${recipient.slug}`;
+      else if (recipient.sourceModule === "jobs") resolvedListingUrl = `https://addressguru.ae/jobs/${recipient.slug}`;
+      else if (recipient.sourceModule === "marketplace") resolvedListingUrl = `https://addressguru.ae/marketplace/${recipient.slug}`;
+      else resolvedListingUrl = `https://addressguru.ae/${recipient.slug}`;
+    } else {
+      resolvedListingUrl = "https://addressguru.ae";
+    }
+  }
+
+  if (!resolvedClaimUrl) {
+    if (recipient.slug) {
+      if (recipient.sourceModule === "property") resolvedClaimUrl = `https://addressguru.ae/properties/${recipient.slug}?claim=true`;
+      else if (recipient.sourceModule === "jobs") resolvedClaimUrl = `https://addressguru.ae/jobs/${recipient.slug}?claim=true`;
+      else if (recipient.sourceModule === "marketplace") resolvedClaimUrl = `https://addressguru.ae/marketplace/${recipient.slug}?claim=true`;
+      else resolvedClaimUrl = `https://addressguru.ae/${recipient.slug}?claim=true`;
+    } else {
+      resolvedClaimUrl = "https://addressguru.ae/dashboard";
+    }
+  }
+
+  const nameVal = recipient.name || recipient.contactPersonName || "Valued Partner";
+  const businessVal = recipient.businessName || recipient.listingTitle || recipient.name || "Your Business";
+  const listingTitleVal = recipient.listingTitle || recipient.businessName || recipient.name || "Your Listing";
+  const contactPersonVal = recipient.contactPersonName || recipient.name || "Valued Partner";
+  const stepVal = recipient.stepCompleted != null ? String(recipient.stepCompleted) : "1";
+  const totalStepsVal =
+    recipient.totalSteps != null
+      ? String(recipient.totalSteps)
+      : recipient.sourceModule === "jobs"
+      ? "3"
+      : recipient.sourceModule === "business"
+      ? "6"
+      : "5";
 
   const replacements = {
-    "{{name}}": recipient.name || recipient.contactPersonName || "Valued Partner",
-    "{{contactPerson}}": recipient.contactPersonName || recipient.name || "Valued Partner",
-    "{{contactPersonName}}": recipient.contactPersonName || recipient.name || "Valued Partner",
-    "{{businessName}}": recipient.businessName || recipient.name || "Your Business",
+    // Name
+    "{{name}}": nameVal,
+    // Listing Title / Business Name (support snake_case & camelCase)
+    "{{listing_title}}": listingTitleVal,
+    "{{listingTitle}}": listingTitleVal,
+    "{{business_name}}": businessVal,
+    "{{businessName}}": businessVal,
+    // Step completion variables
+    "{{step_completed}}": stepVal,
+    "{{stepCompleted}}": stepVal,
+    "{{total_steps}}": totalStepsVal,
+    "{{totalSteps}}": totalStepsVal,
+    // Contact Person
+    "{{contact_person}}": contactPersonVal,
+    "{{contactPerson}}": contactPersonVal,
+    "{{contact_person_name}}": contactPersonVal,
+    "{{contactPersonName}}": contactPersonVal,
+    // Phone / City / Country Code
     "{{phone}}": recipient.phone || "",
     "{{city}}": recipient.city || "UAE",
+    "{{country_code}}": recipient.countryCode || "+971",
     "{{countryCode}}": recipient.countryCode || "+971",
+    // URLs
+    "{{listing_url}}": resolvedListingUrl,
     "{{listingUrl}}": resolvedListingUrl,
+    "{{claim_url}}": resolvedClaimUrl,
     "{{claimUrl}}": resolvedClaimUrl,
+    "{{dashboard_url}}": "https://addressguru.ae/dashboard",
     "{{dashboardUrl}}": "https://addressguru.ae/dashboard",
+    "{{plans_url}}": "https://addressguru.ae/plans",
     "{{plansUrl}}": "https://addressguru.ae/plans",
   };
 
@@ -688,13 +745,37 @@ export async function executeCampaign(campaignId) {
     }
   } else {
     // Verify Baileys is connected
-    const connectedAccount = await WhatsappAccount.findOne({
+    let connectedAccount = await WhatsappAccount.findOne({
       status: "connected",
     });
+
     if (!connectedAccount) {
-      campaign.status = "failed";
+      // Check if credentials exist and auto-start connection
+      const accountWithCreds = await WhatsappAccount.findOne().select("+authCreds");
+      if (accountWithCreds?.authCreds) {
+        try {
+          const { startConnection, getSocketOrNull } = await import(
+            "../whatsapp/services/whatsappClient.js"
+          );
+          await startConnection({ label: accountWithCreds.label });
+          for (let w = 0; w < 6; w++) {
+            await sleep(600);
+            const liveSock = getSocketOrNull();
+            if (liveSock && liveSock.user) {
+              connectedAccount = await WhatsappAccount.findById(accountWithCreds._id);
+              break;
+            }
+          }
+        } catch (autoErr) {
+          console.warn("[WhatsAppBulk] Auto-reconnect failed:", autoErr.message);
+        }
+      }
+    }
+
+    if (!connectedAccount || connectedAccount.status !== "connected") {
+      campaign.status = "paused";
       campaign.errorMessage =
-        "WhatsApp Web (Baileys) is not connected on the server. Please scan QR in the header.";
+        "WhatsApp Web (Baileys) is not connected on the server. Please scan QR in the header, then click Resume.";
       await campaign.save();
       throw new Error(campaign.errorMessage);
     }
@@ -805,6 +886,24 @@ export async function executeCampaign(campaignId) {
           recipient.status = "failed";
           recipient.errorReason = err.message || "Failed to deliver message";
           recipient.retryCount = (recipient.retryCount || 0) + 1;
+
+          // If Baileys connection drops mid-campaign, pause campaign to protect remaining contacts
+          const errLower = (err.message || "").toLowerCase();
+          if (
+            errLower.includes("not connected") ||
+            errLower.includes("connection closed") ||
+            errLower.includes("socket closed")
+          ) {
+            console.warn(`[WhatsAppBulk] ⚠️ Baileys socket disconnected at recipient ${i}. Pausing campaign.`);
+            campaign.status = "paused";
+            campaign.errorMessage =
+              "WhatsApp Web disconnected during sending. Campaign paused. Reconnect in the header and click Resume.";
+            campaign.pausedAt = new Date();
+            campaign.lastProcessedIndex = i;
+            campaign.updateStats();
+            await campaign.save();
+            return;
+          }
         }
 
         processedCountInCurrentRun++;
@@ -923,7 +1022,11 @@ export async function resumeCampaign(campaignId) {
   const campaign = await WhatsappCampaign.findById(campaignId);
   if (!campaign) throw new Error("Campaign not found");
 
-  if (campaign.status !== "paused" && campaign.status !== "draft") {
+  if (
+    campaign.status !== "paused" &&
+    campaign.status !== "draft" &&
+    campaign.status !== "failed"
+  ) {
     throw new Error(`Cannot resume campaign with status "${campaign.status}"`);
   }
 

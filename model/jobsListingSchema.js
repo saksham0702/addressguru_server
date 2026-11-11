@@ -232,6 +232,12 @@ const jobSchema = new mongoose.Schema(
     isFeatured: { type: Boolean, default: false },
     isUrgent: { type: Boolean, default: false },
     isVerified: { type: Boolean, default: false },
+    isClaimed: { type: Boolean, default: false },
+    claimedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      default: null,
+    },
     isActive: { type: Boolean, default: false },
     isPublished: { type: Boolean, default: false },
     isDeleted: { type: Boolean, default: false },

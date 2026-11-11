@@ -77,39 +77,42 @@
 
       <!-- Lead details -->
       <div class="card">
-        <h2 class="card-title">Buyer Information</h2>
+        <h2 class="card-title">Lead Information</h2>
         <div class="data-row">
-          <span class="data-label">Name</span>
+          <span class="data-label">Sender</span>
           <span class="data-value">{{leadName}}</span>
         </div>
         <div class="data-row">
-          <span class="data-label">Email</span>
-          <span class="data-value"><a href="mailto:{{leadEmail}}">{{leadEmail}}</a></span>
-        </div>
-        <div class="data-row">
-          <span class="data-label">Phone</span>
-          <span class="data-value"><a href="tel:{{leadPhone}}">{{leadPhone}}</a></span>
+          <span class="data-label">Listing</span>
+          <span class="data-value"><strong>{{businessName}}</strong></span>
         </div>
         
-        {{#message}}
+        {{#previewMessage}}
         <div class="message-bubble">
-          <div class="data-label" style="margin-bottom: 4px;">Message</div>
+          <div class="data-label" style="margin-bottom: 4px;">Enquiry Message</div>
           <p class="message-text">"{{previewMessage}}"</p>
         </div>
-        {{/message}}
+        {{/previewMessage}}
+
+        <div style="background: #f1f5f9; border-radius: 12px; padding: 14px 16px; margin-top: 16px; border: 1px dashed #cbd5e1; display: flex; align-items: flex-start; gap: 10px;">
+          <span style="font-size: 20px; line-height: 1;">🔒</span>
+          <p style="font-size: 13px; color: #475569; margin: 0; line-height: 1.5;">
+            <strong>Contact Details Protected:</strong> Direct phone numbers and email addresses are securely stored to safeguard user privacy. Log in to your <a href="{{dashboardUrl}}" style="color: #f7941d; font-weight: 600; text-decoration: underline;">AddressGuru Dashboard</a> to access complete contact information and follow up.
+          </p>
+        </div>
       </div>
 
       <!-- Action Area -->
       <div class="action-box">
         {{#isClaimed}}
-        <h3 class="action-title">Manage Your Leads</h3>
-        <p class="action-desc">View full details and manage all your enquiries in one place.</p>
-        <a class="cta-btn" href="https://addressguru.ae/dashboard">Go to Dashboard</a>
+        <h3 class="action-title">Unlock Full Lead Details</h3>
+        <p class="action-desc">Log in to view complete contact numbers, emails, and manage all your leads directly in one place.</p>
+        <a class="cta-btn" href="{{dashboardUrl}}">View Leads on Dashboard</a>
         {{/isClaimed}}
         {{^isClaimed}}
         <h3 class="action-title">Is this your listing?</h3>
-        <p class="action-desc">Claim your listing today to respond to this lead and unlock premium features.</p>
-        <a class="cta-btn" href="https://addressguru.ae/{{listingSlug}}?claim=true">Claim Listing & Respond</a>
+        <p class="action-desc">Claim your listing today to access all lead contact numbers and unlock premium features.</p>
+        <a class="cta-btn" href="https://addressguru.ae/{{listingSlug}}?claim=true">Claim Listing to View Lead</a>
         {{/isClaimed}}
       </div>
     </div>

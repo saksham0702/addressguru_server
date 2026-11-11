@@ -9,8 +9,13 @@ const recipientSchema = new mongoose.Schema(
     phone: { type: String, trim: true, required: true },
     city: { type: String, trim: true, default: "" },
     slug: { type: String, trim: true, default: "" },
+    listingTitle: { type: String, trim: true, default: "" },
     listingUrl: { type: String, trim: true, default: "" },
     claimUrl: { type: String, trim: true, default: "" },
+    stepCompleted: { type: Number, default: null },
+    totalSteps: { type: Number, default: null },
+    isCompleted: { type: Boolean, default: true },
+    creatorRole: { type: String, default: "User" },
     sourceModule: {
       type: String,
       enum: ["business", "property", "marketplace", "jobs", "users", "excel", "manual"],
