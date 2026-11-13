@@ -1452,8 +1452,24 @@ export const getPropertyAdditionalFields = async (req, res) => {
       category_id,
       is_deleted: false,
       is_active: true,
-      ...(subcategory_id && { subcategory_id }),
     };
+
+    if (
+      subcategory_id &&
+      subcategory_id !== "null" &&
+      subcategory_id !== "undefined"
+    ) {
+      filter.$or = [
+        { subcategory_id },
+        { subcategory_id: null },
+        { subcategory_id: { $exists: false } },
+      ];
+    } else {
+      filter.$or = [
+        { subcategory_id: null },
+        { subcategory_id: { $exists: false } },
+      ];
+    }
 
     const additionalFields = await AdditionalField.find(filter).sort({
       createdAt: 1,

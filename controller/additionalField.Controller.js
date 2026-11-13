@@ -107,9 +107,14 @@ export const getFields = async (req, res) => {
       return errorData(res, 400, false, "category_id is required", null, null);
     }
 
+    const hasSubCat =
+      subcategory_id &&
+      subcategory_id !== "null" &&
+      subcategory_id !== "undefined";
+
     const filter = {
       category_id,
-      subcategory_id: subcategory_id || null,
+      subcategory_id: hasSubCat ? subcategory_id : null,
       is_deleted: false,
     };
 
