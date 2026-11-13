@@ -514,13 +514,32 @@ export const getAllBusinessEnquiries = async (req, res) => {
       filter.status = status;
     }
 
-    // Optional search (name, email, phone, slug)
-    if (search) {
+    // Optional search (lead name, email, phone, message, listing slug, or business/listing name)
+    if (search && search.trim()) {
+      const searchRegex = new RegExp(search.trim(), "i");
+
+      // Find matching listings across models to include their IDs in enquiry search
+      const [bizListings, propListings, jobListings, marketListings] = await Promise.all([
+        BusinessListing.find({ businessName: searchRegex }, { _id: 1 }).limit(100).lean(),
+        PropertyListing.find({ title: searchRegex }, { _id: 1 }).limit(100).lean(),
+        Job.find({ title: searchRegex }, { _id: 1 }).limit(100).lean(),
+        MarketplaceListing.find({ title: searchRegex }, { _id: 1 }).limit(100).lean(),
+      ]);
+
+      const matchedIds = [
+        ...bizListings.map((b) => b._id),
+        ...propListings.map((p) => p._id),
+        ...jobListings.map((j) => j._id),
+        ...marketListings.map((m) => m._id),
+      ];
+
       filter.$or = [
-        { fullName: { $regex: search, $options: "i" } },
-        { email: { $regex: search, $options: "i" } },
-        { listingSlug: { $regex: search, $options: "i" } },
-        ...(Number(search) ? [{ mobileNumber: Number(search) }] : []),
+        { fullName: searchRegex },
+        { email: searchRegex },
+        { listingSlug: searchRegex },
+        { message: searchRegex },
+        ...(matchedIds.length > 0 ? [{ listingId: { $in: matchedIds } }] : []),
+        ...(Number(search.trim()) ? [{ mobileNumber: Number(search.trim()) }] : []),
       ];
     }
 
