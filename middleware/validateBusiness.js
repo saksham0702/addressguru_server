@@ -12,9 +12,9 @@ export const validateBusinessStep = (req, res, next) => {
       });
     }
 
-    // Step 5 is media only — multer hasn't run yet at this point
+    // Step 3 (new 4-step flow) and Step 5 (legacy 6-step flow) are media —
     // logo and images are handled by multer, skip body validation
-    if (step === 5) return next();
+    if (step === 3 || step === 5) return next();
 
     const { error, value } = schema.validate(req.body, {
       abortEarly: false,

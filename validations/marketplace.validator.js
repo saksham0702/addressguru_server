@@ -32,48 +32,41 @@ const marketplaceStepSchema = {
     }),
 
     price_amount: Joi.number().min(0).allow(null).optional(),
-
     price_currency: Joi.string().default("AED").optional(),
-
     price_negotiable: Joi.boolean().default(false).optional(),
     price_fixed: Joi.boolean().default(false).optional(),
     price_free: Joi.boolean().default(false).optional(),
 
-    // Client sends only field_id + value
-    // field_label and field_type are resolved server-side from DB
     additional_fields: Joi.alternatives()
       .try(
         Joi.array().items(
           Joi.object({
-            field_id: Joi.string().required().messages({
-              "any.required": "field_id is required in additional fields",
-              "string.empty": "field_id must not be empty",
-            }),
+            field_id: Joi.string().required(),
             value: Joi.any().allow(null).optional(),
           }),
         ),
-        Joi.string(), // allow JSON stringified array from formdata
+        Joi.string(),
       )
       .optional()
       .default([]),
-  }).options({ allowUnknown: false }),
+
+    seo_title: Joi.string().allow("", null).optional(),
+    seo_description: Joi.string().allow("", null).optional(),
+  }).options({ allowUnknown: true }),
 
   /* =========================
      STEP 2 – IMAGES
-     Multer handles files,
-     no body fields expected
+     Multer handles files
   ========================= */
-  2: Joi.object({}).options({ allowUnknown: true }), // allow multer-parsed fields silently
+  2: Joi.object({}).options({ allowUnknown: true }),
 
   /* =========================
-     STEP 3 – CONTACT DETAILS
+     STEP 3 – CONTACT & SOCIAL
   ========================= */
   3: Joi.object({
     name: Joi.string().min(2).max(50).required().messages({
       "any.required": "Name is required",
       "string.empty": "Name is required",
-      "string.min": "Name must be at least 2 characters",
-      "string.max": "Name must not exceed 50 characters",
     }),
 
     email: Joi.string().email().required().messages({
@@ -83,60 +76,47 @@ const marketplaceStepSchema = {
     }),
 
     country_code: Joi.string().allow("", null).optional(),
-
-    // String to preserve leading zeros and international format
     mobile_number: Joi.string().required().messages({
       "any.required": "Mobile number is required",
       "string.empty": "Mobile number is required",
     }),
-
     alt_country_code: Joi.string().allow("", null).optional(),
-
     second_mobile_number: Joi.string().allow("", null).optional(),
-
     locality: Joi.string().required().messages({
       "any.required": "Locality is required",
       "string.empty": "Locality is required",
     }),
-
-    address: Joi.string().required().messages({
-      "any.required": "Address is required",
-      "string.empty": "Address is required",
-    }),
-
+    address: Joi.string().allow("", null).optional(),
     city_id: Joi.string().required().messages({
       "any.required": "City is required",
       "string.empty": "City is required",
     }),
-  }).options({ allowUnknown: false }),
+
+    // Social Links
+    websiteLink: Joi.string().uri().allow("", null).optional(),
+    videoLink: Joi.string().uri().allow("", null).optional(),
+    facebook: Joi.string().uri().allow("", null).optional(),
+    instagram: Joi.string().uri().allow("", null).optional(),
+    twitter: Joi.string().uri().allow("", null).optional(),
+    linkedin: Joi.string().uri().allow("", null).optional(),
+    youtube: Joi.string().uri().allow("", null).optional(),
+  }).options({ allowUnknown: true }),
 
   /* =========================
-     STEP 4 – SEO
+     STEP 4 – PLAN (NEW) OR LEGACY SEO
   ========================= */
   4: Joi.object({
-    seo_title: Joi.string().min(3).max(100).required().messages({
-      "any.required": "SEO title is required",
-      "string.empty": "SEO title is required",
-      "string.min": "SEO title must be at least 3 characters",
-      "string.max": "SEO title must not exceed 100 characters",
-    }),
-
-    seo_description: Joi.string().min(10).max(300).required().messages({
-      "any.required": "SEO description is required",
-      "string.empty": "SEO description is required",
-      "string.min": "SEO description must be at least 10 characters",
-      "string.max": "SEO description must not exceed 300 characters",
-    }),
-  }).options({ allowUnknown: false }),
+    plan_id: Joi.string().allow("", null).optional(),
+    seo_title: Joi.string().allow("", null).optional(),
+    seo_description: Joi.string().allow("", null).optional(),
+  }).options({ allowUnknown: true }),
 
   /* =========================
-     STEP 5 – PLAN & PUBLISH
+     STEP 5 – LEGACY PLAN
   ========================= */
   5: Joi.object({
-    plan_id: Joi.string().required().messages({
-      "any.required": "Plan is required",
-      "string.empty": "Plan is required",
-    }),
-  }).options({ allowUnknown: false }),
+    plan_id: Joi.string().allow("", null).optional(),
+  }).options({ allowUnknown: true }),
 };
+
 export default marketplaceStepSchema;

@@ -348,8 +348,9 @@ export async function fetchDatabaseAudience({
 
     if (maxSteps) {
       if (completionStatus === "completed") {
-        query.stepCompleted = { $gte: maxSteps };
+        query.$or = [{ isPublished: true }, { stepCompleted: { $gte: maxSteps } }];
       } else if (completionStatus === "incomplete") {
+        query.isPublished = { $ne: true };
         query.stepCompleted = { $lt: maxSteps };
       }
     }
@@ -359,7 +360,7 @@ export async function fetchDatabaseAudience({
 
   // 1. BUSINESS LISTINGS (6 steps)
   if (selectedModules.includes("business")) {
-    const query = buildListingQuery(6);
+    const query = buildListingQuery(4);
 
     const businessDocs = await BusinessListing.find(query)
       .populate("createdBy", "name email roles phone")
@@ -397,8 +398,8 @@ export async function fetchDatabaseAudience({
         sourceModule: "business",
         sourceId: doc._id,
         stepCompleted: stepVal,
-        totalSteps: 6,
-        isCompleted: stepVal >= 6,
+        totalSteps: 4,
+        isCompleted: stepVal >= 4 || doc.isPublished,
         creatorRole: getRoleLabel(doc.createdBy?.roles),
       });
     }
@@ -406,7 +407,7 @@ export async function fetchDatabaseAudience({
 
   // 2. PROPERTY LISTINGS (5 steps)
   if (selectedModules.includes("property")) {
-    const query = buildListingQuery(5);
+    const query = buildListingQuery(4);
 
     const propertyDocs = await PropertiesListing.find(query)
       .populate("createdBy", "name email roles phone")
@@ -444,8 +445,8 @@ export async function fetchDatabaseAudience({
         sourceModule: "property",
         sourceId: doc._id,
         stepCompleted: stepVal,
-        totalSteps: 5,
-        isCompleted: stepVal >= 5,
+        totalSteps: 4,
+        isCompleted: stepVal >= 4 || doc.isPublished,
         creatorRole: getRoleLabel(doc.createdBy?.roles),
       });
     }
@@ -453,7 +454,7 @@ export async function fetchDatabaseAudience({
 
   // 3. MARKETPLACE LISTINGS (5 steps)
   if (selectedModules.includes("marketplace")) {
-    const query = buildListingQuery(5);
+    const query = buildListingQuery(4);
 
     const marketplaceDocs = await MarketplaceListing.find(query)
       .populate("createdBy", "name email roles phone")
@@ -491,8 +492,8 @@ export async function fetchDatabaseAudience({
         sourceModule: "marketplace",
         sourceId: doc._id,
         stepCompleted: stepVal,
-        totalSteps: 5,
-        isCompleted: stepVal >= 5,
+        totalSteps: 4,
+        isCompleted: stepVal >= 4 || doc.isPublished,
         creatorRole: getRoleLabel(doc.createdBy?.roles),
       });
     }

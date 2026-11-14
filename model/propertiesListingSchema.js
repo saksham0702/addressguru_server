@@ -103,6 +103,19 @@ const propertyListingSchema = new mongoose.Schema(
       mapLng: { type: Number },
     },
 
+    websiteLink: { type: String, default: null },
+    videoLink: { type: String, default: null },
+    socialLinks: {
+      type: mongoose.Schema.Types.Mixed,
+      default: {
+        facebook: null,
+        instagram: null,
+        twitter: null,
+        linkedin: null,
+        youtube: null,
+      },
+    },
+
     /* =========================
        STEP 4 – SEO
     ========================== */

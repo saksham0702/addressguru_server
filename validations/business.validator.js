@@ -8,7 +8,6 @@ const objectIdArray = () =>
     .custom((value, helpers) => {
       let arr = value;
 
-      // parse stringified
       if (typeof value === "string") {
         try {
           arr = JSON.parse(value);
@@ -22,12 +21,9 @@ const objectIdArray = () =>
       }
 
       for (const item of arr) {
-        // ❌ reject objects directly
         if (typeof item === "object" && item !== null) {
           return helpers.error("any.invalid");
         }
-
-        // ❌ reject invalid ObjectId
         if (!mongoose.Types.ObjectId.isValid(item)) {
           return helpers.error("any.invalid");
         }
@@ -88,7 +84,6 @@ const businessStepSchema = {
 
     uen_number: Joi.string().allow("", null).optional(),
 
-    // CategoryFeature-linked arrays — ObjectIds as strings
     facilities: objectIdArray().messages({
       "any.invalid": "Invalid facility",
     }),
@@ -102,13 +97,11 @@ const businessStepSchema = {
       "any.invalid": "Invalid payment",
     }),
 
-    // Working hours — object or JSON stringified object from formdata
     hours: Joi.alternatives()
       .try(Joi.object(), Joi.string())
       .allow(null)
       .optional(),
 
-    // Client sends only field_id + value
     additional_fields: Joi.alternatives()
       .try(
         Joi.array().items(
@@ -120,129 +113,74 @@ const businessStepSchema = {
             value: Joi.any().allow(null).optional(),
           }),
         ),
-        Joi.string(), // allow JSON stringified array from formdata
+        Joi.string(),
       )
       .optional()
       .default([]),
-  }).options({ allowUnknown: false }),
+
+    seo_title: Joi.string().allow("", null).optional(),
+    seo_description: Joi.string().allow("", null).optional(),
+  }).options({ allowUnknown: true }),
 
   /* =========================
-     STEP 2 – SOCIAL LINKS
-     All fields optional —
-     business may not have all
+     STEP 2 – CONTACT & SOCIAL (COMBINED)
+     Supports both combined and legacy social
   ========================= */
   2: Joi.object({
-    websiteLink: Joi.string().uri().allow("", null).optional().messages({
-      "string.uri": "Website must be a valid URL (e.g. https://example.com)",
-    }),
+    // Contact fields
+    name: Joi.string().min(2).max(50).allow("", null).optional(),
+    email: Joi.string().allow("", null).optional(),
+    country_code: Joi.string().allow("", null).optional(),
+    mobile_number: Joi.string().allow("", null).optional(),
+    alt_country_code: Joi.string().allow("", null).optional(),
+    second_mobile_number: Joi.string().allow("", null).optional(),
+    locality: Joi.string().allow("", null).optional(),
+    city_id: Joi.string().allow("", null).optional(),
 
-    videoLink: Joi.string().uri().allow("", null).optional().messages({
-      "string.uri": "Video link must be a valid URL",
-    }),
-
-    facebook: Joi.string().uri().allow("", null).optional().messages({
-      "string.uri": "Facebook must be a valid URL",
-    }),
-
-    instagram: Joi.string().uri().allow("", null).optional().messages({
-      "string.uri": "Instagram must be a valid URL",
-    }),
-
-    twitter: Joi.string().uri().allow("", null).optional().messages({
-      "string.uri": "Twitter must be a valid URL",
-    }),
-
-    linkedin: Joi.string().uri().allow("", null).optional().messages({
-      "string.uri": "LinkedIn must be a valid URL",
-    }),
-
-    youtube: Joi.string().uri().allow("", null).optional().messages({
-      "string.uri": "YouTube must be a valid URL",
-    }),
-  }).options({ allowUnknown: false }),
+    // Social fields
+    websiteLink: Joi.string().uri().allow("", null).optional(),
+    videoLink: Joi.string().uri().allow("", null).optional(),
+    facebook: Joi.string().uri().allow("", null).optional(),
+    instagram: Joi.string().uri().allow("", null).optional(),
+    twitter: Joi.string().uri().allow("", null).optional(),
+    linkedin: Joi.string().uri().allow("", null).optional(),
+    youtube: Joi.string().uri().allow("", null).optional(),
+  }).options({ allowUnknown: true }),
 
   /* =========================
-     STEP 3 – CONTACT DETAILS
+     STEP 3 – MEDIA (NEW STEP 3) OR LEGACY CONTACT
   ========================= */
   3: Joi.object({
-    name: Joi.string().min(2).max(50).required().messages({
-      "any.required": "Name is required",
-      "string.empty": "Name is required",
-      "string.min": "Name must be at least 2 characters",
-      "string.max": "Name must not exceed 50 characters",
-    }),
-
-    email: Joi.string()
-      .email({
-        allowUnicode: false,
-        tlds: { allow: false },
-      })
-      .required()
-      .messages({
-        "any.required": "Email is required",
-        "string.empty": "Email is required",
-        "string.email": "Please provide a valid email address",
-      }),
-
-    // String — preserves +971 format and leading zeros
+    name: Joi.string().allow("", null).optional(),
+    email: Joi.string().allow("", null).optional(),
     country_code: Joi.string().allow("", null).optional(),
-
-    mobile_number: Joi.string().required().messages({
-      "any.required": "Mobile number is required",
-      "string.empty": "Mobile number is required",
-    }),
-
+    mobile_number: Joi.string().allow("", null).optional(),
     alt_country_code: Joi.string().allow("", null).optional(),
-
     second_mobile_number: Joi.string().allow("", null).optional(),
-
     locality: Joi.string().allow("", null).optional(),
-
-    city_id: Joi.string()
-      .pattern(/^[a-fA-F0-9]{24}$/)
-      .required()
-      .messages({
-        "any.required": "City is required",
-        "string.empty": "City is required",
-        "string.pattern.base": "City must be a valid ID",
-      }),
-  }).options({ allowUnknown: false }),
+    city_id: Joi.string().allow("", null).optional(),
+  }).options({ allowUnknown: true }),
 
   /* =========================
-     STEP 4 – SEO
+     STEP 4 – PLAN (NEW STEP 4) OR LEGACY SEO
   ========================= */
   4: Joi.object({
-    seo_title: Joi.string().min(5).max(100).required().messages({
-      "any.required": "SEO title is required",
-      "string.empty": "SEO title is required",
-      "string.min": "SEO title must be at least 5 characters",
-      "string.max": "SEO title must not exceed 100 characters",
-    }),
-
-    seo_description: Joi.string().min(50).max(300).required().messages({
-      "any.required": "SEO description is required",
-      "string.empty": "SEO description is required",
-      "string.min": "SEO description must be at least 50 characters",
-      "string.max": "SEO description must not exceed 300 characters",
-    }),
-  }).options({ allowUnknown: false }),
+    plan_id: Joi.string().allow("", null).optional(),
+    seo_title: Joi.string().allow("", null).optional(),
+    seo_description: Joi.string().allow("", null).optional(),
+  }).options({ allowUnknown: true }),
 
   /* =========================
-     STEP 5 – MEDIA
-     Multer handles logo + images,
-     no body fields expected
+     STEP 5 – LEGACY MEDIA
   ========================= */
   5: Joi.object({}).options({ allowUnknown: true }),
 
   /* =========================
-     STEP 6 – PLAN & PUBLISH
+     STEP 6 – LEGACY PLAN
   ========================= */
   6: Joi.object({
-    plan_id: Joi.string().required().messages({
-      "any.required": "Plan is required",
-      "string.empty": "Plan is required",
-    }),
-  }).options({ allowUnknown: false }),
+    plan_id: Joi.string().allow("", null).optional(),
+  }).options({ allowUnknown: true }),
 };
 
 export default businessStepSchema;

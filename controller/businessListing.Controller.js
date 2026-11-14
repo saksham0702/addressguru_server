@@ -1,3 +1,4 @@
+import { autoGenerateSeo } from "../utils/seoGenerator.js";
 // ─── businessListingController.js ────────────────────────────────────────────
 import BusinessListing from "../model/businessListingSchema.js";
 import AdditionalField from "../model/additionalFieldSchema.js";
@@ -200,6 +201,10 @@ export const createListing = async (req, res) => {
       isVerified: false,
       isPublished: false,
       createdBy: req.user.id,
+      seo: {
+        title: req.body.seo_title?.trim() || business_name,
+        description: req.body.seo_description?.trim() || null,
+      },
     });
     // 🔥 BUILD SEARCH TEXT
 
@@ -360,10 +365,10 @@ export const updateListingStep = async (req, res) => {
         break;
       }
 
-      /* ── STEP 2 – SOCIAL LINKS ── */
+      /* ── STEP 2 – CONTACT & SOCIAL DETAILS (COMBINED) ── */
       case 2: {
-        listing.websiteLink = req.body.websiteLink || null;
-        listing.videoLink = req.body.videoLink || null;
+        if (req.body.websiteLink !== undefined) listing.websiteLink = req.body.websiteLink || null;
+        if (req.body.videoLink !== undefined) listing.videoLink = req.body.videoLink || null;
         listing.socialLinks = {
           facebook: req.body.facebook || null,
           instagram: req.body.instagram || null,
@@ -371,34 +376,97 @@ export const updateListingStep = async (req, res) => {
           linkedin: req.body.linkedin || null,
           youtube: req.body.youtube || null,
         };
-        break;
-      }
 
-      /* ── STEP 3 – CONTACT DETAILS ── */
-      case 3: {
-        listing.contactPersonName = req.body.name || null;
-        listing.email = req.body.email || null;
+        if (req.body.name !== undefined) listing.contactPersonName = req.body.name || null;
+        if (req.body.email !== undefined) listing.email = req.body.email || null;
         const normalizeCc = (code) => {
           if (!code) return null;
           const s = String(code).trim();
           if (!s) return null;
           return s.startsWith("+") ? s : `+${s.replace(/\D/g, "")}`;
         };
-        listing.countryCode = normalizeCc(req.body.country_code) || "+971";
-        listing.mobileNumber = req.body.mobile_number || null;
-        listing.altCountryCode = normalizeCc(req.body.alt_country_code);
-        listing.alternateMobileNumber = req.body.second_mobile_number || null;
-        listing.locality = req.body.locality || null;
-        listing.city = req.body.city_id || null;
+        if (req.body.country_code !== undefined)
+          listing.countryCode = normalizeCc(req.body.country_code) || "+971";
+        if (req.body.mobile_number !== undefined)
+          listing.mobileNumber = req.body.mobile_number || null;
+        if (req.body.alt_country_code !== undefined)
+          listing.altCountryCode = normalizeCc(req.body.alt_country_code);
+        if (req.body.second_mobile_number !== undefined)
+          listing.alternateMobileNumber = req.body.second_mobile_number || null;
+        if (req.body.locality !== undefined) listing.locality = req.body.locality || null;
+        if (req.body.city_id !== undefined) listing.city = req.body.city_id || null;
+
+        // Auto generate SEO metadata if needed
+        const generatedSeo = await autoGenerateSeo({
+          type: "business",
+          title: listing.businessName,
+          description: listing.description,
+          categoryId: listing.category,
+          cityId: listing.city,
+          locality: listing.locality,
+          existingSeo: listing.seo,
+        });
+        listing.seo = generatedSeo;
         break;
       }
 
-      /* ── STEP 4 – SEO ── */
+      /* ── STEP 3 – MEDIA (NEW) OR LEGACY CONTACT ── */
+      case 3: {
+        const isMedia = req.files?.logo?.[0] || req.body.existing_logo || req.files?.images?.length > 0 || req.body.images;
+        if (isMedia) {
+          const hasNewLogo = req.files?.logo?.[0];
+          const hasExistingLogo = req.body.existing_logo;
+          const hasNewImages = req.files?.images?.length > 0;
+          let existingImages = req.body.images
+            ? Array.isArray(req.body.images) ? req.body.images : [req.body.images]
+            : [];
+          existingImages = existingImages.filter((img) => typeof img === "string");
+
+          const hasAnyImages = hasNewImages || existingImages.length > 0;
+          if (!hasNewLogo && !hasExistingLogo) {
+            return errorData(res, 400, false, "Please upload a logo");
+          }
+          if (!hasAnyImages) {
+            return errorData(res, 400, false, "Please upload at least one image");
+          }
+          if (hasNewLogo) listing.logo = req.files.logo[0].path;
+          else if (hasExistingLogo) listing.logo = hasExistingLogo;
+
+          const newImages = hasNewImages ? req.files.images.map((img) => img.path) : [];
+          listing.images = [...existingImages, ...newImages].slice(0, 10);
+        } else {
+          listing.contactPersonName = req.body.name || null;
+          listing.email = req.body.email || null;
+          const normalizeCc = (code) => {
+            if (!code) return null;
+            const s = String(code).trim();
+            if (!s) return null;
+            return s.startsWith("+") ? s : `+${s.replace(/\D/g, "")}`;
+          };
+          listing.countryCode = normalizeCc(req.body.country_code) || "+971";
+          listing.mobileNumber = req.body.mobile_number || null;
+          listing.altCountryCode = normalizeCc(req.body.alt_country_code);
+          listing.alternateMobileNumber = req.body.second_mobile_number || null;
+          listing.locality = req.body.locality || null;
+          listing.city = req.body.city_id || null;
+        }
+        break;
+      }
+
+      /* ── STEP 4 – PLAN & PUBLISH (NEW) OR LEGACY SEO ── */
       case 4: {
-        listing.seo = {
-          title: req.body.seo_title || null,
-          description: req.body.seo_description || null,
-        };
+        if (req.body.plan_id) {
+          if (listing.stepCompleted < 3) {
+            return errorData(res, 400, false, "Please complete all previous steps before publishing");
+          }
+          listing.plan = req.body.plan_id || null;
+          listing.isPublished = true;
+        } else {
+          listing.seo = {
+            title: req.body.seo_title || null,
+            description: req.body.seo_description || null,
+          };
+        }
         break;
       }
 
@@ -449,7 +517,7 @@ export const updateListingStep = async (req, res) => {
 
       /* ── STEP 6 – PLAN & PUBLISH ── */
       case 6: {
-        if (listing.stepCompleted < 5) {
+        if (listing.stepCompleted < 3) {
           return errorData(
             res,
             400,
@@ -518,7 +586,7 @@ export const updateListingStep = async (req, res) => {
     await listing.save();
 
     // ── Send submitted mail when step 6 is completed ──
-    if (Number(step) === 6) {
+    if (Number(step) === 6 || (Number(step) === 4 && listing.isPublished)) {
       try {
         // Populate category name if not already a string
         const categoryName =
@@ -2293,10 +2361,11 @@ export const getAdminCompletedListings = async (req, res) => {
 
     // ── viewType ─────────────────────────────────────────────────────────────
     if (viewType === "completed") {
-      filter.stepCompleted = 6;
+      filter.$or = [{ isPublished: true }, { stepCompleted: { $gte: 4 } }];
       filter.isDeleted = false;
     } else if (viewType === "incomplete") {
-      filter.stepCompleted = { $lt: 6 };
+      filter.isPublished = { $ne: true };
+      filter.stepCompleted = { $lt: 4 };
       filter.isDeleted = false;
     } else if (viewType === "deleted") {
       filter.isDeleted = true;

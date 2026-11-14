@@ -47,7 +47,7 @@ const marketplaceListingSchema = new mongoose.Schema(
     // ── Step 2 – Media ────────────────────────────────────────────────────
     images: [String],
 
-    // ── Step 3 – Contact Details ──────────────────────────────────────────
+    // ── Step 3 – Contact & Social Details ────────────────────────────────
     contactPersonName: { type: String },
     email: { type: String, lowercase: true },
     countryCode: { type: String }, // e.g. "+971" — kept as String
@@ -57,6 +57,18 @@ const marketplaceListingSchema = new mongoose.Schema(
     locality: { type: String },
     address: { type: String },
     city: { type: mongoose.Schema.Types.ObjectId, ref: "City" },
+    websiteLink: { type: String, default: null },
+    videoLink: { type: String, default: null },
+    socialLinks: {
+      type: mongoose.Schema.Types.Mixed,
+      default: {
+        facebook: null,
+        instagram: null,
+        twitter: null,
+        linkedin: null,
+        youtube: null,
+      },
+    },
 
     // ── Step 4 – SEO ──────────────────────────────────────────────────────
     seo: {
