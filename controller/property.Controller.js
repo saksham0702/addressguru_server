@@ -1,3 +1,4 @@
+import { autoGenerateSeo } from "../utils/seoGenerator.js";
 // ─── propertyListingController.js ────────────────────────────────────────────
 import PropertyListing from "../model/propertiesListingSchema.js";
 import User from "../model/userSchema.js";
@@ -195,6 +196,10 @@ export const createPropertyListing = async (req, res) => {
       createdBy: req.user?.id || null,
       leadStatus: "new",
       provider: "user",
+      seo: {
+        title: req.body.seo_title?.trim() || title,
+        description: req.body.seo_description?.trim() || null,
+      },
     });
 
     // Update User statistics
@@ -427,7 +432,7 @@ export const updatePropertyListingStep = async (req, res) => {
         break;
       }
 
-      /* ── STEP 3 – CONTACT DETAILS ── */
+      /* ── STEP 3 – CONTACT & SOCIAL DETAILS (COMBINED) ── */
       case 3: {
         listing.contactPersonName = req.body.name || null;
         listing.email = req.body.email || null;
@@ -445,11 +450,32 @@ export const updatePropertyListingStep = async (req, res) => {
         listing.location = {
           address: req.body.address || null,
           locality: req.body.locality || null,
-          mapLat: req.body.map_lat ? Number(req.body.map_lat) : null,
-          mapLng: req.body.map_lng ? Number(req.body.map_lng) : null,
         };
 
-        // Update cityNameLower
+        // Social Links
+        if (req.body.websiteLink !== undefined) listing.websiteLink = req.body.websiteLink || null;
+        if (req.body.videoLink !== undefined) listing.videoLink = req.body.videoLink || null;
+        listing.socialLinks = {
+          facebook: req.body.facebook || null,
+          instagram: req.body.instagram || null,
+          twitter: req.body.twitter || null,
+          linkedin: req.body.linkedin || null,
+          youtube: req.body.youtube || null,
+        };
+
+        // Auto generate SEO metadata for property: "{title} - {categoryName} is available at {locality}, {cityName} for {purpose}."
+        const generatedSeo = await autoGenerateSeo({
+          type: "property",
+          title: listing.title,
+          description: listing.description,
+          categoryId: listing.category,
+          cityId: listing.city,
+          locality: listing.location?.locality || req.body.locality,
+          purpose: listing.purpose,
+          existingSeo: listing.seo,
+        });
+        listing.seo = generatedSeo;
+
         if (listing.city) {
           const cityDoc = await CitiesSchema.findById(listing.city);
           listing.cityNameLower = cityDoc?.name?.toLowerCase() || "";
@@ -457,18 +483,27 @@ export const updatePropertyListingStep = async (req, res) => {
         break;
       }
 
-      /* ── STEP 4 – SEO ── */
+      /* ── STEP 4 – PLAN & PUBLISH (NEW) OR LEGACY SEO ── */
       case 4: {
-        listing.seo = {
-          title: req.body.seo_title || null,
-          description: req.body.seo_description || null,
-        };
+        if (req.body.plan_id) {
+          if (listing.stepCompleted < 3) {
+            return errorData(res, 400, false, "Please complete all previous steps before publishing");
+          }
+          listing.plan = req.body.plan_id || null;
+          listing.isPublished = true;
+          listing.status = "pending";
+        } else {
+          listing.seo = {
+            title: req.body.seo_title || null,
+            description: req.body.seo_description || null,
+          };
+        }
         break;
       }
 
       /* ── STEP 5 – PLAN & PUBLISH ── */
       case 5: {
-        if (listing.stepCompleted < 4) {
+        if (listing.stepCompleted < 3) {
           return errorData(
             res,
             400,
@@ -1260,7 +1295,7 @@ export const getAdminCompletedListings = async (req, res) => {
 
     const filter = {
       isDeleted: false,
-      stepCompleted: 5,
+      $or: [{ isPublished: true }, { stepCompleted: { $gte: 4 } }],
     };
 
     if (req.query.status) filter.status = req.query.status;

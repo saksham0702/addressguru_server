@@ -1,3 +1,4 @@
+import { autoGenerateSeo } from "../utils/seoGenerator.js";
 import MarketplaceListing from "../model/marketplaceListingSchema.js";
 import AdditionalField from "../model/additionalFieldSchema.js";
 import Category from "../model/categoriesSchema.js";
@@ -123,6 +124,10 @@ export const createMarketplaceListing = async (req, res) => {
       isPublished: false,
       isSold: false,
       createdBy: req.user?.id || null,
+      seo: {
+        title: req.body.seo_title?.trim() || title,
+        description: req.body.seo_description?.trim() || null,
+      },
     });
 
     // Update User statistics
@@ -280,7 +285,7 @@ export const updateMarketplaceListingStep = async (req, res) => {
         break;
       }
 
-      /* ── STEP 3 – CONTACT DETAILS ── */
+      /* ── STEP 3 – CONTACT & SOCIAL DETAILS (COMBINED) ── */
       case 3: {
         listing.contactPersonName = req.body.name || null;
         listing.email = req.body.email || null;
@@ -297,21 +302,53 @@ export const updateMarketplaceListingStep = async (req, res) => {
         listing.locality = req.body.locality || null;
         listing.address = req.body.address || null;
         listing.city = req.body.city_id || null;
+
+        // Social Links
+        if (req.body.websiteLink !== undefined) listing.websiteLink = req.body.websiteLink || null;
+        if (req.body.videoLink !== undefined) listing.videoLink = req.body.videoLink || null;
+        listing.socialLinks = {
+          facebook: req.body.facebook || null,
+          instagram: req.body.instagram || null,
+          twitter: req.body.twitter || null,
+          linkedin: req.body.linkedin || null,
+          youtube: req.body.youtube || null,
+        };
+
+        // Auto generate SEO metadata for marketplace: "{title} available in {locality}, {cityName}."
+        const generatedSeo = await autoGenerateSeo({
+          type: "marketplace",
+          title: listing.title,
+          description: listing.description,
+          categoryId: listing.category,
+          cityId: listing.city,
+          locality: listing.locality,
+          existingSeo: listing.seo,
+        });
+        listing.seo = generatedSeo;
         break;
       }
 
-      /* ── STEP 4 – SEO ── */
+      /* ── STEP 4 – PLAN & PUBLISH (NEW) OR LEGACY SEO ── */
       case 4: {
-        listing.seo = {
-          title: req.body.seo_title || null,
-          description: req.body.seo_description || null,
-        };
+        if (req.body.plan_id) {
+          if (listing.stepCompleted < 3) {
+            return errorData(res, 400, false, "Please complete all previous steps before publishing");
+          }
+          listing.plan = req.body.plan_id || null;
+          listing.isPublished = true;
+          listing.status = "pending";
+        } else {
+          listing.seo = {
+            title: req.body.seo_title || null,
+            description: req.body.seo_description || null,
+          };
+        }
         break;
       }
 
       /* ── STEP 5 – PLAN & PUBLISH ── */
       case 5: {
-        if (listing.stepCompleted < 4) {
+        if (listing.stepCompleted < 3) {
           return errorData(
             res,
             400,

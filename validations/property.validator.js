@@ -1,4 +1,4 @@
-// ─── validations/property.validator.js ───────────────────────────────────────
+// ─── validations/property.validator.js ────────────────────────────────────────
 import Joi from "joi";
 
 const propertyStepSchema = {
@@ -12,13 +12,24 @@ const propertyStepSchema = {
     }),
 
     sub_category_id: Joi.string().allow("", null).optional(),
-    
-    soldBy: Joi.string().valid("broker", "agency", "owner").required().messages({
-      "any.required": "Please specify who is selling/renting the property",
-      "any.only": "Sold By must be one of: broker, agency, owner",
+
+    purpose: Joi.string().required().messages({
+      "any.required": "Purpose is required",
+      "string.empty": "Purpose is required",
+    }),
+
+    sold_by: Joi.string().required().messages({
+      "any.required": "Sold by is required",
+      "string.empty": "Sold by is required",
     }),
 
     cae_number: Joi.string().allow("", null).optional(),
+
+    available_from: Joi.date().iso().required().messages({
+      "any.required": "Available from date is required",
+      "date.base": "Available from must be a valid date",
+      "date.format": "Available from must be in ISO format",
+    }),
 
     title: Joi.string().min(5).max(60).required().messages({
       "any.required": "Title is required",
@@ -27,76 +38,52 @@ const propertyStepSchema = {
       "string.max": "Title must not exceed 60 characters",
     }),
 
-    description: Joi.string().min(10).max(1500).required().messages({
+    description: Joi.string().min(200).max(1500).required().messages({
       "any.required": "Description is required",
       "string.empty": "Description is required",
-      "string.min": "Description must be at least 10 characters",
+      "string.min": "Description must be at least 200 characters",
       "string.max": "Description must not exceed 1500 characters",
     }),
 
-    purpose: Joi.string().valid("sale", "rent", "lease").required().messages({
-      "any.required": "Purpose is required",
-      "string.empty": "Purpose is required",
-      "any.only": "Purpose must be one of: sale, rent, lease",
+    area_size: Joi.number().positive().required().messages({
+      "any.required": "Area size is required",
+      "number.base": "Area size must be a number",
+      "number.positive": "Area size must be greater than 0",
     }),
 
-    price_amount: Joi.number().min(0).allow(null).optional(),
-
+    area_unit: Joi.string().default("sqft").optional(),
+    currency: Joi.string().default("AED").optional(),
     price_currency: Joi.string().default("AED").optional(),
-
+    price_amount: Joi.number().min(0).allow(null).optional(),
+    price_period: Joi.string().allow("", null).optional(),
     price_negotiable: Joi.boolean().default(false).optional(),
+    price_fixed: Joi.boolean().default(false).optional(),
+    price_free: Joi.boolean().default(false).optional(),
 
-    price_period: Joi.string()
-      .valid("monthly", "yearly", "weekly", "one-time")
-      .default("one-time")
-      .optional()
-      .messages({
-        "any.only":
-          "Price period must be one of: monthly, yearly, weekly, one-time",
-      }),
-
-    area_size: Joi.number().min(0).allow(null).optional(),
-
-    area_unit: Joi.string()
-      .valid("sqft", "sqm")
-      .default("sqft")
-      .optional()
-      .messages({
-        "any.only": "Area unit must be one of: sqft, sqm",
-      }),
-
-    payments: Joi.alternatives()
-      .try(Joi.array().items(Joi.string()), Joi.string())
-      .optional()
-      .default([]),
-
-    // Client sends only field_id + value
     additional_fields: Joi.alternatives()
       .try(
         Joi.array().items(
           Joi.object({
-            field_id: Joi.string().required().messages({
-              "any.required": "field_id is required in additional fields",
-              "string.empty": "field_id must not be empty",
-            }),
+            field_id: Joi.string().required(),
             value: Joi.any().allow(null).optional(),
           }),
         ),
-        Joi.string(), // allow JSON stringified array from formdata
+        Joi.string(),
       )
       .optional()
       .default([]),
+
+    seo_title: Joi.string().allow("", null).optional(),
+    seo_description: Joi.string().allow("", null).optional(),
   }).options({ allowUnknown: true }),
 
   /* =========================
      STEP 2 – IMAGES
-     Multer handles files,
-     no body fields expected
   ========================= */
   2: Joi.object({}).options({ allowUnknown: true }),
 
   /* =========================
-     STEP 3 – CONTACT DETAILS
+     STEP 3 – CONTACT & SOCIAL
   ========================= */
   3: Joi.object({
     name: Joi.string().min(2).max(50).required().messages({
@@ -111,66 +98,48 @@ const propertyStepSchema = {
     }),
 
     country_code: Joi.string().allow("", null).optional(),
-
     mobile_number: Joi.string().required().messages({
       "any.required": "Mobile number is required",
       "string.empty": "Mobile number is required",
     }),
-
     alt_country_code: Joi.string().allow("", null).optional(),
-
     second_mobile_number: Joi.string().allow("", null).optional(),
-
     city_id: Joi.string().required().messages({
       "any.required": "City is required",
       "string.empty": "City is required",
     }),
-
     address: Joi.string().required().messages({
       "any.required": "Address is required",
       "string.empty": "Address is required",
     }),
-
     locality: Joi.string().allow("", null).optional(),
+    map_lat: Joi.number().min(-90).max(90).allow(null).optional(),
+    map_lng: Joi.number().min(-180).max(180).allow(null).optional(),
 
-    map_lat: Joi.number().min(-90).max(90).allow(null).optional().messages({
-      "number.min": "Latitude must be between -90 and 90",
-      "number.max": "Latitude must be between -90 and 90",
-    }),
-
-    map_lng: Joi.number().min(-180).max(180).allow(null).optional().messages({
-      "number.min": "Longitude must be between -180 and 180",
-      "number.max": "Longitude must be between -180 and 180",
-    }),
+    // Social Links
+    websiteLink: Joi.string().uri().allow("", null).optional(),
+    videoLink: Joi.string().uri().allow("", null).optional(),
+    facebook: Joi.string().uri().allow("", null).optional(),
+    instagram: Joi.string().uri().allow("", null).optional(),
+    twitter: Joi.string().uri().allow("", null).optional(),
+    linkedin: Joi.string().uri().allow("", null).optional(),
+    youtube: Joi.string().uri().allow("", null).optional(),
   }).options({ allowUnknown: true }),
 
   /* =========================
-     STEP 4 – SEO
+     STEP 4 – PLAN (NEW) OR LEGACY SEO
   ========================= */
   4: Joi.object({
-    seo_title: Joi.string().min(3).max(100).required().messages({
-      "any.required": "SEO title is required",
-      "string.empty": "SEO title is required",
-      "string.min": "SEO title must be at least 3 characters",
-      "string.max": "SEO title must not exceed 100 characters",
-    }),
-
-    seo_description: Joi.string().min(10).max(300).required().messages({
-      "any.required": "SEO description is required",
-      "string.empty": "SEO description is required",
-      "string.min": "SEO description must be at least 10 characters",
-      "string.max": "SEO description must not exceed 300 characters",
-    }),
+    plan_id: Joi.string().allow("", null).optional(),
+    seo_title: Joi.string().allow("", null).optional(),
+    seo_description: Joi.string().allow("", null).optional(),
   }).options({ allowUnknown: true }),
 
   /* =========================
-     STEP 5 – PLAN & PUBLISH
+     STEP 5 – LEGACY PLAN
   ========================= */
   5: Joi.object({
-    plan_id: Joi.string().required().messages({
-      "any.required": "Plan is required",
-      "string.empty": "Plan is required",
-    }),
+    plan_id: Joi.string().allow("", null).optional(),
   }).options({ allowUnknown: true }),
 };
 
