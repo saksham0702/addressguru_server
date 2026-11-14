@@ -1,3 +1,4 @@
+import mongoose from "mongoose";
 import { autoGenerateSeo } from "../utils/seoGenerator.js";
 import MarketplaceListing from "../model/marketplaceListingSchema.js";
 import AdditionalField from "../model/additionalFieldSchema.js";
@@ -64,6 +65,7 @@ export const createMarketplaceListing = async (req, res) => {
       description,
       condition,
       price_amount,
+      price_type,
       price_currency = "AED",
       price_negotiable = false,
       price_fixed = false,
@@ -113,9 +115,18 @@ export const createMarketplaceListing = async (req, res) => {
       price: {
         amount: price_amount || null,
         currency: price_currency,
-        isNegotiable: price_negotiable,
-        isFixed: price_fixed,
-        isFree: price_free,
+        isNegotiable: Boolean(price_negotiable),
+        isFixed: Boolean(price_fixed),
+        isFree: Boolean(price_free),
+        priceType:
+          price_type ||
+          (price_free
+            ? "free"
+            : price_negotiable
+              ? "contact_for_price"
+              : price_amount != null
+                ? "amount"
+                : "contact_for_price"),
       },
       additionalFields: validated,
       slug,
@@ -191,6 +202,7 @@ export const updateMarketplaceListingStep = async (req, res) => {
           description,
           condition,
           price_amount,
+          price_type,
           price_currency = "AED",
           price_negotiable,
           price_fixed,
@@ -244,9 +256,18 @@ export const updateMarketplaceListingStep = async (req, res) => {
         listing.price = {
           amount: price_amount || null,
           currency: price_currency,
-          isNegotiable: price_negotiable || false,
-          isFixed: price_fixed || false,
-          isFree: price_free || false,
+          isNegotiable: Boolean(price_negotiable),
+          isFixed: Boolean(price_fixed),
+          isFree: Boolean(price_free),
+          priceType:
+            price_type ||
+            (price_free
+              ? "free"
+              : price_negotiable
+                ? "contact_for_price"
+                : price_amount != null
+                  ? "amount"
+                  : "contact_for_price"),
         };
         listing.additionalFields = validated;
         break;
@@ -542,7 +563,7 @@ export const getMarketplaceListingBySlug = async (req, res) => {
     const { slug } = req.params;
     if (!slug) return errorData(res, 400, false, "Slug is required");
 
-    const listing = await MarketplaceListing.findOne({
+    let listing = await MarketplaceListing.findOne({
       slug,
       isDeleted: false,
     })
@@ -551,6 +572,31 @@ export const getMarketplaceListingBySlug = async (req, res) => {
       .populate("city", "name")
       .populate("additionalFields.field_id", "field_label field_type")
       .lean();
+
+    if (!listing && mongoose.Types.ObjectId.isValid(slug)) {
+      listing = await MarketplaceListing.findOne({
+        _id: slug,
+        isDeleted: false,
+      })
+        .populate("category", "name")
+        .populate("subCategory", "name")
+        .populate("city", "name")
+        .populate("additionalFields.field_id", "field_label field_type")
+        .lean();
+    }
+
+    if (!listing && typeof slug === "string" && slug.length >= 10) {
+      const prefix = slug.slice(0, 35);
+      listing = await MarketplaceListing.findOne({
+        slug: { $regex: `^${prefix}`, $options: "i" },
+        isDeleted: false,
+      })
+        .populate("category", "name")
+        .populate("subCategory", "name")
+        .populate("city", "name")
+        .populate("additionalFields.field_id", "field_label field_type")
+        .lean();
+    }
 
     if (!listing) return errorData(res, 404, false, "Listing not found");
 

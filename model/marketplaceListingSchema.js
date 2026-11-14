@@ -36,6 +36,7 @@ const marketplaceListingSchema = new mongoose.Schema(
       isNegotiable: { type: Boolean, default: false },
       isFixed: { type: Boolean, default: false },
       isFree: { type: Boolean, default: false },
+      priceType: { type: String, default: "amount" },
     },
 
     // Dynamic fields per category
