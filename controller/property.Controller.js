@@ -88,7 +88,8 @@ export const createPropertyListing = async (req, res) => {
       price_amount,
       price_currency = "AED",
       price_negotiable = false,
-      price_period = "one-time",
+      price_period,
+      period,
       area_size,
       area_unit = "sqft",
       cae_number,
@@ -131,7 +132,7 @@ export const createPropertyListing = async (req, res) => {
 
     // Normalize price period
     const validPeriods = ["monthly", "yearly", "weekly", "one-time"];
-    let cleanPeriod = String(price_period || "one-time")
+    let cleanPeriod = String(price_period || period || (cleanPurpose === "sale" ? "one-time" : "yearly"))
       .toLowerCase()
       .trim();
     if (!validPeriods.includes(cleanPeriod)) {
@@ -276,7 +277,8 @@ export const updatePropertyListingStep = async (req, res) => {
           price_amount,
           price_currency = "AED",
           price_negotiable = false,
-          price_period = "one-time",
+          price_period,
+          period,
           area_size,
           area_unit = "sqft",
           cae_number,
@@ -359,7 +361,7 @@ export const updatePropertyListingStep = async (req, res) => {
 
         const validPeriods = ["monthly", "yearly", "weekly", "one-time"];
         let cleanPeriod = String(
-          price_period || listing.price?.period || "one-time",
+          price_period || period || listing.price?.period || (listing.purpose === "sale" ? "one-time" : "yearly"),
         )
           .toLowerCase()
           .trim();

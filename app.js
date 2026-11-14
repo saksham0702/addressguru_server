@@ -65,6 +65,7 @@ import "./modules/whatsapp/whatsapEventhandler.js"; // registers business-event 
 import whatsappTemplateRouter from "./modules/whatsapp-template/whatsappTemplate.router.js";
 import whatsappBulkRouter from "./modules/whatsapp-bulk/whatsappBulk.router.js";
 import websiteAuditRouter from "./modules/website-audit/websiteAudit.router.js";
+import contactUsRouter from "./routes/contactUs.Router.js";
 
 var app = express();
 
@@ -251,6 +252,7 @@ app.use("/ai-search", aiSearchRouter);
 app.use("/flash-deals", flashDealRoutes);
 app.use("/admin-notifications", adminNotificationRouter);
 app.use("/website-audit", websiteAuditRouter);
+app.use("/contact-us", contactUsRouter);
 // app.use("/gbp-tracker", gbpTrackerRoutes);
 
 // Silence disabled socket.io client polling/connection requests

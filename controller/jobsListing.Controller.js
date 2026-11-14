@@ -431,12 +431,12 @@ export const saveJobStep = async (req, res) => {
 
     await job.save();
 
-    // Return showThankYou flag for step 2 so frontend can show the popup
+    // Return showThankYou flag for step 3 so frontend can show the popup after plan/payment
     const responseData = {
       id: job._id,
       slug: job.slug,
     };
-    if (step === 2) {
+    if (step === 3) {
       responseData.showThankYou = true;
     }
 
