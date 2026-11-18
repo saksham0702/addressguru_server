@@ -455,6 +455,9 @@ export const updatePropertyListingStep = async (req, res) => {
         };
 
         // Social Links
+        if (req.body.hasWebsite !== undefined) {
+          listing.hasWebsite = req.body.hasWebsite === "true" || req.body.hasWebsite === true;
+        }
         if (req.body.websiteLink !== undefined) listing.websiteLink = req.body.websiteLink || null;
         if (req.body.videoLink !== undefined) listing.videoLink = req.body.videoLink || null;
         listing.socialLinks = {

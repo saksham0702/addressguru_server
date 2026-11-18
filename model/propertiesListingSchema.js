@@ -103,6 +103,7 @@ const propertyListingSchema = new mongoose.Schema(
       mapLng: { type: Number },
     },
 
+    hasWebsite: { type: Boolean, default: null },
     websiteLink: { type: String, default: null },
     videoLink: { type: String, default: null },
     socialLinks: {

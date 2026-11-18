@@ -367,6 +367,9 @@ export const updateListingStep = async (req, res) => {
 
       /* ── STEP 2 – CONTACT & SOCIAL DETAILS (COMBINED) ── */
       case 2: {
+        if (req.body.hasWebsite !== undefined) {
+          listing.hasWebsite = req.body.hasWebsite === "true" || req.body.hasWebsite === true;
+        }
         if (req.body.websiteLink !== undefined) listing.websiteLink = req.body.websiteLink || null;
         if (req.body.videoLink !== undefined) listing.videoLink = req.body.videoLink || null;
         listing.socialLinks = {

@@ -58,6 +58,7 @@ const marketplaceListingSchema = new mongoose.Schema(
     locality: { type: String },
     address: { type: String },
     city: { type: mongoose.Schema.Types.ObjectId, ref: "City" },
+    hasWebsite: { type: Boolean, default: null },
     websiteLink: { type: String, default: null },
     videoLink: { type: String, default: null },
     socialLinks: {
