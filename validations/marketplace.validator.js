@@ -31,7 +31,7 @@ const marketplaceStepSchema = {
       "string.empty": "Condition is required",
     }),
 
-    price_amount: Joi.number().min(0).allow(null).optional(),
+    price_amount: Joi.number().min(0).allow(null, "").empty("").optional(),
     price_type: Joi.string().allow("", null).optional(),
     price_currency: Joi.string().default("AED").optional(),
     price_negotiable: Joi.boolean().default(false).optional(),

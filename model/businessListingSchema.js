@@ -58,6 +58,7 @@ const businessListingSchema = new mongoose.Schema(
     workingHours: { type: Object, default: null },
 
     /* STEP 2 – SOCIAL LINKS */
+    hasWebsite: { type: Boolean, default: null },
     websiteLink: { type: String, default: null },
     videoLink: { type: String, default: null },
     socialLinks: {
