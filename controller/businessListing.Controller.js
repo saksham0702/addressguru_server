@@ -265,16 +265,35 @@ export const updateListingStep = async (req, res) => {
   try {
     const { slug, step } = req.params;
 
-    const listing = await BusinessListing.findOne({ slug, isDeleted: false });
+    const user = req.user?.id
+      ? await User.findById(req.user.id).select("roles role").lean()
+      : null;
+    const userRoles = Array.isArray(user?.roles)
+      ? user.roles.map(Number)
+      : user?.role
+        ? [Number(user.role)]
+        : Array.isArray(req.user?.roles)
+          ? req.user.roles.map(Number)
+          : req.user?.role
+            ? [Number(req.user.role)]
+            : [];
+    const isAdminOrEditor = userRoles.some((r) => [1, 2].includes(r));
+
+    const isObjectId = mongoose.Types.ObjectId.isValid(slug);
+    const filter = {
+      ...(isObjectId ? { $or: [{ slug }, { _id: slug }] } : { slug }),
+      ...(!isAdminOrEditor ? { isDeleted: false } : {}),
+    };
+
+    const listing = await BusinessListing.findOne(filter);
     if (!listing) return errorData(res, 404, false, "Listing not found");
-    const user = await User.findById(req.user.id);
-    const userRole = user.roles.includes(1);
+
     // ── Ownership check ──
     if (
       listing.createdBy &&
       req.user?.id &&
       listing.createdBy.toString() !== req.user.id.toString() &&
-      !userRole
+      !isAdminOrEditor
     ) {
       return errorData(
         res,
@@ -632,21 +651,38 @@ export const upsertAdditionalFields = async (req, res) => {
     const { listingId } = req.params;
     const { additional_fields = [], category_id } = req.body;
 
+    const user = req.user?.id
+      ? await User.findById(req.user.id).select("roles role").lean()
+      : null;
+    const userRoles = Array.isArray(user?.roles)
+      ? user.roles.map(Number)
+      : user?.role
+        ? [Number(user.role)]
+        : Array.isArray(req.user?.roles)
+          ? req.user.roles.map(Number)
+          : [];
+    const isAdminOrEditor = userRoles.some((r) => [1, 2].includes(r));
+
+    const isObjectId = mongoose.Types.ObjectId.isValid(listingId);
+    const filter = {
+      ...(isObjectId
+        ? { $or: [{ _id: listingId }, { slug: listingId }] }
+        : { slug: listingId }),
+      ...(!isAdminOrEditor ? { isDeleted: false } : {}),
+    };
+
     // ── Find listing ──
-    const listing = await BusinessListing.findOne({
-      _id: listingId,
-      isDeleted: false,
-    });
+    const listing = await BusinessListing.findOne(filter);
 
     if (!listing) {
       return errorData(res, 404, false, "Listing not found");
     }
 
     // ── Ownership check ──
-    const user = await User.findById(req.user.id);
-    const isAdmin = user?.roles?.includes(1);
-
-    if (listing.createdBy?.toString() !== req.user.id.toString() && !isAdmin) {
+    if (
+      listing.createdBy?.toString() !== req.user.id.toString() &&
+      !isAdminOrEditor
+    ) {
       return errorData(res, 403, false, "Forbidden");
     }
 
@@ -1517,10 +1553,41 @@ export const getListingBySlug = async (req, res) => {
     const { slug } = req.params;
     if (!slug) return errorData(res, 400, false, "Listing slug is required");
 
-    const listing = await BusinessListing.findOne({
-      slug,
-      isDeleted: false,
-    })
+    // Check if requester is Admin (role 1) or Editor (role 2)
+    let isAdminOrEditor = false;
+    const userRole = req.user?.role;
+    const userRoles = Array.isArray(req.user?.roles)
+      ? req.user.roles.map(Number)
+      : userRole
+        ? [Number(userRole)]
+        : [];
+    if (userRoles.some((r) => [1, 2].includes(r))) {
+      isAdminOrEditor = true;
+    } else if (req.user?.id || req.user?._id) {
+      try {
+        const dbUser = await User.findById(req.user.id || req.user._id)
+          .select("roles role")
+          .lean();
+        const dbRoles = Array.isArray(dbUser?.roles)
+          ? dbUser.roles.map(Number)
+          : dbUser?.role
+            ? [Number(dbUser.role)]
+            : [];
+        if (dbRoles.some((r) => [1, 2].includes(r))) {
+          isAdminOrEditor = true;
+        }
+      } catch (e) {
+        // Continue
+      }
+    }
+
+    const isObjectId = mongoose.Types.ObjectId.isValid(slug);
+    const filter = {
+      ...(isObjectId ? { $or: [{ slug }, { _id: slug }] } : { slug }),
+      ...(!isAdminOrEditor ? { isDeleted: false } : {}),
+    };
+
+    const listing = await BusinessListing.findOne(filter)
       .populate(
         "category",
         "name iconSvg slug seo imageLayout ctaButtonText enableBookingRooms",
