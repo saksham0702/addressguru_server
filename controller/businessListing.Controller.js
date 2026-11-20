@@ -1397,7 +1397,7 @@ export const getListingsByCategoryAndCity = async (req, res) => {
         .populate("services", "name iconSvg")
         .populate("courses", "name iconSvg")
         .populate("paymentModes", "name _id")
-        .populate("plan", "flags") // ✅ NEW — only pull the flags, nothing else
+        .populate("plan", "flags name slug theme planCode") // ✅ flags + plan identification for isTrusted
         .sort({
           plan: -1,
           ...sortOption,
@@ -1493,9 +1493,18 @@ export const getListingsByCategoryAndCity = async (req, res) => {
       l.views = s.view || 0;
 
       // ── PLAN-BASED GATING (same rule as single-listing controller) ──────
-      const planFlags = l.plan?.flags || {};
-      l.canEnquire = !!planFlags.leadEnquiryForm;
-      l.isTrusted = !!planFlags.highlightBadge; // true only on Premium tier
+      const plan = l.plan || {};
+      const planFlags = plan.flags || {};
+      const isTopPlan =
+        !!planFlags.highlightBadge ||
+        plan.theme === "gold" ||
+        plan.slug === "premium-plan" ||
+        plan.slug === "featured" ||
+        plan.planCode === "F_PLAN" ||
+        (typeof plan.name === "string" && /premium|featured/i.test(plan.name));
+
+      l.canEnquire = planFlags.leadEnquiryForm !== undefined ? !!planFlags.leadEnquiryForm : true;
+      l.isTrusted = isTopPlan; // true only on top plan (Premium tier)
       delete l.plan; // don't leak raw plan/flags to the client
 
       // Starting price from rooms or additionalFields
@@ -1602,7 +1611,7 @@ export const getListingBySlug = async (req, res) => {
       .populate("services", "name iconSvg")
       .populate("paymentModes", "name iconSvg")
       .populate("courses", "name iconSvg")
-      .populate("plan", "flags") // ✅ same rule as search controller
+      .populate("plan", "flags name slug theme planCode") // ✅ flags + plan identification for isTrusted
       .lean();
 
     if (!listing) return errorData(res, 404, false, "Listing not found");
@@ -1657,19 +1666,28 @@ export const getListingBySlug = async (req, res) => {
     }
 
     // ── PLAN-BASED FEATURE GATING ──────────────────────────────────────────
-    const planFlags = listing.plan?.flags || {};
+    const plan = listing.plan || {};
+    const planFlags = plan.flags || {};
+    const isTopPlan =
+      !!planFlags.highlightBadge ||
+      plan.theme === "gold" ||
+      plan.slug === "premium-plan" ||
+      plan.slug === "featured" ||
+      plan.planCode === "F_PLAN" ||
+      (typeof plan.name === "string" && /premium|featured/i.test(plan.name));
+
     const isLoggedIn = !!(req.user?.id || req.user?._id);
 
     if (!isLoggedIn) {
-      if (!planFlags.websiteLinkAllowed) {
+      if (planFlags.websiteLinkAllowed === false) {
         listing.websiteLink = null;
       }
-      listing.canEnquire = !!planFlags.leadEnquiryForm;
-      listing.isTrusted = !!planFlags.highlightBadge;
+      listing.canEnquire = planFlags.leadEnquiryForm !== undefined ? !!planFlags.leadEnquiryForm : true;
+      listing.isTrusted = isTopPlan;
     } else {
       // Authenticated user (owner / dashboard edit / admin / logged-in user): return full data
       listing.canEnquire = true;
-      listing.isTrusted = !!planFlags.highlightBadge;
+      listing.isTrusted = isTopPlan;
     }
 
     delete listing.plan;
