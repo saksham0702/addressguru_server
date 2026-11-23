@@ -9,9 +9,13 @@ export const generateEmbeddingForListing = async (listingId) => {
   const text = await buildEmbeddingText(listing);
   const vector = await embedText(text);
 
-  await BusinessListing.findByIdAndUpdate(listingId, {
-    $set: { aiEmbedding: vector, aiEmbeddingUpdatedAt: new Date() },
-  });
+  await BusinessListing.findByIdAndUpdate(
+    listingId,
+    {
+      $set: { aiEmbedding: vector, aiEmbeddingUpdatedAt: new Date() },
+    },
+    { timestamps: false }
+  );
 
   return vector;
 };
