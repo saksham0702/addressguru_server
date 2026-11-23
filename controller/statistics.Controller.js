@@ -54,25 +54,33 @@ export const trackEvent = async (req, res) => {
       userAgent: req.headers["user-agent"],
     });
 
-    // Increment listing counters
+    // Increment listing counters (without updating listing updatedAt timestamp)
     try {
       if (eventType === "view") {
-        await listing.constructor.findByIdAndUpdate(listingId, {
-          $inc: { views: 1 },
-        });
+        await listing.constructor.findByIdAndUpdate(
+          listingId,
+          { $inc: { views: 1 } },
+          { timestamps: false }
+        );
       } else if (listingModel === "Job") {
         if (eventType === "impression") {
-          await listing.constructor.findByIdAndUpdate(listingId, {
-            $inc: { impressions: 1 },
-          });
+          await listing.constructor.findByIdAndUpdate(
+            listingId,
+            { $inc: { impressions: 1 } },
+            { timestamps: false }
+          );
         } else if (eventType === "click") {
-          await listing.constructor.findByIdAndUpdate(listingId, {
-            $inc: { clicks: 1 },
-          });
+          await listing.constructor.findByIdAndUpdate(
+            listingId,
+            { $inc: { clicks: 1 } },
+            { timestamps: false }
+          );
         } else if (eventType === "application_click") {
-          await listing.constructor.findByIdAndUpdate(listingId, {
-            $inc: { applicationClicks: 1 },
-          });
+          await listing.constructor.findByIdAndUpdate(
+            listingId,
+            { $inc: { applicationClicks: 1 } },
+            { timestamps: false }
+          );
         }
       }
     } catch (countErr) {
@@ -90,7 +98,11 @@ export const trackEvent = async (req, res) => {
             : null;
 
     if (updateField && ownerId) {
-      await User.findByIdAndUpdate(ownerId, { $inc: { [updateField]: 1 } });
+      await User.findByIdAndUpdate(
+        ownerId,
+        { $inc: { [updateField]: 1 } },
+        { timestamps: false }
+      );
     }
 
     return successData(res, 200, true, "Event tracked successfully");

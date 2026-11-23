@@ -315,7 +315,11 @@ export const getBlogBySlug = async (req, res) => {
       return errorData(res, 404, false, "Blog not found");
     }
 
-    Blog.findByIdAndUpdate(blog._id, { $inc: { views: 1 } }).exec();
+    Blog.findByIdAndUpdate(
+      blog._id,
+      { $inc: { views: 1 } },
+      { timestamps: false }
+    ).exec();
 
     return successData(
       res,
