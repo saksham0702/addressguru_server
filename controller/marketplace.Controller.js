@@ -12,6 +12,14 @@ import googleIndexingService from "../services/googleIndexing.service.js";
 import { APP_BASE_URL } from "../services/constant.js";
 import { sendPushNotification } from "../services/notification.service.js";
 import { sendTextMessage, sendMediaMessage } from "../modules/whatsapp/services/whatsappMessage.js";
+import {
+  buildCaseInsensitiveExactRegex,
+  buildFormUpdatedMeta,
+  generateUniqueSlug,
+  handleListingControllerError,
+  resolveActorMeta,
+  sendStructuredError,
+} from "../utils/listingFormHelper.js";
 
 // ─── Helper: validate additional fields ──────────────────────────────────────
 const validateAdditionalFields = async (additionalFields = []) => {
@@ -104,12 +112,33 @@ export const createMarketplaceListing = async (req, res) => {
     if (errors.length)
       return errorData(res, 400, false, "Validation failed", { errors });
 
-    const slug = `${slugify(title, { lower: true, strict: true })}`;
+    const cleanTitle = String(title || "").trim();
+    const existingListing = await MarketplaceListing.findOne({
+      title: buildCaseInsensitiveExactRegex(cleanTitle),
+      isDeleted: false,
+    })
+      .select("_id")
+      .lean();
+    if (existingListing) {
+      return sendStructuredError(
+        res,
+        409,
+        "Listing of this name already exists",
+        { title: "Listing of this name already exists" },
+      );
+    }
+
+    const slug = await generateUniqueSlug(
+      MarketplaceListing,
+      cleanTitle,
+      null,
+      "marketplace",
+    );
 
     const listing = await MarketplaceListing.create({
       category: category_id,
       subCategory: sub_category_id || null,
-      title,
+      title: cleanTitle,
       description,
       condition,
       price: {
@@ -158,8 +187,15 @@ export const createMarketplaceListing = async (req, res) => {
       slug: listing.slug,
     });
   } catch (error) {
-    console.warn("Create marketplace listing error:", error);
-    return errorData(res, 500, false, "Internal server error");
+    return handleListingControllerError(
+      res,
+      error,
+      "Create marketplace listing",
+      {
+        duplicateField: "title",
+        duplicateMessage: "Listing of this name already exists",
+      },
+    );
   }
 };
 
@@ -175,14 +211,13 @@ export const updateMarketplaceListingStep = async (req, res) => {
     if (!listing) return errorData(res, 404, false, "Listing not found");
 
     // ── Ownership check ──
-    const user = await User.findById(req.user.id);
-    const userRole = user.roles.includes(1);
+    const actor = await resolveActorMeta(req.user);
 
     if (
       listing.createdBy &&
       req.user?.id &&
       listing.createdBy.toString() !== req.user.id.toString() &&
-      !userRole // ← admin bypass added
+      !actor.isAdminOrEditor
     ) {
       return errorData(
         res,
@@ -244,9 +279,33 @@ export const updateMarketplaceListingStep = async (req, res) => {
         if (errors.length)
           return errorData(res, 400, false, "Validation failed", { errors });
 
-        if (title && title !== listing.title) {
-          listing.title = title;
-          listing.slug = `${slugify(title, { lower: true, strict: true })}`;
+        if (title !== undefined) {
+          const cleanTitle = String(title).trim();
+          const duplicateListing = await MarketplaceListing.findOne({
+            title: buildCaseInsensitiveExactRegex(cleanTitle),
+            isDeleted: false,
+            _id: { $ne: listing._id },
+          })
+            .select("_id")
+            .lean();
+          if (duplicateListing) {
+            return sendStructuredError(
+              res,
+              409,
+              "Listing of this name already exists",
+              { title: "Listing of this name already exists" },
+            );
+          }
+
+          if (cleanTitle !== listing.title) {
+            listing.title = cleanTitle;
+            listing.slug = await generateUniqueSlug(
+              MarketplaceListing,
+              cleanTitle,
+              listing._id,
+              "marketplace",
+            );
+          }
         }
 
         if (category_id) listing.category = category_id;
@@ -392,6 +451,7 @@ export const updateMarketplaceListingStep = async (req, res) => {
     }
 
     listing.stepCompleted = Math.max(listing.stepCompleted, Number(step));
+    listing.formUpdated = buildFormUpdatedMeta(actor, "marketplace", step);
     await listing.save();
 
     return successData(res, 200, true, `Step ${step} saved successfully`, {
@@ -400,8 +460,15 @@ export const updateMarketplaceListingStep = async (req, res) => {
       stepCompleted: listing.stepCompleted,
     });
   } catch (error) {
-    console.warn("Update marketplace listing step error:", error);
-    return errorData(res, 500, false, "Internal server error");
+    return handleListingControllerError(
+      res,
+      error,
+      "Update marketplace listing step",
+      {
+        duplicateField: "title",
+        duplicateMessage: "Listing of this name already exists",
+      },
+    );
   }
 };
 
@@ -755,20 +822,21 @@ export const deleteMarketplaceListing = async (req, res) => {
     const { slug } = req.params;
     if (!slug) return errorData(res, 400, false, "Slug is required");
 
+    const isObjectId = /^[0-9a-fA-F]{24}$/.test(slug);
     const listing = await MarketplaceListing.findOne({
-      slug,
+      $or: [isObjectId ? { _id: slug } : null, { slug }].filter(Boolean),
       isDeleted: false,
     });
     if (!listing) return errorData(res, 404, false, "Listing not found");
 
     // Ownership check
-    const user = await User.findById(req.user.id);
-    const isAdmin = user?.roles?.includes(1) || user?.role === 1 || false;
+    const actor = await resolveActorMeta(req.user);
 
     if (
+      !actor.isAdminOrEditor &&
       listing.createdBy &&
-      listing.createdBy.toString() !== req.user.id.toString() &&
-      !isAdmin
+      req.user?.id &&
+      listing.createdBy.toString() !== req.user.id.toString()
     ) {
       return errorData(
         res,

@@ -32,6 +32,14 @@ import {
   sendTextMessage,
   sendMediaMessage,
 } from "../modules/whatsapp/services/whatsappMessage.js";
+import {
+  buildCaseInsensitiveExactRegex,
+  buildFormUpdatedMeta,
+  generateUniqueSlug,
+  handleListingControllerError,
+  resolveActorMeta,
+  sendStructuredError,
+} from "../utils/listingFormHelper.js";
 
 const validateAdditionalFields = async (additionalFields = []) => {
   if (!additionalFields.length) return { errors: [], validated: [] };
@@ -134,6 +142,7 @@ export const createListing = async (req, res) => {
       payments = [],
       hours,
       additional_fields = [],
+      city_id,
     } = req.body;
 
     // Validate category
@@ -154,18 +163,30 @@ export const createListing = async (req, res) => {
         return errorData(res, 404, false, "Sub-category not found");
     }
 
-    // Check duplicate business name (among non-deleted)
-    const existingListing = await BusinessListing.findOne({
-      businessName: business_name,
-      isDeleted: false,
-    });
-    if (existingListing)
-      return errorData(
-        res,
-        400,
-        false,
-        "A listing with this business name already exists",
-      );
+    const cleanName = String(business_name || "").trim();
+
+    // Check duplicate business name ONLY within the same city when city is provided.
+    // Same business name in a different city is allowed (city is selected in Step 2).
+    if (city_id) {
+      const existingListing = await BusinessListing.findOne({
+        businessName: buildCaseInsensitiveExactRegex(cleanName),
+        city: city_id,
+        isDeleted: false,
+      })
+        .select("_id")
+        .lean();
+      if (existingListing) {
+        return sendStructuredError(
+          res,
+          409,
+          "A listing with this business name already exists in this city",
+          {
+            business_name:
+              "A listing with this business name already exists in this city",
+          },
+        );
+      }
+    }
 
     const parsedHours = parseJSON(hours, null);
     const parsedAdditionalFields = parseJSON(additional_fields, []);
@@ -174,22 +195,25 @@ export const createListing = async (req, res) => {
       Array.isArray(parsedAdditionalFields) ? parsedAdditionalFields : [],
     );
 
-    console.log("validated", validated);
-    console.log("errors", errors);
-
     if (errors.length)
       return errorData(res, 400, false, "Validation failed", { errors });
 
-    const slug = `${slugify(business_name, { lower: true, strict: true })}`;
+    const slug = await generateUniqueSlug(
+      BusinessListing,
+      cleanName,
+      null,
+      "business",
+    );
 
     const listing = await BusinessListing.create({
       category: category_id,
       subCategory: sub_category_id || null,
-      businessName: business_name,
+      businessName: cleanName,
       businessAddress: business_address,
       description: ad_description || null,
       establishedYear: establishment_year || null,
       taxNumber: uen_number || null,
+      ...(city_id ? { city: city_id } : {}),
       facilities: toArray(facilities),
       services: toArray(services),
       courses: toArray(courses),
@@ -256,8 +280,11 @@ export const createListing = async (req, res) => {
       slug: listing.slug,
     });
   } catch (error) {
-    console.warn("Create listing error:", error);
-    return errorData(res, 500, false, "Internal server error");
+    return handleListingControllerError(res, error, "Create listing", {
+      duplicateField: "business_name",
+      duplicateMessage:
+        "A listing with this business name already exists in this city",
+    });
   }
 };
 
@@ -265,19 +292,8 @@ export const updateListingStep = async (req, res) => {
   try {
     const { slug, step } = req.params;
 
-    const user = req.user?.id
-      ? await User.findById(req.user.id).select("roles role").lean()
-      : null;
-    const userRoles = Array.isArray(user?.roles)
-      ? user.roles.map(Number)
-      : user?.role
-        ? [Number(user.role)]
-        : Array.isArray(req.user?.roles)
-          ? req.user.roles.map(Number)
-          : req.user?.role
-            ? [Number(req.user.role)]
-            : [];
-    const isAdminOrEditor = userRoles.some((r) => [1, 2].includes(r));
+    const actor = await resolveActorMeta(req.user);
+    const isAdminOrEditor = actor.isAdminOrEditor;
 
     const isObjectId = mongoose.Types.ObjectId.isValid(slug);
     const filter = {
@@ -341,22 +357,40 @@ export const updateListingStep = async (req, res) => {
           if (!subCategory)
             return errorData(res, 404, false, "Sub-category not found");
         }
-        // Check name conflict — exclude current listing
-        if (business_name && business_name !== listing.businessName) {
-          const conflict = await BusinessListing.findOne({
-            businessName: business_name,
-            isDeleted: false,
-            _id: { $ne: listing._id },
-          });
-          if (conflict)
-            return errorData(
-              res,
-              400,
-              false,
-              "A listing with this business name already exists",
+        // Check name conflict within same city (different cities are allowed)
+        if (business_name !== undefined) {
+          const cleanName = String(business_name).trim();
+          const targetCity = req.body.city_id || listing.city;
+          if (targetCity) {
+            const conflict = await BusinessListing.findOne({
+              businessName: buildCaseInsensitiveExactRegex(cleanName),
+              city: targetCity,
+              isDeleted: false,
+              _id: { $ne: listing._id },
+            })
+              .select("_id")
+              .lean();
+            if (conflict) {
+              return sendStructuredError(
+                res,
+                409,
+                "A listing with this business name already exists in this city",
+                {
+                  business_name:
+                    "A listing with this business name already exists in this city",
+                },
+              );
+            }
+          }
+          if (cleanName !== listing.businessName) {
+            listing.businessName = cleanName;
+            listing.slug = await generateUniqueSlug(
+              BusinessListing,
+              cleanName,
+              listing._id,
+              "business",
             );
-          listing.businessName = business_name;
-          listing.slug = `${slugify(business_name, { lower: true, strict: true })}`;
+          }
         }
 
         const parsedHours = parseJSON(hours, null);
@@ -416,7 +450,32 @@ export const updateListingStep = async (req, res) => {
         if (req.body.second_mobile_number !== undefined)
           listing.alternateMobileNumber = req.body.second_mobile_number || null;
         if (req.body.locality !== undefined) listing.locality = req.body.locality || null;
-        if (req.body.city_id !== undefined) listing.city = req.body.city_id || null;
+        if (req.body.city_id !== undefined) {
+          if (req.body.city_id) {
+            const cityConflict = await BusinessListing.findOne({
+              businessName: buildCaseInsensitiveExactRegex(listing.businessName),
+              city: req.body.city_id,
+              isDeleted: false,
+              _id: { $ne: listing._id },
+            })
+              .select("_id")
+              .lean();
+            if (cityConflict) {
+              return sendStructuredError(
+                res,
+                409,
+                "A listing with this business name already exists in this city",
+                {
+                  city_id:
+                    "A listing with this business name already exists in this city",
+                  contactCity:
+                    "A listing with this business name already exists in this city",
+                },
+              );
+            }
+          }
+          listing.city = req.body.city_id || null;
+        }
 
         // Auto generate SEO metadata if needed
         const generatedSeo = await autoGenerateSeo({
@@ -470,6 +529,29 @@ export const updateListingStep = async (req, res) => {
           listing.altCountryCode = normalizeCc(req.body.alt_country_code);
           listing.alternateMobileNumber = req.body.second_mobile_number || null;
           listing.locality = req.body.locality || null;
+          if (req.body.city_id) {
+            const cityConflict = await BusinessListing.findOne({
+              businessName: buildCaseInsensitiveExactRegex(listing.businessName),
+              city: req.body.city_id,
+              isDeleted: false,
+              _id: { $ne: listing._id },
+            })
+              .select("_id")
+              .lean();
+            if (cityConflict) {
+              return sendStructuredError(
+                res,
+                409,
+                "A listing with this business name already exists in this city",
+                {
+                  city_id:
+                    "A listing with this business name already exists in this city",
+                  contactCity:
+                    "A listing with this business name already exists in this city",
+                },
+              );
+            }
+          }
           listing.city = req.body.city_id || null;
         }
         break;
@@ -558,6 +640,7 @@ export const updateListingStep = async (req, res) => {
 
     listing.stepCompleted = Math.max(listing.stepCompleted, Number(step));
     listing.status = "pending";
+    listing.formUpdated = buildFormUpdatedMeta(actor, "business", step);
     await listing.save();
 
     (async () => {
@@ -640,8 +723,11 @@ export const updateListingStep = async (req, res) => {
       stepCompleted: listing.stepCompleted,
     });
   } catch (error) {
-    console.warn("Update listing step error:", error);
-    return errorData(res, 500, false, "Internal server error");
+    return handleListingControllerError(res, error, "Update listing step", {
+      duplicateField: "business_name",
+      duplicateMessage:
+        "A listing with this business name already exists in this city",
+    });
   }
 };
 

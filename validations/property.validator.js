@@ -18,10 +18,12 @@ const propertyStepSchema = {
       "string.empty": "Purpose is required",
     }),
 
-    sold_by: Joi.string().required().messages({
+    sold_by: Joi.string().valid("broker", "agency", "owner").required().messages({
       "any.required": "Sold by is required",
       "string.empty": "Sold by is required",
+      "any.only": "Sold by must be broker, agency, or owner",
     }),
+    soldBy: Joi.string().valid("broker", "agency", "owner").allow("", null).optional(),
 
     cae_number: Joi.string().allow("", null).optional(),
 
@@ -117,13 +119,41 @@ const propertyStepSchema = {
     map_lng: Joi.number().min(-180).max(180).allow(null).optional(),
 
     // Social Links
-    websiteLink: Joi.string().uri().allow("", null).optional(),
-    videoLink: Joi.string().uri().allow("", null).optional(),
-    facebook: Joi.string().uri().allow("", null).optional(),
-    instagram: Joi.string().uri().allow("", null).optional(),
-    twitter: Joi.string().uri().allow("", null).optional(),
-    linkedin: Joi.string().uri().allow("", null).optional(),
-    youtube: Joi.string().uri().allow("", null).optional(),
+    websiteLink: Joi.string()
+      .uri()
+      .allow("", null)
+      .optional()
+      .messages({ "string.uri": "Please enter a valid website URL (including https://)" }),
+    videoLink: Joi.string()
+      .uri()
+      .allow("", null)
+      .optional()
+      .messages({ "string.uri": "Please enter a valid video URL (including https://)" }),
+    facebook: Joi.string()
+      .uri()
+      .allow("", null)
+      .optional()
+      .messages({ "string.uri": "Please enter a valid Facebook URL (including https://)" }),
+    instagram: Joi.string()
+      .uri()
+      .allow("", null)
+      .optional()
+      .messages({ "string.uri": "Please enter a valid Instagram URL (including https://)" }),
+    twitter: Joi.string()
+      .uri()
+      .allow("", null)
+      .optional()
+      .messages({ "string.uri": "Please enter a valid X/Twitter URL (including https://)" }),
+    linkedin: Joi.string()
+      .uri()
+      .allow("", null)
+      .optional()
+      .messages({ "string.uri": "Please enter a valid LinkedIn URL (including https://)" }),
+    youtube: Joi.string()
+      .uri()
+      .allow("", null)
+      .optional()
+      .messages({ "string.uri": "Please enter a valid YouTube URL (including https://)" }),
   }).options({ allowUnknown: true }),
 
   /* =========================

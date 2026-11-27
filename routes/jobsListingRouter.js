@@ -52,7 +52,7 @@ router
 router.get("/get-all-jobs", getAllJobsWithPaginationAndFilters);
 router.get("/get-jobs-by-user", authenticate, getAllJobsByUser);
 router.get("/get-job/:slug", getJobById);
-router.delete("/delete-job/:slug", deleteJob);
+router.delete("/delete-job/:slug", authenticate, deleteJob);
 router.get("/last-company-details", authenticate, getLastJobCompanyDetails);
 
 router.get("/get-listing-by-category-and-city/:category_slug/:city_slug", getJobsByCategoryAndCity);

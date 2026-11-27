@@ -397,7 +397,7 @@ export const createBlog = async (req, res) => {
 
     if (blog.status === "published") {
       googleIndexingService.notify(
-        `${APP_BASE_URL}/blog/${blog.slug}`,
+        `${APP_BASE_URL}/blogs/${blog.slug}`,
         "URL_UPDATED",
       );
     }
@@ -493,13 +493,13 @@ export const updateBlog = async (req, res) => {
 
     if (blog.status === "published") {
       googleIndexingService.notify(
-        `${APP_BASE_URL}/blog/${blog.slug}`,
+        `${APP_BASE_URL}/blogs/${blog.slug}`,
         "URL_UPDATED",
       );
     } else {
       // If it was published before but now draft, notify indexing of removal
       googleIndexingService.notify(
-        `${APP_BASE_URL}/blog/${blog.slug}`,
+        `${APP_BASE_URL}/blogs/${blog.slug}`,
         "URL_DELETED",
       );
     }
@@ -517,7 +517,7 @@ export const deleteBlog = async (req, res) => {
     if (!blog) return errorData(res, 404, false, "Blog not found");
 
     deleteFile(blog.coverImage);
-    const blogUrl = `${APP_BASE_URL}/blog/${blog.slug}`;
+    const blogUrl = `${APP_BASE_URL}/blogs/${blog.slug}`;
     await blog.deleteOne();
 
     googleIndexingService.notify(blogUrl, "URL_DELETED");
@@ -714,7 +714,7 @@ export const reviewBlog = async (req, res) => {
 
     if (blog.status === "published") {
       googleIndexingService.notify(
-        `${APP_BASE_URL}/blog/${blog.slug}`,
+        `${APP_BASE_URL}/blogs/${blog.slug}`,
         "URL_UPDATED",
       );
     }

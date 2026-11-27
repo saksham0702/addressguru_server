@@ -264,6 +264,19 @@ const jobSchema = new mongoose.Schema(
     clicks: { type: Number, default: 0 },
     applications: { type: Number, default: 0 },
     applicationClicks: { type: Number, default: 0 },
+
+    // ─── Form Update Tracking (only set when edited/updated via form steps) ─
+    formUpdated: {
+      at: { type: Date, default: null },
+      step: { type: Number, default: null },
+      stepLabel: { type: String, default: null },
+      updatedBy: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+        default: null,
+      },
+      role: { type: String, default: null },
+    },
   },
   { timestamps: true },
 );

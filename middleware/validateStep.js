@@ -76,15 +76,26 @@ export const validateStep = (schemaMap) => {
     const { error, value } = schemaMap[step].validate(req.body, {
       abortEarly: false,
       stripUnknown: true,
+      convert: true,
     });
 
     if (error) {
       const errors = {};
       error.details.forEach((err) => {
-        const key = err.path[0];
-        errors[key] = err.message;
+        const key =
+          err.path && err.path.length > 0
+            ? err.path.join(".")
+            : err.context?.key || "unknown";
+        if (!errors[key]) errors[key] = err.message;
       });
-      return res.status(400).json({ success: false, errors });
+      const firstMessage = Object.values(errors)[0] || "Validation failed";
+      return res.status(400).json({
+        status: false,
+        success: false,
+        message: firstMessage,
+        errors,
+        data: { errors },
+      });
     }
 
     req.body = value;

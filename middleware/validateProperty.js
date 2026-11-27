@@ -17,6 +17,11 @@ export const validatePropertyStep = (req, res, next) => {
     // so body will be empty; skip deep validation and just pass through
     if (step === 2) return next();
 
+    // Support both soldBy (camelCase) and sold_by (snake_case)
+    if (step === 1 && req.body && !req.body.sold_by && req.body.soldBy) {
+      req.body.sold_by = req.body.soldBy;
+    }
+
     const { error, value } = schema.validate(req.body, {
       abortEarly: false,
       stripUnknown: true, // remove extra fields not in schema

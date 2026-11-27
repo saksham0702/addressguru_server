@@ -33,6 +33,7 @@ const propertyListingSchema = new mongoose.Schema(
       enum: ["broker", "agency", "owner"],
     },
     cae_number: { type: String, default: null },
+    availableFrom: { type: Date, default: null },
 
     /* =========================
        STEP 1 – PROPERTY INFO
@@ -189,6 +190,19 @@ const propertyListingSchema = new mongoose.Schema(
       type: String,
       index: true,
       default: "",
+    },
+
+    // ── Form Update Tracking (only set when edited/updated via form steps) ─
+    formUpdated: {
+      at: { type: Date, default: null },
+      step: { type: Number, default: null },
+      stepLabel: { type: String, default: null },
+      updatedBy: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+        default: null,
+      },
+      role: { type: String, default: null },
     },
 
     /* =========================
