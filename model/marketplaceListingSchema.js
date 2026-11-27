@@ -115,6 +115,19 @@ const marketplaceListingSchema = new mongoose.Schema(
     views: { type: Number, default: 0 },
     createdBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
 
+    // ── Form Update Tracking (only set when edited/updated via form steps) ─
+    formUpdated: {
+      at: { type: Date, default: null },
+      step: { type: Number, default: null },
+      stepLabel: { type: String, default: null },
+      updatedBy: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+        default: null,
+      },
+      role: { type: String, default: null },
+    },
+
     // ── Soft Delete ───────────────────────────────────────────────────────
     isDeleted: { type: Boolean, default: false },
   },

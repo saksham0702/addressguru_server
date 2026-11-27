@@ -206,6 +206,19 @@ const businessListingSchema = new mongoose.Schema(
     },
     aiEmbeddingUpdatedAt: { type: Date, default: null },
 
+    // ── Form Update Tracking (only set when edited/updated via form steps) ─
+    formUpdated: {
+      at: { type: Date, default: null },
+      step: { type: Number, default: null },
+      stepLabel: { type: String, default: null },
+      updatedBy: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+        default: null,
+      },
+      role: { type: String, default: null },
+    },
+
     /* SOFT DELETE */
     isDeleted: { type: Boolean, default: false },
   },

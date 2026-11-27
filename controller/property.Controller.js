@@ -18,6 +18,14 @@ import {
 import CitiesSchema from "../model/CitiesSchema.js";
 import Feature from "../model/featureSchema.js";
 import mongoose from "mongoose";
+import {
+  buildCaseInsensitiveExactRegex,
+  buildFormUpdatedMeta,
+  generateUniqueSlug,
+  handleListingControllerError,
+  resolveActorMeta,
+  sendStructuredError,
+} from "../utils/listingFormHelper.js";
 
 // ─── Helper: validate additional fields ──────────────────────────────────────
 const validateAdditionalFields = async (additionalFields = []) => {
@@ -82,9 +90,11 @@ export const createPropertyListing = async (req, res) => {
       category_id,
       sub_category_id,
       soldBy,
+      sold_by,
       title,
       description,
       purpose,
+      available_from,
       price_amount,
       price_currency = "AED",
       price_negotiable = false,
@@ -155,25 +165,40 @@ export const createPropertyListing = async (req, res) => {
     if (errors.length)
       return errorData(res, 400, false, "Validation failed", { errors });
 
-    // Generate unique slug
-    let baseSlug =
-      slugify(title || "property", { lower: true, strict: true }) || "property";
-    let slug = baseSlug;
-    let counter = 1;
-    while (await PropertyListing.findOne({ slug })) {
-      slug = `${baseSlug}-${Math.floor(1000 + Math.random() * 9000)}${counter > 1 ? `-${counter}` : ""}`;
-      counter++;
+    const cleanTitle = String(title || "").trim();
+    const existingListing = await PropertyListing.findOne({
+      title: buildCaseInsensitiveExactRegex(cleanTitle),
+      isDeleted: false,
+    })
+      .select("_id")
+      .lean();
+    if (existingListing) {
+      return sendStructuredError(
+        res,
+        409,
+        "Listing of this name already exists",
+        { title: "Listing of this name already exists" },
+      );
     }
+
+    const slug = await generateUniqueSlug(
+      PropertyListing,
+      cleanTitle,
+      null,
+      "property",
+    );
 
     const validPayments = toArray(payments).filter((p) =>
       mongoose.Types.ObjectId.isValid(p),
     );
+    const resolvedSoldBy = soldBy || sold_by || "owner";
 
     const listing = await PropertyListing.create({
       category: category_id,
       subCategory: validSubCategoryId,
-      soldBy: soldBy || "owner",
-      title,
+      soldBy: resolvedSoldBy,
+      availableFrom: available_from ? new Date(available_from) : null,
+      title: cleanTitle,
       description,
       purpose: cleanPurpose,
       price: {
@@ -225,13 +250,10 @@ export const createPropertyListing = async (req, res) => {
       },
     );
   } catch (error) {
-    console.error("Create property listing error:", error);
-    return errorData(
-      res,
-      500,
-      false,
-      error?.message || "Internal server error",
-    );
+    return handleListingControllerError(res, error, "Create property listing", {
+      duplicateField: "title",
+      duplicateMessage: "Listing of this name already exists",
+    });
   }
 };
 
@@ -247,14 +269,13 @@ export const updatePropertyListingStep = async (req, res) => {
     if (!listing) return errorData(res, 404, false, "Listing not found");
 
     // ── Ownership check ──
-    const user = await User.findById(req.user.id);
-    const userRole = user.roles.includes(1);
+    const actor = await resolveActorMeta(req.user);
 
     if (
       listing.createdBy &&
       req.user?.id &&
       listing.createdBy.toString() !== req.user.id.toString() &&
-      !userRole
+      !actor.isAdminOrEditor
     ) {
       return errorData(
         res,
@@ -271,9 +292,11 @@ export const updatePropertyListingStep = async (req, res) => {
           category_id,
           sub_category_id,
           soldBy,
+          sold_by,
           title,
           description,
           purpose,
+          available_from,
           price_amount,
           price_currency = "AED",
           price_negotiable = false,
@@ -322,23 +345,33 @@ export const updatePropertyListingStep = async (req, res) => {
         if (errors.length)
           return errorData(res, 400, false, "Validation failed", { errors });
 
-        // Regenerate slug only if title changed
-        if (title && title !== listing.title) {
-          listing.title = title;
-          let baseSlug =
-            slugify(title, { lower: true, strict: true }) || "property";
-          let slug = baseSlug;
-          let counter = 1;
-          while (
-            await PropertyListing.findOne({
-              slug,
-              _id: { $ne: listing._id },
-            })
-          ) {
-            slug = `${baseSlug}-${Math.floor(1000 + Math.random() * 9000)}${counter > 1 ? `-${counter}` : ""}`;
-            counter++;
+        if (title !== undefined) {
+          const cleanTitle = String(title).trim();
+          const duplicateListing = await PropertyListing.findOne({
+            title: buildCaseInsensitiveExactRegex(cleanTitle),
+            isDeleted: false,
+            _id: { $ne: listing._id },
+          })
+            .select("_id")
+            .lean();
+          if (duplicateListing) {
+            return sendStructuredError(
+              res,
+              409,
+              "Listing of this name already exists",
+              { title: "Listing of this name already exists" },
+            );
           }
-          listing.slug = slug;
+
+          if (cleanTitle !== listing.title) {
+            listing.title = cleanTitle;
+            listing.slug = await generateUniqueSlug(
+              PropertyListing,
+              cleanTitle,
+              listing._id,
+              "property",
+            );
+          }
         }
 
         if (category_id && mongoose.Types.ObjectId.isValid(category_id)) {
@@ -382,7 +415,9 @@ export const updatePropertyListingStep = async (req, res) => {
           size: area_size ? Number(area_size) : null,
           unit: area_unit || "sqft",
         };
-        listing.soldBy = soldBy || listing.soldBy;
+        const resolvedSoldBy = soldBy || sold_by;
+        if (resolvedSoldBy) listing.soldBy = resolvedSoldBy;
+        if (available_from) listing.availableFrom = new Date(available_from);
         listing.cae_number = cae_number || listing.cae_number;
         if (payments && payments.length > 0) {
           listing.paymentModes = toArray(payments).filter((p) =>
@@ -525,14 +560,13 @@ export const updatePropertyListingStep = async (req, res) => {
         return errorData(res, 400, false, "Invalid step");
     }
 
-    listing.stepCompleted = Math.max(listing.stepCompleted, Number(step));
-    await listing.save();
-
     if (listing.city) {
       const cityDoc = await CitiesSchema.findById(listing.city);
       listing.cityNameLower = cityDoc?.name?.toLowerCase() || "";
     }
 
+    listing.stepCompleted = Math.max(listing.stepCompleted, Number(step));
+    listing.formUpdated = buildFormUpdatedMeta(actor, "property", step);
     await listing.save();
 
     return successData(res, 200, true, `Step ${step} saved successfully`, {
@@ -541,8 +575,15 @@ export const updatePropertyListingStep = async (req, res) => {
       stepCompleted: listing.stepCompleted,
     });
   } catch (error) {
-    console.warn("Update property listing step error:", error);
-    return errorData(res, 500, false, "Internal server error");
+    return handleListingControllerError(
+      res,
+      error,
+      "Update property listing step",
+      {
+        duplicateField: "title",
+        duplicateMessage: "Listing of this name already exists",
+      },
+    );
   }
 };
 
@@ -988,26 +1029,21 @@ export const deletePropertyListing = async (req, res) => {
     const { slug } = req.params;
     if (!slug) return errorData(res, 400, false, "Slug is required");
 
+    const isObjectId = /^[0-9a-fA-F]{24}$/.test(slug);
     const listing = await PropertyListing.findOne({
-      slug,
+      $or: [isObjectId ? { _id: slug } : null, { slug }].filter(Boolean),
       isDeleted: false,
     });
     if (!listing) return errorData(res, 404, false, "Listing not found");
 
     // Ownership check
-    const userId = req.user?.id || req.user?._id;
-    const userRole =
-      req.user?.role ||
-      (Array.isArray(req.user?.roles) ? req.user.roles[0] : null);
-    const isAdmin =
-      userRole === 1 ||
-      (Array.isArray(req.user?.roles) && req.user.roles.includes(1));
+    const actor = await resolveActorMeta(req.user);
 
     if (
-      !isAdmin &&
+      !actor.isAdminOrEditor &&
       listing.createdBy &&
-      userId &&
-      listing.createdBy.toString() !== userId.toString()
+      req.user?.id &&
+      listing.createdBy.toString() !== req.user.id.toString()
     ) {
       return errorData(
         res,
@@ -1021,7 +1057,7 @@ export const deletePropertyListing = async (req, res) => {
     await listing.save();
 
     googleIndexingService.notify(
-      `${APP_BASE_URL}/property/${listing.slug}`,
+      `${APP_BASE_URL}/properties/${listing.slug}`,
       "URL_DELETED",
     );
 

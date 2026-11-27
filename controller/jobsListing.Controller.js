@@ -16,6 +16,14 @@ import {
   sendTextMessage,
   sendMediaMessage,
 } from "../modules/whatsapp/services/whatsappMessage.js";
+import {
+  buildCaseInsensitiveExactRegex,
+  buildFormUpdatedMeta,
+  generateUniqueSlug,
+  handleListingControllerError,
+  resolveActorMeta,
+  sendStructuredError,
+} from "../utils/listingFormHelper.js";
 
 export const saveJobStep = async (req, res) => {
   try {
@@ -42,6 +50,8 @@ export const saveJobStep = async (req, res) => {
     /* =========================
        FIND JOB IF job_id EXISTS
     ========================== */
+    const actor = await resolveActorMeta(user);
+
     if (job_id || slug) {
       if (job_id) {
         job = await Job.findOne({
@@ -57,7 +67,12 @@ export const saveJobStep = async (req, res) => {
 
       if (!job) return errorData(res, 404, false, "Job not found");
 
-      if (job.createdBy?.toString() !== user?.id && !user?.roles?.includes(1)) {
+      if (
+        job.createdBy &&
+        user?.id &&
+        job.createdBy.toString() !== user.id.toString() &&
+        !actor.isAdminOrEditor
+      ) {
         return errorData(res, 403, false, "Unauthorized");
       }
     }
@@ -112,16 +127,16 @@ export const saveJobStep = async (req, res) => {
       const validationErrors = {};
       if (!title || !title.toString().trim())
         validationErrors.title = "Job title is required";
-      if (!category_id) validationErrors.category = "Job category is required";
+      if (!category_id) validationErrors.category_id = "Job category is required";
       if (!sector) validationErrors.sector = "Sector is required";
       if (!jobType) validationErrors.jobType = "Job type is required";
       if (!experienceLevel)
         validationErrors.experienceLevel = "Experience level is required";
 
       if (Object.keys(validationErrors).length > 0) {
-        return errorData(res, 400, false, "Validation failed", {
-          errors: validationErrors,
-        });
+        const firstMsg =
+          Object.values(validationErrors)[0] || "Validation failed";
+        return sendStructuredError(res, 400, firstMsg, validationErrors);
       }
 
       // Parse JSON-string arrays coming from FormData
@@ -137,12 +152,18 @@ export const saveJobStep = async (req, res) => {
 
       /* -------- CREATE (POST) -------- */
       if (method === "POST") {
-        const baseSlug = slugify(title, { lower: true, strict: true });
+        const cleanTitle = String(title).trim();
+        const uniqueSlug = await generateUniqueSlug(
+          Job,
+          cleanTitle,
+          null,
+          "job",
+        );
 
         job = await Job.create({
           category: category_id,
           subCategory: sub_category_id || null,
-          title,
+          title: cleanTitle,
           description,
           requirements: Array.isArray(parsedRequirements)
             ? parsedRequirements
@@ -176,7 +197,7 @@ export const saveJobStep = async (req, res) => {
           localities: Array.isArray(parsedLocalities)
             ? parsedLocalities
             : [parsedLocalities].filter(Boolean),
-          slug: baseSlug,
+          slug: uniqueSlug,
           createdBy: user?.id,
           status: "pending",
           stepCompleted: 1,
@@ -203,8 +224,16 @@ export const saveJobStep = async (req, res) => {
       /* -------- UPDATE (PUT) -------- */
       if (method === "PUT") {
         if (title) {
-          job.title = title;
-          job.slug = slugify(title, { lower: true, strict: true });
+          const cleanTitle = String(title).trim();
+          if (cleanTitle && cleanTitle !== job.title) {
+            job.title = cleanTitle;
+            job.slug = await generateUniqueSlug(
+              Job,
+              cleanTitle,
+              job._id,
+              "job",
+            );
+          }
         }
 
         if (description) job.description = description;
@@ -359,9 +388,35 @@ export const saveJobStep = async (req, res) => {
         }
       }
 
+      const effectiveSeoTitle = (
+        seo_title !== undefined ? String(seo_title) : job.seo?.title || ""
+      ).trim();
+
+      if (effectiveSeoTitle) {
+        const duplicateMeta = await Job.findOne({
+          "seo.title": buildCaseInsensitiveExactRegex(effectiveSeoTitle),
+          isDeleted: false,
+          _id: { $ne: job._id },
+        })
+          .select("_id")
+          .lean();
+        if (duplicateMeta) {
+          return sendStructuredError(
+            res,
+            409,
+            "Listing of this name already exists",
+            {
+              seo_title:
+                "Listing of this name already exists (meta title must be unique)",
+            },
+          );
+        }
+      }
+
       job.seo = {
-        title: seo_title || job.seo?.title,
-        description: seo_description || job.seo?.description,
+        title: effectiveSeoTitle || job.seo?.title,
+        description:
+          seo_description !== undefined ? seo_description : job.seo?.description,
         keywords: seo_keywords
           ? Array.isArray(seo_keywords)
             ? seo_keywords
@@ -429,6 +484,10 @@ export const saveJobStep = async (req, res) => {
       );
     }
 
+    if (method === "PUT") {
+      job.formUpdated = buildFormUpdatedMeta(actor, "jobs", step);
+    }
+
     await job.save();
 
     // Return showThankYou flag for step 3 so frontend can show the popup after plan/payment
@@ -442,30 +501,10 @@ export const saveJobStep = async (req, res) => {
 
     return successData(res, 200, true, `Step ${step} saved`, responseData);
   } catch (error) {
-    console.warn("Job step error:", error);
-
-    // ── Mongoose validation error ──
-    if (error.name === "ValidationError") {
-      const fieldErrors = {};
-      for (const key in error.errors) {
-        fieldErrors[key] = error.errors[key].message;
-      }
-      return errorData(res, 400, false, "Validation failed", {
-        errors: fieldErrors,
-      });
-    }
-
-    // ── Duplicate key error (slug collision etc.) ──
-    if (error.code === 11000) {
-      return errorData(
-        res,
-        409,
-        false,
-        "A job with this title already exists. Please use a different title.",
-      );
-    }
-
-    return errorData(res, 500, false, "Internal server error");
+    return handleListingControllerError(res, error, "Job step", {
+      duplicateField: "seo_title",
+      duplicateMessage: "Listing of this name already exists",
+    });
   }
 };
 
@@ -867,16 +906,35 @@ export const deleteJob = async (req, res) => {
     const { slug } = req.params;
     if (!slug) return errorData(res, 400, false, "Job Slug is required");
 
-    const job = await Job.findOneAndUpdate(
-      { slug: slug },
-      { isDeleted: true, availableStatus: "closed", isActive: false },
-      { new: true },
-    );
+    const isObjectId = /^[0-9a-fA-F]{24}$/.test(slug);
+    const existing = await Job.findOne({
+      $or: [isObjectId ? { _id: slug } : null, { slug }].filter(Boolean),
+      isDeleted: false,
+    });
+    if (!existing) return errorData(res, 404, false, "Job not found");
 
-    if (!job) return errorData(res, 404, false, "Job not found");
+    const actor = await resolveActorMeta(req.user);
+    if (
+      !actor.isAdminOrEditor &&
+      existing.createdBy &&
+      req.user?.id &&
+      existing.createdBy.toString() !== req.user.id.toString()
+    ) {
+      return errorData(
+        res,
+        403,
+        false,
+        "Forbidden: you do not own this listing",
+      );
+    }
+
+    existing.isDeleted = true;
+    existing.availableStatus = "closed";
+    existing.isActive = false;
+    const job = await existing.save();
 
     googleIndexingService.notify(
-      `${APP_BASE_URL}/job/${job.slug}`,
+      `${APP_BASE_URL}/jobs/${job.slug}`,
       "URL_DELETED",
     );
 

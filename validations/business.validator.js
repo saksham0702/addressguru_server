@@ -120,6 +120,7 @@ const businessStepSchema = {
 
     seo_title: Joi.string().allow("", null).optional(),
     seo_description: Joi.string().allow("", null).optional(),
+    city_id: Joi.string().allow("", null).optional(),
   }).options({ allowUnknown: true }),
 
   /* =========================
@@ -128,8 +129,20 @@ const businessStepSchema = {
   ========================= */
   2: Joi.object({
     // Contact fields
-    name: Joi.string().min(2).max(50).allow("", null).optional(),
-    email: Joi.string().allow("", null).optional(),
+    name: Joi.string()
+      .min(2)
+      .max(50)
+      .allow("", null)
+      .optional()
+      .messages({
+        "string.min": "Name must be at least 2 characters",
+        "string.max": "Name must not exceed 50 characters",
+      }),
+    email: Joi.string()
+      .email()
+      .allow("", null)
+      .optional()
+      .messages({ "string.email": "Please provide a valid email address" }),
     country_code: Joi.string().allow("", null).optional(),
     mobile_number: Joi.string().allow("", null).optional(),
     alt_country_code: Joi.string().allow("", null).optional(),
@@ -138,13 +151,41 @@ const businessStepSchema = {
     city_id: Joi.string().allow("", null).optional(),
 
     // Social fields
-    websiteLink: Joi.string().uri().allow("", null).optional(),
-    videoLink: Joi.string().uri().allow("", null).optional(),
-    facebook: Joi.string().uri().allow("", null).optional(),
-    instagram: Joi.string().uri().allow("", null).optional(),
-    twitter: Joi.string().uri().allow("", null).optional(),
-    linkedin: Joi.string().uri().allow("", null).optional(),
-    youtube: Joi.string().uri().allow("", null).optional(),
+    websiteLink: Joi.string()
+      .uri()
+      .allow("", null)
+      .optional()
+      .messages({ "string.uri": "Please enter a valid website URL (including https://)" }),
+    videoLink: Joi.string()
+      .uri()
+      .allow("", null)
+      .optional()
+      .messages({ "string.uri": "Please enter a valid video URL (including https://)" }),
+    facebook: Joi.string()
+      .uri()
+      .allow("", null)
+      .optional()
+      .messages({ "string.uri": "Please enter a valid Facebook URL (including https://)" }),
+    instagram: Joi.string()
+      .uri()
+      .allow("", null)
+      .optional()
+      .messages({ "string.uri": "Please enter a valid Instagram URL (including https://)" }),
+    twitter: Joi.string()
+      .uri()
+      .allow("", null)
+      .optional()
+      .messages({ "string.uri": "Please enter a valid X/Twitter URL (including https://)" }),
+    linkedin: Joi.string()
+      .uri()
+      .allow("", null)
+      .optional()
+      .messages({ "string.uri": "Please enter a valid LinkedIn URL (including https://)" }),
+    youtube: Joi.string()
+      .uri()
+      .allow("", null)
+      .optional()
+      .messages({ "string.uri": "Please enter a valid YouTube URL (including https://)" }),
   }).options({ allowUnknown: true }),
 
   /* =========================

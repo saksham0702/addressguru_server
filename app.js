@@ -81,7 +81,7 @@ connectDB().then(() => {
   // Marks isOnline=false for users whose lastSeen is older than 60 minutes.
   // This fixes the admin table showing users as "Online" after they close
   // their browser without explicitly logging out.
-  const INACTIVITY_MS = 60 * 60 * 1000; // 60 minutes
+  const INACTIVITY_MS = 30 * 60 * 1000; // 30 minutes
   const sweepIdleUsers = async () => {
     try {
       const { default: User } = await import("./model/userSchema.js");

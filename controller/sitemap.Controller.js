@@ -24,13 +24,23 @@ const getModelBySection = (section) => {
   }
 };
 
+const toValidIso = (value) => {
+  if (!value) return null;
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date.toISOString();
+};
+
 const getBaseFilter = (section) => {
   if (section === "blogs") {
-    return { status: "published" };
+    return {
+      status: "published",
+      slug: { $exists: true, $nin: ["", null] },
+    };
   }
   return {
     isDeleted: false,
     status: "approved",
+    slug: { $exists: true, $nin: ["", null] },
   };
 };
 
@@ -154,15 +164,16 @@ export const getShardedListings = async (req, res) => {
       .limit(SHARD_SIZE)
       .lean();
 
-    const result = docs.map((d) => ({
-      slug: d.slug,
-      last_updated: d.updatedAt
-        ? new Date(d.updatedAt).toISOString()
-        : d.publishedAt
-          ? new Date(d.publishedAt).toISOString()
-          : new Date().toISOString(),
-      image: d.coverImage || d.logo || (d.images && d.images[0]) || null,
-    }));
+    const result = docs
+      .filter((d) => Boolean(d?.slug))
+      .map((d) => ({
+        slug: d.slug,
+        last_updated:
+          toValidIso(d.updatedAt) ||
+          toValidIso(d.publishedAt) ||
+          new Date().toISOString(),
+        image: d.coverImage || d.logo || (d.images && d.images[0]) || null,
+      }));
 
     return res.status(200).json({ success: true, result });
   } catch (error) {

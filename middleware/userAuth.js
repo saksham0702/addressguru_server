@@ -49,7 +49,7 @@ export const authenticate = async (req, res, next) => {
       return next();
     }
 
-    // ── Inactivity check: enforce 60-minute idle timeout ─────────────────────
+    // ── Inactivity check: enforce 30-minute idle timeout ─────────────────────
     // Import lazily to avoid circular dep issues at module load time.
     const { default: User } = await import("../model/userSchema.js");
     const userId = req.user?.id || req.user?._id || decoded?.sub || decoded?.id || decoded?._id;
@@ -58,11 +58,11 @@ export const authenticate = async (req, res, next) => {
       const dbUser = await User.findById(userId).select("lastSeen isOnline lastLoginAt").lean();
 
       if (dbUser) {
-        const INACTIVITY_MS = 60 * 60 * 1000; // 60 minutes
+        const INACTIVITY_MS = 30 * 60 * 1000; // 30 minutes
         const now = new Date();
 
-        // 1. Fresh session guard: if token was issued within the last 60 minutes (iat),
-        // or user logged in within the last 60 minutes (lastLoginAt), this is an active session
+        // 1. Fresh session guard: if token was issued within the last 30 minutes (iat),
+        // or user logged in within the last 30 minutes (lastLoginAt), this is an active session
         // and cannot be considered expired due to inactivity.
         const tokenIssuedAt = decoded?.iat ? new Date(decoded.iat * 1000) : null;
         const isFreshToken = tokenIssuedAt && (now.getTime() - tokenIssuedAt.getTime()) <= INACTIVITY_MS;
@@ -79,7 +79,7 @@ export const authenticate = async (req, res, next) => {
           return next();
         }
 
-        // 2. Inactivity check: only enforce if the token is > 60m old AND lastSeen is > 60m old
+        // 2. Inactivity check: only enforce if the token is > 30m old AND lastSeen is > 30m old
         const lastSeen = dbUser.lastSeen ? new Date(dbUser.lastSeen) : null;
         const isInactive = lastSeen && (now.getTime() - lastSeen.getTime()) > INACTIVITY_MS;
 

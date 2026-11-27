@@ -1,6 +1,54 @@
 import logger from "../services/logger.js";
 
 export default async (err, req, res, next) => {
+  if (err?.name === "MulterError" || err?.code === "LIMIT_FILE_SIZE") {
+    const msg =
+      err.code === "LIMIT_FILE_SIZE"
+        ? "Uploaded file size exceeds limit (max 25MB)."
+        : err.message || "File upload error.";
+    return res.status(400).json({
+      status: false,
+      success: false,
+      message: msg,
+      error: { statusCode: 400, userMessage: msg },
+    });
+  }
+
+  if (err?.name === "ValidationError") {
+    const errors = {};
+    for (const [key, val] of Object.entries(err.errors || {})) {
+      errors[key] = val?.message || "Invalid value";
+    }
+    const msg = Object.values(errors)[0] || "Validation failed";
+    return res.status(400).json({
+      status: false,
+      success: false,
+      message: msg,
+      errors,
+      data: { errors },
+      error: { statusCode: 400, userMessage: msg },
+    });
+  }
+
+  if (err?.code === 11000) {
+    const msg = "Listing of this name already exists";
+    return res.status(409).json({
+      status: false,
+      success: false,
+      message: msg,
+      error: { statusCode: 409, userMessage: msg },
+    });
+  }
+
+  if (err?.message && !err?.statusCode && /File format not supported|Upload folder type/i.test(err.message)) {
+    return res.status(400).json({
+      status: false,
+      success: false,
+      message: err.message,
+      error: { statusCode: 400, userMessage: err.message },
+    });
+  }
+
   let errorObject;
   try {
     // compute errorObject
@@ -115,5 +163,10 @@ export default async (err, req, res, next) => {
 
   return res
     .status(errorObject.statusCode || 500)
-    .json({ error: { ...errorObject } });
+    .json({
+      status: false,
+      success: false,
+      message: errorObject.userMessage || "Something went wrong",
+      error: { ...errorObject },
+    });
 };
